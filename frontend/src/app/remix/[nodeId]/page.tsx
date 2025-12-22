@@ -232,7 +232,7 @@ export default function RemixDetailPage() {
                                     </div>
                                     <div className="p-4 bg-yellow-500/10 rounded-xl border border-yellow-500/20">
                                         <div className="text-xs text-yellow-400/60 mb-1">예상 수익</div>
-                                        <div className="text-2xl font-black text-yellow-400">$10 ~ $30</div>
+                                        <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-br from-yellow-300 via-yellow-400 to-orange-500 drop-shadow-[0_2px_10px_rgba(234,179,8,0.3)]">$10 ~ $30</div>
                                     </div>
                                 </div>
                                 <div className="text-center p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">

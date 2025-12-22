@@ -36,6 +36,9 @@ export function CelebrationModal({
 
             {/* Modal */}
             <div className="relative bg-[#0a0a0a] border border-white/10 rounded-[32px] p-10 max-w-md w-full shadow-2xl animate-[scaleIn_0.3s_ease-out]">
+                {/* Background Ambient Glow */}
+                <div className="absolute -inset-10 bg-gradient-to-r from-violet-600/30 via-pink-600/30 to-orange-600/30 blur-3xl opacity-50 rounded-[50px] pointer-events-none" />
+
                 {/* Confetti Effect (CSS) */}
                 <div className="absolute inset-0 overflow-hidden rounded-[32px] pointer-events-none">
                     <div className="absolute top-0 left-1/4 w-2 h-2 bg-yellow-400 rounded-full animate-[confetti_1s_ease-out_infinite]" style={{ animationDelay: '0s' }} />

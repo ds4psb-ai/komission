@@ -217,7 +217,7 @@ export default function MyPage() {
                             className="flex-shrink-0 group relative p-[2px] rounded-2xl bg-gradient-to-r from-violet-500 via-pink-500 to-orange-500 shadow-[0_0_30px_rgba(139,92,246,0.3)] hover:shadow-[0_0_50px_rgba(139,92,246,0.5)] transition-all"
                         >
                             <div className="px-8 py-4 bg-black rounded-[14px] flex items-center gap-3 group-hover:bg-black/80 transition-colors">
-                                <span className="text-2xl">🚀</span>
+                                <span className="text-2xl group-hover:rotate-12 transition-transform duration-300">🚀</span>
                                 <div>
                                     <div className="font-bold text-white">다음 리믹스 찾기</div>
                                     <div className="text-xs text-white/50">평균 +89% 성장하는 노드들 보기</div>
