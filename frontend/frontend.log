@@ -62,3 +62,4 @@ $ next dev
 ✓ Compiled in 36ms
  GET /canvas?sourceUrl=https%3A%2F%2Fwww.youtube.com%2Fshorts%2FXyz789AbcDef 200 in 10ms (compile: 3ms, render: 7ms)
 ✓ Compiled in 33ms
+error: script "dev" was terminated by signal SIGHUP (Terminal hung up)
