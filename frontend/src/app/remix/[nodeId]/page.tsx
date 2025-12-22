@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, RemixNodeDetail } from "@/lib/api";
+import { api, RemixNodeDetail, QuestRecommendation } from "@/lib/api";
 import { GenealogyWidget } from "@/components/GenealogyWidget";
 import { AppHeader } from "@/components/AppHeader";
 import { FilmingGuide } from "@/components/FilmingGuide";
@@ -29,6 +29,10 @@ export default function RemixDetailPage() {
     // Expert Recommendation: Celebration Modal
     const [showCelebration, setShowCelebration] = useState(false);
 
+    // Expert Recommendation: Quest Matching
+    const [recommendedQuests, setRecommendedQuests] = useState<QuestRecommendation[]>([]);
+    const [questsLoading, setQuestsLoading] = useState(false);
+
     useEffect(() => {
         if (nodeId) fetchNode();
     }, [nodeId]);
@@ -43,6 +47,24 @@ export default function RemixDetailPage() {
             setLoading(false);
         }
     }
+
+    // Expert Recommendation: Load Quest Matching on node load
+    async function fetchQuestMatching() {
+        if (!nodeId) return;
+        setQuestsLoading(true);
+        try {
+            const response = await api.getQuestMatching(nodeId);
+            setRecommendedQuests(response.recommended_quests);
+        } catch (err) {
+            console.error('Quest matching failed:', err);
+        } finally {
+            setQuestsLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        if (node) fetchQuestMatching();
+    }, [node]);
 
     async function handleAnalyze() {
         if (!node) return;
@@ -240,6 +262,58 @@ export default function RemixDetailPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* 🆕 Recommended Quests - Expert Recommendation */}
+                        {recommendedQuests.length > 0 && (
+                            <div className="glass-panel p-6 rounded-3xl border border-pink-500/20 bg-[#0a0a0a]">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <span className="text-2xl">🎯</span>
+                                    <div>
+                                        <h3 className="font-bold text-white">추천 퀘스트</h3>
+                                        <p className="text-xs text-white/50">이 리믹스에 맞는 O2O 체험단이에요!</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    {recommendedQuests.slice(0, 3).map((quest) => (
+                                        <div
+                                            key={quest.id}
+                                            className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:border-pink-500/30 transition-colors cursor-pointer group"
+                                            onClick={() => {
+                                                setQuestAccepted(true);
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center text-lg">
+                                                    {quest.category === 'fashion' ? '👗' : quest.category === 'beauty' ? '💄' : quest.category === 'food' ? '🍽️' : '🎁'}
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-white text-sm">{quest.brand || quest.campaign_title}</div>
+                                                    <div className="text-xs text-white/40">{quest.place_name}</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-pink-400 font-bold">+{quest.reward_points}P</div>
+                                                {quest.reward_product && (
+                                                    <div className="text-[10px] text-white/40">{quest.reward_product}</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {!questAccepted ? (
+                                    <button
+                                        onClick={() => setQuestAccepted(true)}
+                                        className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-violet-500 text-white font-bold text-sm hover:from-pink-400 hover:to-violet-400 transition-all shadow-[0_0_20px_rgba(219,39,119,0.3)]"
+                                    >
+                                        ⚔️ 퀘스트 수락하고 +500P 받기
+                                    </button>
+                                ) : (
+                                    <div className="w-full mt-4 py-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-center text-emerald-400 font-bold text-sm">
+                                        ✅ 퀘스트 수락됨! 촬영 시작하세요
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Premium Video Player Frame */}
                         <div

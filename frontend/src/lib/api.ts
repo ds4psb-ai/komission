@@ -224,6 +224,18 @@ class ApiClient {
         });
     }
 
+    // Quest Matching (Expert Recommendation)
+    async getQuestMatching(nodeId: string, options?: {
+        category?: string;
+        music_genre?: string;
+        platform?: string;
+    }): Promise<QuestMatchingResponse> {
+        return this.request<QuestMatchingResponse>(`/api/v1/remix/${nodeId}/matching`, {
+            method: 'POST',
+            body: JSON.stringify(options || {}),
+        });
+    }
+
     // Pipelines (Canvas Persistence)
     async listPublicPipelines() {
         return this.request<Pipeline[]>('/api/v1/pipelines/public');
@@ -278,6 +290,35 @@ class ApiClient {
 
     async getRoyaltyStats() {
         return this.request<RoyaltyStats>('/api/v1/royalty/stats');
+    }
+
+    // Gamification (Expert Recommendation)
+    async getMyBadges(): Promise<Badge[]> {
+        return this.request<Badge[]>('/api/v1/gamification/badges');
+    }
+
+    async getMyStreak(): Promise<StreakInfo> {
+        return this.request<StreakInfo>('/api/v1/gamification/streak');
+    }
+
+    async checkInStreak(): Promise<StreakCheckInResponse> {
+        return this.request<StreakCheckInResponse>('/api/v1/gamification/streak/check-in', {
+            method: 'POST',
+        });
+    }
+
+    async getDailyMissions(): Promise<DailyMission[]> {
+        return this.request<DailyMission[]>('/api/v1/gamification/missions/daily');
+    }
+
+    async completeMission(missionType: string): Promise<MissionCompleteResponse> {
+        return this.request<MissionCompleteResponse>(`/api/v1/gamification/missions/${missionType}/complete`, {
+            method: 'POST',
+        });
+    }
+
+    async getGamificationLeaderboard(limit: number = 10): Promise<GamificationLeaderboardEntry[]> {
+        return this.request<GamificationLeaderboardEntry[]>(`/api/v1/gamification/leaderboard?limit=${limit}`);
     }
 
     // Health
@@ -434,6 +475,77 @@ export interface RoyaltyStats {
     total_transactions: number;
     breakdown_by_reason: Record<string, { count: number; total_points: number }>;
     top_earning_nodes: { node_id: string; title: string; royalty: number }[];
+}
+
+// Quest Matching Types (Expert Recommendation)
+export interface QuestRecommendation {
+    id: string;
+    brand: string | null;
+    campaign_title: string;
+    category: string | null;
+    reward_points: number;
+    reward_product: string | null;
+    place_name: string;
+    address: string;
+    deadline: string;
+}
+
+export interface QuestMatchingResponse {
+    node_id: string;
+    inferred_category: string | null;
+    recommended_quests: QuestRecommendation[];
+    total_count: number;
+}
+
+// Gamification Types (Expert Recommendation)
+export interface Badge {
+    badge_type: string;
+    emoji: string;
+    name: string;
+    description: string;
+    earned_at: string;
+}
+
+export interface StreakInfo {
+    current_streak: number;
+    longest_streak: number;
+    last_activity_date: string | null;
+    streak_points_earned: number;
+    next_milestone: number;
+}
+
+export interface StreakCheckInResponse {
+    status: string;
+    current_streak: number;
+    longest_streak?: number;
+    points_earned: number;
+    new_badges: string[];
+}
+
+export interface DailyMission {
+    mission_type: string;
+    name: string;
+    description: string;
+    points: number;
+    completed: boolean;
+    completed_at: string | null;
+}
+
+export interface MissionCompleteResponse {
+    status: string;
+    mission_type?: string;
+    points_earned: number;
+    total_k_points?: number;
+}
+
+export interface GamificationLeaderboardEntry {
+    rank: number;
+    user_id: string;
+    user_name: string | null;
+    profile_image: string | null;
+    total_royalty: number;
+    streak_days: number;
+    badge_count: number;
 }
 
 // Singleton instance

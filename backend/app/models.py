@@ -145,6 +145,7 @@ class O2OLocation(Base):
     campaign_type: Mapped[str] = mapped_column(String(50))  # visit_challenge, product_trial
     campaign_title: Mapped[str] = mapped_column(String(255))
     brand: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # fashion, beauty, food, lifestyle
     
     # Rewards
     reward_points: Mapped[int] = mapped_column(Integer, default=0)
@@ -231,4 +232,73 @@ class NodeRoyalty(Base):
     forked_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode", foreign_keys=[forked_node_id])
     forker: Mapped[Optional["User"]] = relationship("User", foreign_keys=[forker_id])
 
+
+# ==================
+# GAMIFICATION SYSTEM (Expert Recommendation)
+# ==================
+
+class BadgeType(str, enum.Enum):
+    """Badge types for gamification"""
+    FIRST_FORK = "first_fork"           # 🍽️ 첫 포크
+    VIRAL_MAKER = "viral_maker"         # 🚀 바이럴 메이커 (+50% 성장률)
+    SPEED_RUNNER = "speed_runner"       # ⚡ 스피드러너 (24h 내 3개 리믹스)
+    ORIGINAL_CREATOR = "original_creator"  # 👨‍👧‍👦 내 포크가 또 Fork됨
+    COLLABORATOR = "collaborator"       # 🤝 퀘스트에서 수익 얻기
+    STREAK_3 = "streak_3"               # 🔥 3일 연속
+    STREAK_7 = "streak_7"               # 🔥🔥 7일 연속
+    STREAK_30 = "streak_30"             # 🔥🔥🔥 30일 연속
+
+
+class UserBadge(Base):
+    """User's earned badges"""
+    __tablename__ = "user_badges"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
+    badge_type: Mapped[str] = mapped_column(SQLEnum(BadgeType))
+    earned_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Optional context (e.g., which node earned this badge)
+    context_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True)
+    
+    # Relationships
+    user: Mapped["User"] = relationship("User", backref="badges")
+
+
+class UserStreak(Base):
+    """User's daily activity streak tracking"""
+    __tablename__ = "user_streaks"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, index=True)
+    
+    current_streak: Mapped[int] = mapped_column(Integer, default=0)
+    longest_streak: Mapped[int] = mapped_column(Integer, default=0)
+    last_activity_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    
+    # K-Points earned from streaks
+    streak_points_earned: Mapped[int] = mapped_column(Integer, default=0)
+    
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class MissionType(str, enum.Enum):
+    """Daily mission types"""
+    APP_OPEN = "app_open"           # 앱 접속
+    FIRST_FILMING = "first_filming" # 첫 촬영
+    QUEST_ACCEPT = "quest_accept"   # 퀘스트 수락
+    FORK_CREATE = "fork_create"     # 포크 생성
+
+
+class DailyMission(Base):
+    """User's daily mission completion tracking"""
+    __tablename__ = "daily_missions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
+    mission_type: Mapped[str] = mapped_column(SQLEnum(MissionType))
+    mission_date: Mapped[datetime] = mapped_column(DateTime)  # Date of the mission
+    completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    points_earned: Mapped[int] = mapped_column(Integer, default=0)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 

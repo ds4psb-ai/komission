@@ -450,3 +450,94 @@ async def get_node_genealogy(
             "children": [],
             "error": "Graph service unavailable"
         }
+
+
+# --- Quest Matching API (Expert Recommendation) ---
+
+class MatchingRequest(BaseModel):
+    category: Optional[str] = None  # fashion, beauty, food, lifestyle
+    music_genre: Optional[str] = None  # k-pop, hip-hop, edm
+    platform: Optional[str] = None  # tiktok, instagram
+
+
+class QuestRecommendation(BaseModel):
+    id: str
+    brand: Optional[str]
+    campaign_title: str
+    category: Optional[str]
+    reward_points: int
+    reward_product: Optional[str]
+    place_name: str
+    address: str
+    deadline: datetime
+
+
+@router.post("/{node_id}/matching")
+async def get_quest_matching(
+    node_id: str,
+    data: MatchingRequest = MatchingRequest(),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get recommended O2O quests based on node's content category.
+    
+    Matches node's inferred category/genre with active O2O campaigns.
+    Used in Remix Detail Page to show "Recommended Quests" section.
+    """
+    from app.models import O2OLocation
+    
+    # 1. Get the node to infer category if not provided
+    result = await db.execute(select(RemixNode).where(RemixNode.node_id == node_id))
+    node = result.scalar_one_or_none()
+    
+    if not node:
+        raise HTTPException(status_code=404, detail="Remix node not found")
+    
+    # 2. Infer category from node's Gemini analysis if not provided
+    category = data.category
+    if not category and node.gemini_analysis:
+        # Try to extract category from AI analysis
+        analysis = node.gemini_analysis
+        if isinstance(analysis, dict):
+            category = analysis.get("category") or analysis.get("content_type")
+    
+    # 3. Query active O2O campaigns
+    now = datetime.utcnow()
+    query = select(O2OLocation).where(
+        (O2OLocation.active_start <= now) &
+        (O2OLocation.active_end >= now)
+    )
+    
+    # Filter by category if available
+    if category:
+        query = query.where(O2OLocation.category == category)
+    
+    # Limit results
+    query = query.order_by(O2OLocation.reward_points.desc()).limit(5)
+    
+    result = await db.execute(query)
+    locations = result.scalars().all()
+    
+    # 4. Format response
+    recommendations = [
+        QuestRecommendation(
+            id=str(loc.id),
+            brand=loc.brand,
+            campaign_title=loc.campaign_title,
+            category=loc.category,
+            reward_points=loc.reward_points,
+            reward_product=loc.reward_product,
+            place_name=loc.place_name,
+            address=loc.address,
+            deadline=loc.active_end
+        )
+        for loc in locations
+    ]
+    
+    return {
+        "node_id": node_id,
+        "inferred_category": category,
+        "recommended_quests": [r.model_dump() for r in recommendations],
+        "total_count": len(recommendations)
+    }
+

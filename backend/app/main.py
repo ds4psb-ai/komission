@@ -91,6 +91,10 @@ app.add_middleware(
 app.include_router(api_router)
 app.include_router(pipeline_router, prefix="/api/v1/pipelines", tags=["Pipelines"])
 
+# Register WebSocket routes (Expert Recommendation: Real-time Metrics)
+from app.routers.websocket import router as websocket_router
+app.include_router(websocket_router, tags=["WebSocket"])
+
 
 @app.get("/health")
 async def health_check():
