@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { GoogleLoginButtonCustom } from '@/components/GoogleLoginButton';
 import { useAuth } from '@/lib/auth';
 
-export default function LoginPage() {
+function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { login, isLoading: authLoading } = useAuth();
@@ -26,10 +26,9 @@ export default function LoginPage() {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        // Calculate rotation (max 10 degrees)
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
-        const rotateX = ((y - centerY) / centerY) * -5; // Inverted for natural feel
+        const rotateX = ((y - centerY) / centerY) * -5;
         const rotateY = ((x - centerX) / centerX) * 5;
 
         setRotate({ x: rotateX, y: rotateY });
@@ -37,8 +36,8 @@ export default function LoginPage() {
     };
 
     const handleMouseLeave = () => {
-        setRotate({ x: 0, y: 0 }); // Reset rotation
-        setSpotlight({ x: 50, y: 50 }); // Center spotlight
+        setRotate({ x: 0, y: 0 });
+        setSpotlight({ x: 50, y: 50 });
     };
 
     const handleGoogleSuccess = async (credential: string) => {
@@ -125,7 +124,7 @@ export default function LoginPage() {
                         <div className="transform transition-transform hover:scale-[1.02] active:scale-[0.98]">
                             <GoogleLoginButtonCustom
                                 onSuccess={handleGoogleSuccess}
-                                onError={(err) => setError('Google 로그인 실패')}
+                                onError={() => setError('Google 로그인 실패')}
                                 isLoading={isLoading || authLoading}
                             />
                         </div>
@@ -158,5 +157,17 @@ export default function LoginPage() {
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+        }>
+            <LoginContent />
+        </Suspense>
     );
 }

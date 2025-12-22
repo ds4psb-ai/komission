@@ -1,4 +1,3 @@
-```
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -98,11 +97,7 @@ export default function RoyaltyHistoryPage() {
                         <button
                             key={f.id}
                             onClick={() => setFilter(f.id)}
-                            className={`px - 4 py - 2 rounded - full text - sm font - bold whitespace - nowrap transition - all ${
-    filter === f.id
-    ? 'bg-white text-black'
-    : 'bg-white/5 text-white/60 hover:bg-white/10'
-} `}
+                            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${filter === f.id ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
                         >
                             {f.label}
                         </button>
@@ -139,17 +134,12 @@ export default function RoyaltyHistoryPage() {
                                             <div className="text-xs text-white/20">{new Date(tx.created_at).toLocaleTimeString()}</div>
                                         </td>
                                         <td className="p-6">
-                                            <span className={`inline - flex items - center gap - 2 px - 2 py - 1 rounded text - xs font - bold uppercase ${
-    tx.reason === 'fork' ? 'bg-emerald-500/20 text-emerald-400' :
-    tx.reason === 'view_milestone' ? 'bg-blue-500/20 text-blue-400' :
-        tx.reason === 'k_success' ? 'bg-purple-500/20 text-purple-400' :
-            'bg-white/10 text-white/60'
-} `}>
+                                            <span className={`inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-bold uppercase ${tx.reason === 'fork' ? 'bg-emerald-500/20 text-emerald-400' : tx.reason === 'view_milestone' ? 'bg-blue-500/20 text-blue-400' : tx.reason === 'k_success' ? 'bg-purple-500/20 text-purple-400' : 'bg-white/10 text-white/60'}`}>
                                                 {tx.reason.replace('_', ' ')}
                                             </span>
                                         </td>
                                         <td className="p-6 text-sm">
-                                            <Link href={`/ remix / ${ tx.source_node_id } `} className="hover:text-yellow-400 transition-colors">
+                                            <Link href={`/remix/${tx.source_node_id}`} className="hover:text-yellow-400 transition-colors">
                                                 Node: <span className="font-mono text-white/60">{tx.source_node_id.substring(0, 12)}...</span>
                                             </Link>
                                             {tx.forked_node_id && (
