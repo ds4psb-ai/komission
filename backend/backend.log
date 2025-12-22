@@ -1,0 +1,672 @@
+INFO:     Will watch for changes in these directories: ['/Users/ted/komission/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [10113] using WatchFiles
+INFO:     Started server process [10166]
+INFO:     Waiting for application startup.
+Warning: GEMINI_API_KEY not set
+🚀 Starting Komission Factory v5.2.0
+2025-12-22 11:56:16,373 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+2025-12-22 11:56:16,373 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 11:56:16,386 INFO sqlalchemy.engine.Engine select current_schema()
+2025-12-22 11:56:16,386 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 11:56:16,389 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+2025-12-22 11:56:16,389 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 11:56:16,391 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:16,392 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 11:56:16,392 INFO sqlalchemy.engine.Engine [generated in 0.00008s] ('users', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 11:56:16,424 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 11:56:16,424 INFO sqlalchemy.engine.Engine [cached since 0.03184s ago] ('remix_nodes', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 11:56:16,426 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 11:56:16,427 INFO sqlalchemy.engine.Engine [cached since 0.03421s ago] ('user_videos', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 11:56:16,429 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 11:56:16,429 INFO sqlalchemy.engine.Engine [cached since 0.03656s ago] ('o2o_locations', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 11:56:16,431 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 11:56:16,431 INFO sqlalchemy.engine.Engine [cached since 0.03845s ago] ('pipelines', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 11:56:16,433 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 11:56:16,433 INFO sqlalchemy.engine.Engine [cached since 0.04095s ago] ('node_royalties', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 11:56:16,439 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 11:56:16,439 INFO sqlalchemy.engine.Engine [generated in 0.00024s] ('nodelayer', 'pg_catalog')
+2025-12-22 11:56:16,447 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 11:56:16,447 INFO sqlalchemy.engine.Engine [cached since 0.007965s ago] ('nodepermission', 'pg_catalog')
+2025-12-22 11:56:16,449 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 11:56:16,449 INFO sqlalchemy.engine.Engine [cached since 0.01036s ago] ('nodegovernance', 'pg_catalog')
+2025-12-22 11:56:16,451 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 11:56:16,451 INFO sqlalchemy.engine.Engine [cached since 0.01236s ago] ('royaltyreason', 'pg_catalog')
+2025-12-22 11:56:16,452 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.
+✅ Database initialized
+✅ Redis connected: localhost:6379
+✅ Redis connected
+⚠️ Neo4j connection failed: Couldn't connect to localhost:7687 (resolved to ('[::1]:7687', '127.0.0.1:7687')):
+Failed to establish connection to ResolvedIPv6Address(('::1', 7687, 0, 0)) (reason [Errno 61] Connect call failed ('::1', 7687, 0, 0))
+Failed to establish connection to ResolvedIPv4Address(('127.0.0.1', 7687)) (reason [Errno 61] Connect call failed ('127.0.0.1', 7687))
+✅ Neo4j connected
+INFO:     127.0.0.1:50471 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50472 - "OPTIONS /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+2025-12-22 11:56:21,102 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:21,109 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 11:56:21,109 INFO sqlalchemy.engine.Engine [generated in 0.00015s] (50, 0)
+2025-12-22 11:56:21,184 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50472 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50475 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 11:56:25,036 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:25,037 INFO sqlalchemy.engine.Engine SELECT pipelines.id, pipelines.title, pipelines.graph_data, pipelines.is_public, pipelines.user_id, pipelines.created_at, pipelines.updated_at 
+FROM pipelines 
+WHERE pipelines.is_public = true ORDER BY pipelines.updated_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 11:56:25,037 INFO sqlalchemy.engine.Engine [generated in 0.00008s] (20, 0)
+2025-12-22 11:56:25,044 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50477 - "GET /api/v1/pipelines/public HTTP/1.1" 200 OK
+2025-12-22 11:56:25,082 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:25,082 INFO sqlalchemy.engine.Engine SELECT pipelines.id, pipelines.title, pipelines.graph_data, pipelines.is_public, pipelines.user_id, pipelines.created_at, pipelines.updated_at 
+FROM pipelines 
+WHERE pipelines.is_public = true ORDER BY pipelines.updated_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 11:56:25,082 INFO sqlalchemy.engine.Engine [cached since 0.04555s ago] (20, 0)
+2025-12-22 11:56:25,085 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50478 - "GET /api/v1/pipelines/public HTTP/1.1" 200 OK
+2025-12-22 11:56:33,901 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:33,902 INFO sqlalchemy.engine.Engine SELECT users.id, users.firebase_uid, users.email, users.name, users.role, users.profile_image, users.k_points, users.is_active, users.total_royalty_received, users.pending_royalty, users.created_at, users.updated_at 
+FROM users 
+WHERE users.email = $1::VARCHAR
+2025-12-22 11:56:33,902 INFO sqlalchemy.engine.Engine [generated in 0.00024s] ('ted.taeeun.kim@gmail.com',)
+2025-12-22 11:56:33,917 INFO sqlalchemy.engine.Engine INSERT INTO users (id, firebase_uid, email, name, role, profile_image, k_points, is_active, total_royalty_received, pending_royalty, created_at, updated_at) VALUES ($1::UUID, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR, $7::INTEGER, $8::BOOLEAN, $9::INTEGER, $10::INTEGER, $11::TIMESTAMP WITHOUT TIME ZONE, $12::TIMESTAMP WITHOUT TIME ZONE)
+2025-12-22 11:56:33,917 INFO sqlalchemy.engine.Engine [generated in 0.00037s] (UUID('c19f5c93-b412-4124-9bcc-cbf2b905c55c'), 'google_109914641793744493802', 'ted.taeeun.kim@gmail.com', '김태은', 'user', 'https://lh3.googleusercontent.com/a/ACg8ocIdTT0SQmll9-ktiXc8XTXY-Xrr95wBAMvjizfkWiirKUroJOSE=s96-c', 0, True, 0, 0, datetime.datetime(2025, 12, 22, 2, 56, 33, 917475), datetime.datetime(2025, 12, 22, 2, 56, 33, 917479))
+2025-12-22 11:56:33,942 INFO sqlalchemy.engine.Engine COMMIT
+2025-12-22 11:56:33,947 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:33,949 INFO sqlalchemy.engine.Engine SELECT users.id, users.firebase_uid, users.email, users.name, users.role, users.profile_image, users.k_points, users.is_active, users.total_royalty_received, users.pending_royalty, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::UUID
+2025-12-22 11:56:33,949 INFO sqlalchemy.engine.Engine [generated in 0.00015s] (UUID('c19f5c93-b412-4124-9bcc-cbf2b905c55c'),)
+✅ New user created: ted.taeeun.kim@gmail.com
+2025-12-22 11:56:33,954 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50485 - "POST /api/v1/auth/google HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50490 - "GET /api/v1/remix?limit=20 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 11:56:34,017 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:34,017 INFO sqlalchemy.engine.Engine SELECT users.id, users.firebase_uid, users.email, users.name, users.role, users.profile_image, users.k_points, users.is_active, users.total_royalty_received, users.pending_royalty, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::UUID
+2025-12-22 11:56:34,017 INFO sqlalchemy.engine.Engine [generated in 0.00009s] ('c19f5c93-b412-4124-9bcc-cbf2b905c55c',)
+INFO:     127.0.0.1:50494 - "OPTIONS /api/v1/remix/?limit=20 HTTP/1.1" 200 OK
+2025-12-22 11:56:34,021 INFO sqlalchemy.engine.Engine SELECT node_royalties.id, node_royalties.creator_id, node_royalties.source_node_id, node_royalties.forked_node_id, node_royalties.forker_id, node_royalties.forker_ip_hash, node_royalties.forker_device_fp, node_royalties.is_impact_verified, node_royalties.points_earned, node_royalties.reason, node_royalties.is_settled, node_royalties.settled_at, node_royalties.created_at 
+FROM node_royalties 
+WHERE node_royalties.creator_id = $1::UUID ORDER BY node_royalties.created_at DESC 
+ LIMIT $2::INTEGER
+2025-12-22 11:56:34,021 INFO sqlalchemy.engine.Engine [generated in 0.00009s] (UUID('c19f5c93-b412-4124-9bcc-cbf2b905c55c'), 20)
+INFO:     127.0.0.1:50497 - "GET /api/v1/remix?limit=20 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 11:56:34,062 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50488 - "GET /api/v1/royalty/my HTTP/1.1" 200 OK
+2025-12-22 11:56:34,065 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:34,066 INFO sqlalchemy.engine.Engine SELECT users.id, users.firebase_uid, users.email, users.name, users.role, users.profile_image, users.k_points, users.is_active, users.total_royalty_received, users.pending_royalty, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::UUID
+2025-12-22 11:56:34,066 INFO sqlalchemy.engine.Engine [cached since 0.04837s ago] ('c19f5c93-b412-4124-9bcc-cbf2b905c55c',)
+2025-12-22 11:56:34,076 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:34,077 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 11:56:34,077 INFO sqlalchemy.engine.Engine [cached since 12.97s ago] (20, 0)
+2025-12-22 11:56:34,084 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:34,084 INFO sqlalchemy.engine.Engine SELECT users.id, users.firebase_uid, users.email, users.name, users.role, users.profile_image, users.k_points, users.is_active, users.total_royalty_received, users.pending_royalty, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::UUID
+2025-12-22 11:56:34,084 INFO sqlalchemy.engine.Engine [cached since 0.06711s ago] ('c19f5c93-b412-4124-9bcc-cbf2b905c55c',)
+2025-12-22 11:56:34,086 INFO sqlalchemy.engine.Engine SELECT node_royalties.id, node_royalties.creator_id, node_royalties.source_node_id, node_royalties.forked_node_id, node_royalties.forker_id, node_royalties.forker_ip_hash, node_royalties.forker_device_fp, node_royalties.is_impact_verified, node_royalties.points_earned, node_royalties.reason, node_royalties.is_settled, node_royalties.settled_at, node_royalties.created_at 
+FROM node_royalties 
+WHERE node_royalties.creator_id = $1::UUID ORDER BY node_royalties.created_at DESC 
+ LIMIT $2::INTEGER
+2025-12-22 11:56:34,086 INFO sqlalchemy.engine.Engine [cached since 0.06513s ago] (UUID('c19f5c93-b412-4124-9bcc-cbf2b905c55c'), 20)
+2025-12-22 11:56:34,087 INFO sqlalchemy.engine.Engine SELECT coalesce(sum(remix_nodes.view_count), $1::INTEGER) AS total_views, coalesce(sum(remix_nodes.total_fork_count), $2::INTEGER) AS total_forks, count(remix_nodes.id) AS node_count 
+FROM remix_nodes 
+WHERE remix_nodes.created_by = $3::UUID
+2025-12-22 11:56:34,087 INFO sqlalchemy.engine.Engine [generated in 0.00007s] (0, 0, UUID('c19f5c93-b412-4124-9bcc-cbf2b905c55c'))
+2025-12-22 11:56:34,088 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50499 - "GET /api/v1/royalty/my HTTP/1.1" 200 OK
+2025-12-22 11:56:34,098 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50489 - "GET /api/v1/remix/my/stats HTTP/1.1" 200 OK
+2025-12-22 11:56:34,125 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:34,126 INFO sqlalchemy.engine.Engine SELECT users.id, users.firebase_uid, users.email, users.name, users.role, users.profile_image, users.k_points, users.is_active, users.total_royalty_received, users.pending_royalty, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::UUID
+2025-12-22 11:56:34,126 INFO sqlalchemy.engine.Engine [cached since 0.1083s ago] ('c19f5c93-b412-4124-9bcc-cbf2b905c55c',)
+2025-12-22 11:56:34,127 INFO sqlalchemy.engine.Engine SELECT coalesce(sum(remix_nodes.view_count), $1::INTEGER) AS total_views, coalesce(sum(remix_nodes.total_fork_count), $2::INTEGER) AS total_forks, count(remix_nodes.id) AS node_count 
+FROM remix_nodes 
+WHERE remix_nodes.created_by = $3::UUID
+2025-12-22 11:56:34,127 INFO sqlalchemy.engine.Engine [cached since 0.03984s ago] (0, 0, UUID('c19f5c93-b412-4124-9bcc-cbf2b905c55c'))
+2025-12-22 11:56:34,130 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50501 - "GET /api/v1/remix/my/stats HTTP/1.1" 200 OK
+2025-12-22 11:56:34,168 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50494 - "GET /api/v1/remix/?limit=20 HTTP/1.1" 200 OK
+2025-12-22 11:56:34,172 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:34,172 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 11:56:34,172 INFO sqlalchemy.engine.Engine [cached since 13.06s ago] (20, 0)
+2025-12-22 11:56:34,197 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:34,198 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 11:56:34,198 INFO sqlalchemy.engine.Engine [generated in 0.00008s] ('viral_outlier_004',)
+2025-12-22 11:56:34,200 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50504 - "GET /api/v1/remix/viral_outlier_004/genealogy HTTP/1.1" 200 OK
+2025-12-22 11:56:34,250 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50502 - "GET /api/v1/remix/?limit=20 HTTP/1.1" 200 OK
+2025-12-22 11:56:34,263 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:34,263 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 11:56:34,263 INFO sqlalchemy.engine.Engine [cached since 0.06562s ago] ('viral_outlier_004',)
+2025-12-22 11:56:34,267 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50506 - "GET /api/v1/remix/viral_outlier_004/genealogy HTTP/1.1" 200 OK
+2025-12-22 11:56:36,065 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:36,065 INFO sqlalchemy.engine.Engine SELECT pipelines.id, pipelines.title, pipelines.graph_data, pipelines.is_public, pipelines.user_id, pipelines.created_at, pipelines.updated_at 
+FROM pipelines 
+WHERE pipelines.is_public = true ORDER BY pipelines.updated_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 11:56:36,065 INFO sqlalchemy.engine.Engine [cached since 11.03s ago] (20, 0)
+2025-12-22 11:56:36,068 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50508 - "GET /api/v1/pipelines/public HTTP/1.1" 200 OK
+2025-12-22 11:56:36,092 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:36,092 INFO sqlalchemy.engine.Engine SELECT pipelines.id, pipelines.title, pipelines.graph_data, pipelines.is_public, pipelines.user_id, pipelines.created_at, pipelines.updated_at 
+FROM pipelines 
+WHERE pipelines.is_public = true ORDER BY pipelines.updated_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 11:56:36,092 INFO sqlalchemy.engine.Engine [cached since 11.06s ago] (20, 0)
+2025-12-22 11:56:36,098 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50510 - "GET /api/v1/pipelines/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50512 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 11:56:37,784 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:37,784 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 11:56:37,784 INFO sqlalchemy.engine.Engine [cached since 16.68s ago] (50, 0)
+2025-12-22 11:56:37,789 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50502 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50514 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 11:56:37,803 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:37,803 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 11:56:37,803 INFO sqlalchemy.engine.Engine [cached since 16.69s ago] (50, 0)
+2025-12-22 11:56:37,808 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50502 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+2025-12-22 11:56:43,670 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:43,670 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 11:56:43,670 INFO sqlalchemy.engine.Engine [cached since 9.472s ago] ('viral_outlier_004',)
+2025-12-22 11:56:43,680 INFO sqlalchemy.engine.Engine UPDATE remix_nodes SET view_count=$1::INTEGER, updated_at=$2::TIMESTAMP WITHOUT TIME ZONE WHERE remix_nodes.id = $3::UUID
+2025-12-22 11:56:43,680 INFO sqlalchemy.engine.Engine [generated in 0.00012s] (980008, datetime.datetime(2025, 12, 22, 2, 56, 43, 680731), UUID('5ae56d5d-e041-4514-8a4f-34cb037e954d'))
+2025-12-22 11:56:43,695 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50522 - "GET /api/v1/remix/viral_outlier_004 HTTP/1.1" 200 OK
+2025-12-22 11:56:43,724 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 11:56:43,725 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 11:56:43,725 INFO sqlalchemy.engine.Engine [cached since 9.527s ago] ('viral_outlier_004',)
+2025-12-22 11:56:43,728 INFO sqlalchemy.engine.Engine UPDATE remix_nodes SET view_count=$1::INTEGER, updated_at=$2::TIMESTAMP WITHOUT TIME ZONE WHERE remix_nodes.id = $3::UUID
+2025-12-22 11:56:43,728 INFO sqlalchemy.engine.Engine [cached since 0.04736s ago] (980009, datetime.datetime(2025, 12, 22, 2, 56, 43, 727990), UUID('5ae56d5d-e041-4514-8a4f-34cb037e954d'))
+2025-12-22 11:56:43,742 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50523 - "GET /api/v1/remix/viral_outlier_004 HTTP/1.1" 200 OK
+Request failed: {'method': 'GET', 'path': '/api/v1/auth/me', 'status_code': 401, 'process_time_ms': 1.11, 'client_ip': '127.0.0.1'}
+INFO:     127.0.0.1:50723 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50727 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50729 - "OPTIONS /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+2025-12-22 21:33:06,884 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:33:06,884 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 21:33:06,884 INFO sqlalchemy.engine.Engine [cached since 531.6s ago] (50, 0)
+2025-12-22 21:33:06,888 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50729 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50730 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 21:33:07,087 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:33:07,088 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 21:33:07,088 INFO sqlalchemy.engine.Engine [cached since 531.8s ago] (50, 0)
+2025-12-22 21:33:07,091 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50729 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50737 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 21:33:10,658 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:33:10,658 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 21:33:10,658 INFO sqlalchemy.engine.Engine [cached since 535.3s ago] (50, 0)
+2025-12-22 21:33:10,662 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50729 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'scripts/seed_outliers.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [10166]
+INFO:     Started server process [12229]
+INFO:     Waiting for application startup.
+Warning: GEMINI_API_KEY not set
+🚀 Starting Komission Factory v5.2.0
+2025-12-22 21:37:39,650 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+2025-12-22 21:37:39,650 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 21:37:39,667 INFO sqlalchemy.engine.Engine select current_schema()
+2025-12-22 21:37:39,668 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 21:37:39,673 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+2025-12-22 21:37:39,673 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 21:37:39,676 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:37:39,679 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:37:39,679 INFO sqlalchemy.engine.Engine [generated in 0.00020s] ('users', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:37:39,718 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:37:39,718 INFO sqlalchemy.engine.Engine [cached since 0.03905s ago] ('remix_nodes', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:37:39,722 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:37:39,722 INFO sqlalchemy.engine.Engine [cached since 0.04344s ago] ('user_videos', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:37:39,725 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:37:39,725 INFO sqlalchemy.engine.Engine [cached since 0.04667s ago] ('o2o_locations', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:37:39,729 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:37:39,729 INFO sqlalchemy.engine.Engine [cached since 0.05045s ago] ('pipelines', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:37:39,733 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:37:39,733 INFO sqlalchemy.engine.Engine [cached since 0.05478s ago] ('node_royalties', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:37:39,739 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:37:39,743 INFO sqlalchemy.engine.Engine [generated in 0.00419s] ('nodelayer', 'pg_catalog')
+2025-12-22 21:37:39,750 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:37:39,750 INFO sqlalchemy.engine.Engine [cached since 0.0116s ago] ('nodepermission', 'pg_catalog')
+2025-12-22 21:37:39,754 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:37:39,754 INFO sqlalchemy.engine.Engine [cached since 0.01536s ago] ('nodegovernance', 'pg_catalog')
+2025-12-22 21:37:39,758 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:37:39,758 INFO sqlalchemy.engine.Engine [cached since 0.01904s ago] ('royaltyreason', 'pg_catalog')
+2025-12-22 21:37:39,761 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/seed_outliers.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [12229]
+INFO:     Started server process [12580]
+INFO:     Waiting for application startup.
+Warning: GEMINI_API_KEY not set
+🚀 Starting Komission Factory v5.2.0
+2025-12-22 21:38:44,335 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+2025-12-22 21:38:44,335 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 21:38:44,348 INFO sqlalchemy.engine.Engine select current_schema()
+2025-12-22 21:38:44,348 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 21:38:44,351 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+2025-12-22 21:38:44,351 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 21:38:44,353 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:38:44,355 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:38:44,355 INFO sqlalchemy.engine.Engine [generated in 0.00008s] ('users', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:38:44,388 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:38:44,388 INFO sqlalchemy.engine.Engine [cached since 0.03373s ago] ('remix_nodes', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:38:44,390 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:38:44,390 INFO sqlalchemy.engine.Engine [cached since 0.03545s ago] ('user_videos', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:38:44,391 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:38:44,391 INFO sqlalchemy.engine.Engine [cached since 0.0368s ago] ('o2o_locations', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:38:44,393 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:38:44,393 INFO sqlalchemy.engine.Engine [cached since 0.03813s ago] ('pipelines', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:38:44,394 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:38:44,394 INFO sqlalchemy.engine.Engine [cached since 0.03941s ago] ('node_royalties', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:38:44,396 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:38:44,396 INFO sqlalchemy.engine.Engine [generated in 0.00009s] ('nodelayer', 'pg_catalog')
+2025-12-22 21:38:44,399 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:38:44,399 INFO sqlalchemy.engine.Engine [cached since 0.002867s ago] ('nodepermission', 'pg_catalog')
+2025-12-22 21:38:44,400 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:38:44,400 INFO sqlalchemy.engine.Engine [cached since 0.004118s ago] ('nodegovernance', 'pg_catalog')
+2025-12-22 21:38:44,401 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:38:44,401 INFO sqlalchemy.engine.Engine [cached since 0.0053s ago] ('royaltyreason', 'pg_catalog')
+2025-12-22 21:38:44,403 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/seed_outliers.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [12580]
+INFO:     Started server process [12798]
+INFO:     Waiting for application startup.
+Warning: GEMINI_API_KEY not set
+🚀 Starting Komission Factory v5.2.0
+2025-12-22 21:39:03,772 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+2025-12-22 21:39:03,772 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 21:39:03,786 INFO sqlalchemy.engine.Engine select current_schema()
+2025-12-22 21:39:03,786 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 21:39:03,789 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+2025-12-22 21:39:03,789 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-22 21:39:03,791 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:39:03,793 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:39:03,793 INFO sqlalchemy.engine.Engine [generated in 0.00008s] ('users', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:39:03,826 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:39:03,826 INFO sqlalchemy.engine.Engine [cached since 0.03321s ago] ('remix_nodes', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:39:03,827 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:39:03,827 INFO sqlalchemy.engine.Engine [cached since 0.03475s ago] ('user_videos', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:39:03,829 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:39:03,829 INFO sqlalchemy.engine.Engine [cached since 0.03602s ago] ('o2o_locations', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:39:03,830 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:39:03,830 INFO sqlalchemy.engine.Engine [cached since 0.03723s ago] ('pipelines', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:39:03,831 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-12-22 21:39:03,831 INFO sqlalchemy.engine.Engine [cached since 0.0385s ago] ('node_royalties', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-12-22 21:39:03,833 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:39:03,833 INFO sqlalchemy.engine.Engine [generated in 0.00006s] ('nodelayer', 'pg_catalog')
+2025-12-22 21:39:03,835 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:39:03,836 INFO sqlalchemy.engine.Engine [cached since 0.002403s ago] ('nodepermission', 'pg_catalog')
+2025-12-22 21:39:03,837 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:39:03,837 INFO sqlalchemy.engine.Engine [cached since 0.003576s ago] ('nodegovernance', 'pg_catalog')
+2025-12-22 21:39:03,838 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2025-12-22 21:39:03,838 INFO sqlalchemy.engine.Engine [cached since 0.004731s ago] ('royaltyreason', 'pg_catalog')
+2025-12-22 21:39:03,839 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.
+✅ Database initialized
+✅ Redis connected: localhost:6379
+✅ Redis connected
+⚠️ Neo4j connection failed: Couldn't connect to localhost:7687 (resolved to ('[::1]:7687', '127.0.0.1:7687')):
+Failed to establish connection to ResolvedIPv6Address(('::1', 7687, 0, 0)) (reason [Errno 61] Connect call failed ('::1', 7687, 0, 0))
+Failed to establish connection to ResolvedIPv4Address(('127.0.0.1', 7687)) (reason [Errno 61] Connect call failed ('127.0.0.1', 7687))
+✅ Neo4j connected
+INFO:     127.0.0.1:50927 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 21:42:23,489 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:42:23,495 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 21:42:23,495 INFO sqlalchemy.engine.Engine [generated in 0.00015s] (50, 0)
+2025-12-22 21:42:23,572 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50928 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+2025-12-22 21:42:35,030 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:42:35,030 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 21:42:35,030 INFO sqlalchemy.engine.Engine [generated in 0.00009s] ('remix_master_cat',)
+2025-12-22 21:42:35,038 INFO sqlalchemy.engine.Engine UPDATE remix_nodes SET view_count=$1::INTEGER, updated_at=$2::TIMESTAMP WITHOUT TIME ZONE WHERE remix_nodes.id = $3::UUID
+2025-12-22 21:42:35,038 INFO sqlalchemy.engine.Engine [generated in 0.00016s] (8900005, datetime.datetime(2025, 12, 22, 12, 42, 35, 38115), UUID('04568edd-6ff7-406a-b551-7173d621bde1'))
+2025-12-22 21:42:35,051 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50929 - "GET /api/v1/remix/remix_master_cat HTTP/1.1" 200 OK
+2025-12-22 21:42:35,100 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:42:35,100 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 21:42:35,100 INFO sqlalchemy.engine.Engine [cached since 0.06978s ago] ('remix_master_cat',)
+2025-12-22 21:42:35,103 INFO sqlalchemy.engine.Engine UPDATE remix_nodes SET view_count=$1::INTEGER, updated_at=$2::TIMESTAMP WITHOUT TIME ZONE WHERE remix_nodes.id = $3::UUID
+2025-12-22 21:42:35,103 INFO sqlalchemy.engine.Engine [cached since 0.0655s ago] (8900006, datetime.datetime(2025, 12, 22, 12, 42, 35, 103542), UUID('04568edd-6ff7-406a-b551-7173d621bde1'))
+2025-12-22 21:42:35,105 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50930 - "GET /api/v1/remix/remix_master_cat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50939 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50940 - "OPTIONS /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+2025-12-22 21:43:22,925 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:43:22,925 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 21:43:22,925 INFO sqlalchemy.engine.Engine [cached since 59.43s ago] (50, 0)
+2025-12-22 21:43:22,929 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50940 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50941 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 21:43:22,942 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:43:22,942 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 21:43:22,942 INFO sqlalchemy.engine.Engine [cached since 59.45s ago] (50, 0)
+2025-12-22 21:43:22,946 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50940 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50947 - "GET /api/v1/remix?limit=50&layer=master HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50940 - "OPTIONS /api/v1/remix/?limit=50&layer=master HTTP/1.1" 200 OK
+2025-12-22 21:43:27,089 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:43:27,090 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true AND remix_nodes.layer = $1::nodelayer ORDER BY remix_nodes.created_at DESC 
+ LIMIT $2::INTEGER OFFSET $3::INTEGER
+2025-12-22 21:43:27,090 INFO sqlalchemy.engine.Engine [generated in 0.00008s] ('MASTER', 50, 0)
+2025-12-22 21:43:27,100 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50940 - "GET /api/v1/remix/?limit=50&layer=master HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50948 - "GET /api/v1/remix?limit=50&layer=master HTTP/1.1" 307 Temporary Redirect
+2025-12-22 21:43:27,107 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:43:27,107 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true AND remix_nodes.layer = $1::nodelayer ORDER BY remix_nodes.created_at DESC 
+ LIMIT $2::INTEGER OFFSET $3::INTEGER
+2025-12-22 21:43:27,107 INFO sqlalchemy.engine.Engine [cached since 0.01748s ago] ('MASTER', 50, 0)
+2025-12-22 21:43:27,111 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:50940 - "GET /api/v1/remix/?limit=50&layer=master HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51090 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 21:50:48,807 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:50:48,807 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 21:50:48,807 INFO sqlalchemy.engine.Engine [cached since 505.5s ago] (50, 0)
+2025-12-22 21:50:48,811 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51091 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 21:50:48,855 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:50:48,855 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 21:50:48,855 INFO sqlalchemy.engine.Engine [cached since 505.6s ago] (50, 0)
+2025-12-22 21:50:48,861 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51091 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51095 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 21:50:57,557 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:50:57,557 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 21:50:57,557 INFO sqlalchemy.engine.Engine [cached since 514.3s ago] (50, 0)
+2025-12-22 21:50:57,562 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51096 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51097 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 21:50:57,581 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 21:50:57,581 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 21:50:57,581 INFO sqlalchemy.engine.Engine [cached since 514.3s ago] (50, 0)
+2025-12-22 21:50:57,584 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51096 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+2025-12-22 22:06:31,036 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:06:31,036 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 22:06:31,036 INFO sqlalchemy.engine.Engine [cached since 1436s ago] ('viral_outlier_011',)
+2025-12-22 22:06:31,045 INFO sqlalchemy.engine.Engine UPDATE remix_nodes SET view_count=$1::INTEGER, updated_at=$2::TIMESTAMP WITHOUT TIME ZONE WHERE remix_nodes.id = $3::UUID
+2025-12-22 22:06:31,045 INFO sqlalchemy.engine.Engine [cached since 1436s ago] (4300001, datetime.datetime(2025, 12, 22, 13, 6, 31, 45497), UUID('6e194b0a-7f74-4b99-b3d2-3c5a91fe5f66'))
+2025-12-22 22:06:31,048 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51248 - "GET /api/v1/remix/viral_outlier_011 HTTP/1.1" 200 OK
+2025-12-22 22:06:31,168 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:06:31,168 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 22:06:31,168 INFO sqlalchemy.engine.Engine [cached since 1436s ago] ('viral_outlier_011',)
+2025-12-22 22:06:31,172 INFO sqlalchemy.engine.Engine UPDATE remix_nodes SET view_count=$1::INTEGER, updated_at=$2::TIMESTAMP WITHOUT TIME ZONE WHERE remix_nodes.id = $3::UUID
+2025-12-22 22:06:31,172 INFO sqlalchemy.engine.Engine [cached since 1436s ago] (4300002, datetime.datetime(2025, 12, 22, 13, 6, 31, 172699), UUID('6e194b0a-7f74-4b99-b3d2-3c5a91fe5f66'))
+2025-12-22 22:06:31,175 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51250 - "GET /api/v1/remix/viral_outlier_011 HTTP/1.1" 200 OK
+2025-12-22 22:06:55,373 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:06:55,374 INFO sqlalchemy.engine.Engine SELECT pipelines.id, pipelines.title, pipelines.graph_data, pipelines.is_public, pipelines.user_id, pipelines.created_at, pipelines.updated_at 
+FROM pipelines 
+WHERE pipelines.is_public = true ORDER BY pipelines.updated_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 22:06:55,374 INFO sqlalchemy.engine.Engine [generated in 0.00016s] (20, 0)
+2025-12-22 22:06:55,379 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51261 - "GET /api/v1/pipelines/public HTTP/1.1" 200 OK
+2025-12-22 22:06:55,412 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:06:55,412 INFO sqlalchemy.engine.Engine SELECT pipelines.id, pipelines.title, pipelines.graph_data, pipelines.is_public, pipelines.user_id, pipelines.created_at, pipelines.updated_at 
+FROM pipelines 
+WHERE pipelines.is_public = true ORDER BY pipelines.updated_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 22:06:55,412 INFO sqlalchemy.engine.Engine [cached since 0.03829s ago] (20, 0)
+2025-12-22 22:06:55,416 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51262 - "GET /api/v1/pipelines/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51266 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51267 - "OPTIONS /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+2025-12-22 22:07:17,148 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:07:17,148 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 22:07:17,148 INFO sqlalchemy.engine.Engine [cached since 1494s ago] (50, 0)
+2025-12-22 22:07:17,152 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51267 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51268 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 22:07:17,169 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:07:17,169 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 22:07:17,169 INFO sqlalchemy.engine.Engine [cached since 1494s ago] (50, 0)
+2025-12-22 22:07:17,173 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51267 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51343 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 22:14:57,877 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:14:57,877 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 22:14:57,877 INFO sqlalchemy.engine.Engine [cached since 1955s ago] (50, 0)
+2025-12-22 22:14:57,881 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51344 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51345 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 22:15:00,080 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:15:00,081 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 22:15:00,081 INFO sqlalchemy.engine.Engine [cached since 1957s ago] (50, 0)
+2025-12-22 22:15:00,083 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51344 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51346 - "GET /api/v1/remix?limit=50 HTTP/1.1" 307 Temporary Redirect
+2025-12-22 22:15:00,103 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:15:00,104 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.is_published = true ORDER BY remix_nodes.created_at DESC 
+ LIMIT $1::INTEGER OFFSET $2::INTEGER
+2025-12-22 22:15:00,104 INFO sqlalchemy.engine.Engine [cached since 1957s ago] (50, 0)
+2025-12-22 22:15:00,107 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51344 - "GET /api/v1/remix/?limit=50 HTTP/1.1" 200 OK
+2025-12-22 22:15:00,785 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:15:00,785 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 22:15:00,785 INFO sqlalchemy.engine.Engine [cached since 1946s ago] ('viral_outlier_011',)
+2025-12-22 22:15:00,788 INFO sqlalchemy.engine.Engine UPDATE remix_nodes SET view_count=$1::INTEGER, updated_at=$2::TIMESTAMP WITHOUT TIME ZONE WHERE remix_nodes.id = $3::UUID
+2025-12-22 22:15:00,788 INFO sqlalchemy.engine.Engine [cached since 1946s ago] (4300003, datetime.datetime(2025, 12, 22, 13, 15, 0, 788039), UUID('6e194b0a-7f74-4b99-b3d2-3c5a91fe5f66'))
+2025-12-22 22:15:00,790 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51350 - "GET /api/v1/remix/viral_outlier_011 HTTP/1.1" 200 OK
+2025-12-22 22:15:00,827 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:15:00,828 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 22:15:00,828 INFO sqlalchemy.engine.Engine [cached since 1946s ago] ('viral_outlier_011',)
+2025-12-22 22:15:00,830 INFO sqlalchemy.engine.Engine UPDATE remix_nodes SET view_count=$1::INTEGER, updated_at=$2::TIMESTAMP WITHOUT TIME ZONE WHERE remix_nodes.id = $3::UUID
+2025-12-22 22:15:00,830 INFO sqlalchemy.engine.Engine [cached since 1946s ago] (4300004, datetime.datetime(2025, 12, 22, 13, 15, 0, 830771), UUID('6e194b0a-7f74-4b99-b3d2-3c5a91fe5f66'))
+2025-12-22 22:15:00,833 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51351 - "GET /api/v1/remix/viral_outlier_011 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51359 - "POST /api/v1/remix HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51360 - "POST /api/v1/remix HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51361 - "OPTIONS /api/v1/remix/ HTTP/1.1" 200 OK
+Request failed: {'method': 'POST', 'path': '/api/v1/remix/', 'status_code': 401, 'process_time_ms': 1.28, 'client_ip': '127.0.0.1'}
+INFO:     127.0.0.1:51361 - "POST /api/v1/remix/ HTTP/1.1" 401 Unauthorized
+Request failed: {'method': 'POST', 'path': '/api/v1/remix/', 'status_code': 401, 'process_time_ms': 0.95, 'client_ip': '127.0.0.1'}
+INFO:     127.0.0.1:51361 - "POST /api/v1/remix/ HTTP/1.1" 401 Unauthorized
+2025-12-22 22:15:37,241 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:15:37,241 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 22:15:37,241 INFO sqlalchemy.engine.Engine [cached since 1983s ago] ('viral_outlier_011',)
+2025-12-22 22:15:37,244 INFO sqlalchemy.engine.Engine UPDATE remix_nodes SET view_count=$1::INTEGER, updated_at=$2::TIMESTAMP WITHOUT TIME ZONE WHERE remix_nodes.id = $3::UUID
+2025-12-22 22:15:37,244 INFO sqlalchemy.engine.Engine [cached since 1983s ago] (4300005, datetime.datetime(2025, 12, 22, 13, 15, 37, 244306), UUID('6e194b0a-7f74-4b99-b3d2-3c5a91fe5f66'))
+2025-12-22 22:15:37,246 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51364 - "GET /api/v1/remix/viral_outlier_011 HTTP/1.1" 200 OK
+2025-12-22 22:15:37,285 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-22 22:15:37,285 INFO sqlalchemy.engine.Engine SELECT remix_nodes.id, remix_nodes.node_id, remix_nodes.title, remix_nodes.layer, remix_nodes.permission, remix_nodes.governed_by, remix_nodes.genealogy_depth, remix_nodes.parent_node_id, remix_nodes.mutation_profile, remix_nodes.performance_delta, remix_nodes.gemini_analysis, remix_nodes.claude_brief, remix_nodes.storyboard_images, remix_nodes.audio_guide_path, remix_nodes.source_video_url, remix_nodes.platform, remix_nodes.campaign_context, remix_nodes.brand_campaign, remix_nodes.created_by, remix_nodes.owner_type, remix_nodes.is_published, remix_nodes.view_count, remix_nodes.total_fork_count, remix_nodes.total_royalty_earned, remix_nodes.created_at, remix_nodes.updated_at 
+FROM remix_nodes 
+WHERE remix_nodes.node_id = $1::VARCHAR
+2025-12-22 22:15:37,285 INFO sqlalchemy.engine.Engine [cached since 1983s ago] ('viral_outlier_011',)
+2025-12-22 22:15:37,288 INFO sqlalchemy.engine.Engine UPDATE remix_nodes SET view_count=$1::INTEGER, updated_at=$2::TIMESTAMP WITHOUT TIME ZONE WHERE remix_nodes.id = $3::UUID
+2025-12-22 22:15:37,288 INFO sqlalchemy.engine.Engine [cached since 1983s ago] (4300006, datetime.datetime(2025, 12, 22, 13, 15, 37, 288174), UUID('6e194b0a-7f74-4b99-b3d2-3c5a91fe5f66'))
+2025-12-22 22:15:37,289 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:51366 - "GET /api/v1/remix/viral_outlier_011 HTTP/1.1" 200 OK
