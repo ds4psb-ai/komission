@@ -59,8 +59,8 @@ export default function LeaderboardPage() {
         <div className="min-h-screen bg-[#0a0a0a] text-white pb-20">
             {/* Aurora Background */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-violet-600/20 blur-[150px] rounded-full" />
-                <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-pink-600/15 blur-[150px] rounded-full" />
+                <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-violet-600/20 blur-[150px] rounded-full animate-float" />
+                <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-pink-600/15 blur-[150px] rounded-full animate-float delay-1000" />
             </div>
 
             <AppHeader />
@@ -87,22 +87,22 @@ export default function LeaderboardPage() {
                         {leaderboard.map((entry, idx) => (
                             <div
                                 key={entry.user_id}
-                                className={`p-4 rounded-2xl border transition-all ${idx === 0
-                                        ? "bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/30"
+                                className={`p-4 rounded-2xl border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg cursor-pointer group ${idx === 0
+                                        ? "bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/30 hover:border-yellow-500/50"
                                         : idx === 1
-                                            ? "bg-gradient-to-r from-slate-400/10 to-slate-300/10 border-slate-400/30"
+                                            ? "bg-gradient-to-r from-slate-400/10 to-slate-300/10 border-slate-400/30 hover:border-slate-400/50"
                                             : idx === 2
-                                                ? "bg-gradient-to-r from-amber-700/10 to-amber-600/10 border-amber-600/30"
-                                                : "bg-white/5 border-white/10"
+                                                ? "bg-gradient-to-r from-amber-700/10 to-amber-600/10 border-amber-600/30 hover:border-amber-600/50"
+                                                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
                                     }`}
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         {/* Rank */}
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg ${idx === 0 ? "bg-yellow-500 text-black" :
-                                                idx === 1 ? "bg-slate-400 text-black" :
-                                                    idx === 2 ? "bg-amber-600 text-white" :
-                                                        "bg-white/10 text-white/50"
+                                            idx === 1 ? "bg-slate-400 text-black" :
+                                                idx === 2 ? "bg-amber-600 text-white" :
+                                                    "bg-white/10 text-white/50"
                                             }`}>
                                             {entry.rank}
                                         </div>
@@ -210,8 +210,8 @@ export default function LeaderboardPage() {
                                     <div
                                         key={mission.mission_type}
                                         className={`p-3 rounded-xl flex items-center justify-between ${mission.completed
-                                                ? "bg-emerald-500/10 border border-emerald-500/30"
-                                                : "bg-white/5 border border-white/10"
+                                            ? "bg-emerald-500/10 border border-emerald-500/30"
+                                            : "bg-white/5 border border-white/10"
                                             }`}
                                     >
                                         <div>

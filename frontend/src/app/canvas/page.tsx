@@ -500,7 +500,13 @@ function CanvasFlow() {
     }, [setNodes, setEdges, takeSnapshot, nodes, edges, showToast]);
 
     return (
-        <div className="flex flex-col h-screen bg-black selection:bg-violet-500/30 selection:text-violet-200">
+        <div className="flex flex-col h-screen bg-[#050505] selection:bg-violet-500/30 selection:text-violet-200 overflow-hidden relative">
+            {/* Aurora Background */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+                <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-violet-600/10 blur-[150px] rounded-full animate-float" />
+                <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-pink-600/10 blur-[150px] rounded-full animate-float delay-1000" />
+            </div>
+
             {/* Global Header */}
             <AppHeader />
 
@@ -519,7 +525,7 @@ function CanvasFlow() {
                 )}
 
                 {/* Sidebar (Left Panel) */}
-                <aside className="w-64 bg-black/60 backdrop-blur-xl border-r border-white/10 flex flex-col z-10 glass-panel border-0 border-r rounded-none p-4">
+                <aside className="w-72 flex flex-col z-20 glass-panel border-y-0 border-l-0 border-r border-white/10 p-5 backdrop-blur-2xl bg-black/40">
                     <div className="mb-8">
                         <div className="text-xs font-bold text-violet-400 uppercase tracking-widest mb-1">캔버스 모드</div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -716,10 +722,10 @@ function CanvasFlow() {
                         onPaneClick={() => setSelectedNode(null)}
                         nodeTypes={nodeTypes}
                         fitView
-                        className="bg-black"
+                        className="bg-transparent"
                         colorMode="dark"
                     >
-                        <Background color="#333" gap={20} size={1} />
+                        <Background color="rgba(255, 255, 255, 0.1)" gap={20} size={1} />
                         <Controls className="bg-white/10 border border-white/10 rounded-lg !fill-white" />
                     </ReactFlow>
                 </div>

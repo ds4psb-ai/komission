@@ -277,7 +277,7 @@ export default function RemixDetailPage() {
                                     {recommendedQuests.slice(0, 3).map((quest) => (
                                         <div
                                             key={quest.id}
-                                            className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:border-pink-500/30 transition-colors cursor-pointer group"
+                                            className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:border-pink-500/50 hover:bg-white/10 transition-all duration-300 cursor-pointer group hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(236,72,153,0.15)]"
                                             onClick={() => {
                                                 setQuestAccepted(true);
                                             }}
@@ -303,7 +303,7 @@ export default function RemixDetailPage() {
                                 {!questAccepted ? (
                                     <button
                                         onClick={() => setQuestAccepted(true)}
-                                        className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-violet-500 text-white font-bold text-sm hover:from-pink-400 hover:to-violet-400 transition-all shadow-[0_0_20px_rgba(219,39,119,0.3)]"
+                                        className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-violet-500 text-white font-bold text-sm hover:from-pink-400 hover:to-violet-400 transition-all shadow-[0_0_20px_rgba(219,39,119,0.3)] animate-pulse-glow"
                                     >
                                         ⚔️ 퀘스트 수락하고 +500P 받기
                                     </button>
