@@ -84,6 +84,9 @@ interface SourceNodeData {
     outlier?: RemixNode; // For selected outliers
     onUrlChange?: (url: string) => void;
     onSubmit?: (url: string, title: string) => Promise<void>;
+    // Expert Recommendation: Governance Lock
+    isLocked?: boolean;
+    viralBadge?: string;
 }
 
 export const SourceNode = memo(({ data }: { data: SourceNodeData }) => {
@@ -96,10 +99,11 @@ export const SourceNode = memo(({ data }: { data: SourceNodeData }) => {
     if (data.outlier) {
         return (
             <NodeWrapper
-                title="소스: 아웃라이어"
-                colorClass="border-emerald-500/40"
+                title={data.isLocked ? "🔒 브랜드 소스" : "소스: 아웃라이어"}
+                colorClass={data.isLocked ? "border-amber-500/40" : "border-emerald-500/40"}
                 status="done"
-                viralBadge={`Layer ${data.outlier.genealogy_depth + 1}`}
+                isLocked={data.isLocked}
+                viralBadge={data.viralBadge || `Layer ${data.outlier.genealogy_depth + 1}`}
             >
                 <div className="space-y-4">
                     <div className="aspect-video bg-black/60 rounded-xl overflow-hidden border border-white/10 relative group">

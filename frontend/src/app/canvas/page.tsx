@@ -416,7 +416,12 @@ function CanvasFlow() {
             position: finalPosition,
             data: {
                 ...(type === 'source' && { onSubmit: handleSourceSubmit }), // Normal URL input
-                ...(type === 'outlier' && { outlier: data }), // Pre-filled outlier data
+                ...(type === 'outlier' && {
+                    outlier: data,
+                    // Expert Recommendation: Governance Lock for Master nodes
+                    isLocked: data?.layer === 'master',
+                    viralBadge: data?.performance_delta || undefined,
+                }), // Pre-filled outlier data
                 ...(type === 'process' && { onAnalyze: handleAnalyze, nodeId: createdNodeId }),
                 ...(type === 'output' && { onExport: handleExport, nodeId: createdNodeId, onPreview: () => setShowStoryboard(true) }),
             },

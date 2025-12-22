@@ -20,6 +20,11 @@ export default function RemixDetailPage() {
     const [showVideoModal, setShowVideoModal] = useState(false);
     const [showFilmingGuide, setShowFilmingGuide] = useState(false);
 
+    // Expert Recommendations: Quest & Invisible Forking State
+    const [questAccepted, setQuestAccepted] = useState(false);
+    const [forkedNodeId, setForkedNodeId] = useState<string | null>(null);
+    const [isInvisibleForking, setIsInvisibleForking] = useState(false);
+
     useEffect(() => {
         if (nodeId) fetchNode();
     }, [nodeId]);
@@ -64,6 +69,32 @@ export default function RemixDetailPage() {
         } finally {
             setForking(false);
         }
+    }
+
+    // Expert Recommendation: Invisible Forking on Shoot Start
+    async function handleStartFilming() {
+        if (!node) return;
+
+        setIsInvisibleForking(true);
+        try {
+            // Background fork to track "attempt" data
+            const forkedNode = await api.forkRemixNode(node.node_id);
+            setForkedNodeId(forkedNode.node_id);
+            console.log('[Invisible Fork] Created attempt node:', forkedNode.node_id);
+        } catch (err) {
+            // Silent fail - don't block user from filming
+            console.warn('[Invisible Fork] Failed:', err);
+        } finally {
+            setIsInvisibleForking(false);
+            setShowFilmingGuide(true);
+        }
+    }
+
+    // Expert Recommendation: Quest Accept Handler
+    function handleQuestAccept() {
+        setQuestAccepted(true);
+        // TODO: Call API to register quest participation
+        // api.acceptQuest(node.node_id, questId);
     }
 
     function handleDownload(type: 'audio' | 'prompt') {
@@ -306,13 +337,29 @@ export default function RemixDetailPage() {
                                     이 노드를 포크하여 새로운 변형을 만들어보세요.
                                 </p>
 
-                                {/* Start Filming Button - Primary */}
+                                {/* Start Filming Button - Primary + Quest Reward Badge */}
                                 <button
-                                    onClick={() => setShowFilmingGuide(true)}
-                                    className="w-full py-4 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 text-white font-bold text-lg hover:from-violet-400 hover:to-pink-400 transition-all shadow-[0_0_30px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2 mb-3"
+                                    onClick={handleStartFilming}
+                                    disabled={isInvisibleForking}
+                                    className="w-full py-4 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 text-white font-bold text-lg hover:from-violet-400 hover:to-pink-400 disabled:opacity-70 transition-all shadow-[0_0_30px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2 mb-3 relative overflow-hidden"
                                 >
-                                    <span>🎬</span>
-                                    <span>촬영 시작</span>
+                                    {isInvisibleForking ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            <span>준비 중...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>🎬</span>
+                                            <span>촬영 시작</span>
+                                            {/* Quest Reward Badge */}
+                                            {questAccepted && (
+                                                <span className="absolute -top-1 -right-1 px-2 py-0.5 bg-emerald-500 text-black text-[10px] font-black rounded-full shadow-lg animate-bounce">
+                                                    💰 +500P 적용됨
+                                                </span>
+                                            )}
+                                        </>
+                                    )}
                                 </button>
 
                                 {/* Fork Button - Secondary */}
@@ -386,8 +433,19 @@ export default function RemixDetailPage() {
                                                     <span>👥 12/100명 신청</span>
                                                 </div>
 
-                                                <button className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-600 rounded-xl text-sm font-bold text-white shadow-lg hover:shadow-orange-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                                                    체험단 신청하기
+                                                <button
+                                                    onClick={handleQuestAccept}
+                                                    disabled={questAccepted}
+                                                    className={`w-full py-3 rounded-xl text-sm font-bold text-white shadow-lg transition-all ${questAccepted
+                                                            ? 'bg-emerald-600 cursor-default'
+                                                            : 'bg-gradient-to-r from-orange-500 to-pink-600 hover:shadow-orange-500/25 hover:scale-[1.02] active:scale-[0.98]'
+                                                        }`}
+                                                >
+                                                    {questAccepted ? (
+                                                        <span>✅ 퀴스트 수락됨! 촬영하면 +500P</span>
+                                                    ) : (
+                                                        <span>⚔️ 퀴스트 수락하고 +500P 받기</span>
+                                                    )}
                                                 </button>
                                             </div>
                                         </div>
