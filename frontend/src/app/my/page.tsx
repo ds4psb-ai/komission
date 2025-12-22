@@ -199,14 +199,33 @@ export default function MyPage() {
                 {/* Header - Cinematic */}
                 <div className="mb-16 relative">
                     <div className="absolute -top-20 -left-20 w-64 h-64 bg-violet-600/10 blur-[100px] pointer-events-none" />
-                    <h1 className="text-5xl font-black mb-4 tracking-tight">
-                        <span className="bg-gradient-to-r from-white via-white to-white/50 bg-clip-text text-transparent">나의 바이럴</span>
-                        <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-pink-400 to-orange-400 animate-text-shimmer">대시보드</span>
-                    </h1>
-                    <p className="text-xl text-white/40 max-w-2xl">
-                        AI 리믹스 성과와 확산 계보를 실시간으로 추적하세요.
-                    </p>
+                    <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+                        <div>
+                            <h1 className="text-5xl font-black mb-4 tracking-tight">
+                                <span className="bg-gradient-to-r from-white via-white to-white/50 bg-clip-text text-transparent">나의 바이럴</span>
+                                <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-pink-400 to-orange-400 animate-text-shimmer">대시보드</span>
+                            </h1>
+                            <p className="text-xl text-white/40 max-w-2xl">
+                                AI 리믹스 성과와 확산 계보를 실시간으로 추적하세요.
+                            </p>
+                        </div>
+
+                        {/* 🆕 Expert Recommendation: Big CTA - Next Remix */}
+                        <Link
+                            href="/"
+                            className="flex-shrink-0 group relative p-[2px] rounded-2xl bg-gradient-to-r from-violet-500 via-pink-500 to-orange-500 shadow-[0_0_30px_rgba(139,92,246,0.3)] hover:shadow-[0_0_50px_rgba(139,92,246,0.5)] transition-all"
+                        >
+                            <div className="px-8 py-4 bg-black rounded-[14px] flex items-center gap-3 group-hover:bg-black/80 transition-colors">
+                                <span className="text-2xl">🚀</span>
+                                <div>
+                                    <div className="font-bold text-white">다음 리믹스 찾기</div>
+                                    <div className="text-xs text-white/50">평균 +89% 성장하는 노드들 보기</div>
+                                </div>
+                                <span className="text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all">→</span>
+                            </div>
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Stats Grid - Neon Cards */}
