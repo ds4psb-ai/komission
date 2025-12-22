@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api, RemixNode } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
@@ -189,72 +189,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             {nodes.map((node, index) => (
-              <Link href={`/remix/${node.node_id}`} key={node.id} className="group block relative perspective-1000">
-                {/* Ranking Badge (Top 3) */}
-                {index < 3 && (
-                  <div className="absolute -top-3 -left-3 z-30 w-10 h-10 flex items-center justify-center font-black text-lg italic bg-[#0a0a0a] border border-white/20 shadow-xl rounded-xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-300 group-hover:scale-110">
-                    <span className={index === 0 ? "text-yellow-400" : index === 1 ? "text-slate-300" : "text-amber-600"}>
-                      #{index + 1}
-                    </span>
-                  </div>
-                )}
-
-                {/* Card Container */}
-                <div className="relative rounded-3xl overflow-hidden aspect-[9/16] bg-[#111] border border-white/5 group-hover:border-white/20 transition-all duration-500 group-hover:translate-y-[-8px] group-hover:shadow-[0_20px_40px_-20px_rgba(139,92,246,0.3)] will-change-transform">
-
-                  {/* Background Image / Gradient */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${getGradient(node.layer)} opacity-30 group-hover:opacity-50 transition-opacity duration-700`}></div>
-
-                  {/* Noise Texture */}
-                  <div className="absolute inset-0 bg-[url('/noise.png')] opacity-20 mix-blend-overlay"></div>
-
-                  {/* Top Badges */}
-                  <div className="absolute top-4 left-4 right-4 z-20 flex justify-between items-start">
-                    <span className="px-2.5 py-1 text-[10px] font-bold uppercase bg-black/40 backdrop-blur-md border border-white/10 rounded-lg text-white/90">
-                      {node.platform === 'tiktok' ? '🎵 TikTok' : node.platform === 'instagram' ? '📷 Instagram' : '▶️ Video'}
-                    </span>
-
-                    {node.performance_delta && (
-                      <span className="px-2 py-1 text-[10px] font-bold bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 rounded-lg text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                        {node.performance_delta}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Play Button Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100">
-                    <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/30 text-white flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                      <span className="text-3xl ml-1">▶</span>
-                    </div>
-                  </div>
-
-                  {/* Bottom Content Area */}
-                  <div className="absolute inset-x-0 bottom-0 p-5 flex flex-col justify-end h-3/5 bg-gradient-to-t from-black via-black/80 to-transparent">
-                    <div className="transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                      {/* Genealogy Badge */}
-                      <span className={`inline-flex items-center px-2 py-0.5 mb-2 text-[10px] font-bold uppercase tracking-wider rounded border ${getBadgeStyle(node.layer)}`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-pulse"></span>
-                        {node.layer === 'master' ? '마스터 소스' : '변종 포크'}
-                      </span>
-
-                      {/* Title */}
-                      <h3 className="text-xl font-bold leading-tight mb-2 text-white drop-shadow-md line-clamp-2 group-hover:text-violet-200 transition-colors">
-                        {node.title}
-                      </h3>
-
-                      {/* Meta Info */}
-                      <div className="flex items-center justify-between text-xs text-white/40 pt-3 border-t border-white/10 mt-3 group-hover:border-white/20 transition-colors">
-                        <span className="flex items-center gap-1">
-                          <span className="opacity-50">👁️</span> {(node.view_count / 10000).toFixed(1)}만 View
-                        </span>
-                        <span className="font-mono opacity-50">
-                          {new Date(node.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Link>
+              <TiltCard key={node.id} node={node} index={index} />
             ))}
 
             {/* Empty State Card */}
@@ -289,4 +224,125 @@ function getBadgeStyle(layer: string) {
     case 'fork_of_fork': return 'bg-rose-500/10 border-rose-500/30 text-rose-300';
     default: return 'bg-white/5 border-white/10 text-white/40';
   }
+}
+
+function TiltCard({ node, index }: { node: RemixNode; index: number }) {
+  const [rotate, setRotate] = useState({ x: 0, y: 0 });
+  const [isVisible, setIsVisible] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Scroll Reveal Effect
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => setIsVisible(true), index * 100);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (cardRef.current) observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [index]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = ((y - centerY) / centerY) * -8;
+    const rotateY = ((x - centerX) / centerX) * 8;
+    setRotate({ x: rotateX, y: rotateY });
+  };
+
+  const handleMouseLeave = () => {
+    setRotate({ x: 0, y: 0 });
+  };
+
+  return (
+    <div
+      ref={cardRef}
+      className={`transition-all duration-700 ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+        }`}
+    >
+      <Link href={`/remix/${node.node_id}`} className="group block relative perspective-1000 h-full">
+        {/* Ranking Badge (Top 3) */}
+        {index < 3 && (
+          <div className="absolute -top-3 -left-3 z-30 w-10 h-10 flex items-center justify-center font-black text-lg italic bg-[#0a0a0a] border border-white/20 shadow-xl rounded-xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-300 group-hover:scale-110">
+            <span className={index === 0 ? "text-yellow-400" : index === 1 ? "text-slate-300" : "text-amber-600"}>
+              #{index + 1}
+            </span>
+          </div>
+        )}
+
+        {/* 3D Card Container */}
+        <div
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          style={{
+            transform: `perspective(1000px) rotateX(${rotate.x}deg) rotateY(${rotate.y}deg)`,
+            transition: 'transform 0.1s ease-out'
+          }}
+          className="relative rounded-[2rem] overflow-hidden aspect-[9/16] bg-[#111] border border-white/5 group-hover:border-white/20 shadow-2xl h-full will-change-transform"
+        >
+          {/* Background Image / Gradient */}
+          <div className={`absolute inset-0 bg-gradient-to-br ${getGradient(node.layer)} opacity-30 group-hover:opacity-60 transition-opacity duration-700`}></div>
+
+          {/* Dynamic Spotlight */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+          {/* Noise Texture */}
+          <div className="absolute inset-0 bg-[url('/noise.png')] opacity-20 mix-blend-overlay"></div>
+
+          {/* Top Badges */}
+          <div className="absolute top-5 left-5 right-5 z-20 flex justify-between items-start">
+            <span className="px-3 py-1.5 text-[10px] font-bold uppercase bg-black/40 backdrop-blur-md border border-white/10 rounded-lg text-white/90 shadow-lg">
+              {node.platform === 'tiktok' ? '🎵 TikTok' : node.platform === 'instagram' ? '📷 Instagram' : '▶️ Video'}
+            </span>
+            {node.performance_delta && (
+              <span className="px-2.5 py-1.5 text-[10px] font-bold bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 rounded-lg text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse">
+                {node.performance_delta}
+              </span>
+            )}
+          </div>
+
+          {/* Play Button Overlay */}
+          <div className="absolute inset-0 flex items-center justify-center z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100">
+            <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/30 text-white flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)] group-hover:bg-white/20">
+              <span className="text-3xl ml-1">▶</span>
+            </div>
+          </div>
+
+          {/* Bottom Content Area */}
+          <div className="absolute inset-x-0 bottom-0 p-6 flex flex-col justify-end h-3/5 bg-gradient-to-t from-black via-black/90 to-transparent">
+            <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+              {/* Genealogy Badge */}
+              <span className={`inline-flex items-center px-2 py-0.5 mb-3 text-[10px] font-bold uppercase tracking-wider rounded border ${getBadgeStyle(node.layer)}`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-pulse"></span>
+                {node.layer === 'master' ? '마스터 소스' : '변종 포크'}
+              </span>
+
+              {/* Title */}
+              <h3 className="text-xl font-black leading-tight mb-3 text-white drop-shadow-lg line-clamp-2 group-hover:text-violet-200 transition-colors">
+                {node.title}
+              </h3>
+
+              {/* Meta Info */}
+              <div className="flex items-center justify-between text-xs text-white/40 pt-4 border-t border-white/10 group-hover:border-white/20 transition-colors">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="opacity-70">👁️</span> {(node.view_count / 10000).toFixed(1)}만
+                </span>
+                <span className="font-mono opacity-50 text-[10px]">
+                  {new Date(node.created_at).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
 }
