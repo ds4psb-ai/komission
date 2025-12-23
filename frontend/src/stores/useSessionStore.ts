@@ -91,8 +91,13 @@ export const useSessionStore = create<RemixSession & SessionActions>()(
             setTab: (activeTab) => set({ activeTab, updatedAt: Date.now() }),
 
             // ─── Outlier & Recipe ─────────────────────────────────
+            // Only advance phase to "setup" if currently in "discover", don't reset
             setOutlier: (outlier) =>
-                set({ outlier, phase: "setup", updatedAt: Date.now() }),
+                set((s) => ({
+                    outlier,
+                    phase: s.phase === "discover" ? "setup" : s.phase,
+                    updatedAt: Date.now(),
+                })),
             setRecipe: (recipe) => set({ recipe, updatedAt: Date.now() }),
 
             // ─── Variable Slots ───────────────────────────────────

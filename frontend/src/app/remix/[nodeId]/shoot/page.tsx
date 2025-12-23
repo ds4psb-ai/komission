@@ -4,7 +4,7 @@
 import { useSessionStore } from "@/stores/useSessionStore";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { forkNodeAction } from "../actions";
+import { api } from "@/lib/api";
 import { QuickGuide } from "@/components/remix/QuickGuide";
 import { VariableSlotEditor } from "@/components/remix/VariableSlotEditor";
 import { QuestChip } from "@/components/remix/QuestChip";
@@ -24,17 +24,22 @@ export default function ShootPage() {
     const handleStartFilming = async () => {
         setIsStarting(true);
         try {
-            // Create invisible fork for tracking
-            const result = await forkNodeAction(nodeId);
-            if (result.success && result.forkedNodeId) {
-                setRunCreated({
-                    runId: result.forkedNodeId,
-                    forkNodeId: result.forkedNodeId,
-                });
-                setRunStatus("shooting");
-            }
+            // Create invisible fork for tracking (uses client API with auth token)
+            const forkedNode = await api.forkRemixNode(nodeId);
+            setRunCreated({
+                runId: forkedNode.node_id,
+                forkNodeId: forkedNode.node_id,
+            });
+            setRunStatus("shooting");
+            console.log("[ShootPage] Invisible fork created:", forkedNode.node_id);
         } catch (error) {
-            console.error("[ShootPage] Start filming error:", error);
+            // Silent fail - don't block user from filming
+            console.warn("[ShootPage] Invisible fork failed (continuing anyway):", error);
+            // Still track the attempt locally even if fork fails
+            setRunCreated({
+                runId: `local-${Date.now()}`,
+            });
+            setRunStatus("shooting");
         } finally {
             setIsStarting(false);
         }
