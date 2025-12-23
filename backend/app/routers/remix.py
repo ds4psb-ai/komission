@@ -825,3 +825,114 @@ async def get_quick_pattern_suggestions(
         "suggestions": suggestions,
         "source": "pattern_confidence" if top_patterns else "default"
     }
+
+
+# --- Evidence Loop (Phase 4) ---
+
+from app.services.evidence_service import evidence_service
+from app.schemas.evidence import EvidenceTableResponse, EvidenceSnapshotResponse
+
+
+@router.get("/{node_id}/evidence", response_model=EvidenceTableResponse)
+async def get_node_evidence(
+    node_id: str,
+    period: str = Query(default="4w", regex="^(4w|12w|1y)$"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    [Evidence Loop] Parent 노드의 VDG 증거 테이블 조회
+    
+    Depth 1/2 자식 노드들의 mutation 성과를 집계하여 반환
+    - mutation_type별 success_rate, sample_count, avg_delta
+    - top_recommendation: 가장 성공적인 변주 추천
+    - Sheets 내보내기용 EvidenceRow 포맷
+    
+    Args:
+        period: 분석 기간 (4w: 4주, 12w: 12주, 1y: 1년)
+    """
+    # 1. Verify node exists
+    result = await db.execute(
+        select(RemixNode).where(RemixNode.node_id == node_id)
+    )
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+    
+    # 2. Generate Evidence Table
+    evidence_table = await evidence_service.generate_evidence_table(
+        db=db,
+        parent_node_id=str(node.id),
+        period=period
+    )
+    
+    return evidence_table
+
+
+@router.post("/{node_id}/evidence/snapshot")
+async def create_evidence_snapshot(
+    node_id: str,
+    period: str = Query(default="4w", regex="^(4w|12w|1y)$"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    [Evidence Loop] EvidenceSnapshot 생성 및 저장
+    
+    VDG 분석 결과를 스냅샷으로 저장 (시트 동기화 전 단계)
+    """
+    # 1. Verify node exists
+    result = await db.execute(
+        select(RemixNode).where(RemixNode.node_id == node_id)
+    )
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+    
+    # 2. Create snapshot
+    snapshot = await evidence_service.create_evidence_snapshot(
+        db=db,
+        parent_node_id=str(node.id),
+        period=period
+    )
+    
+    return {
+        "snapshot_id": str(snapshot.id),
+        "parent_node_id": node_id,
+        "period": snapshot.period,
+        "sample_count": snapshot.sample_count,
+        "top_mutation": f"{snapshot.top_mutation_type}:{snapshot.top_mutation_pattern}" if snapshot.top_mutation_type else None,
+        "created_at": snapshot.created_at.isoformat()
+    }
+
+
+@router.get("/{node_id}/vdg-summary")
+async def get_vdg_summary(
+    node_id: str,
+    period: str = Query(default="4w", regex="^(4w|12w|1y)$"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    [Evidence Loop] VDG 요약 (raw 데이터)
+    
+    Canvas Evidence Node에서 사용할 원시 VDG 데이터
+    """
+    # 1. Verify node exists
+    result = await db.execute(
+        select(RemixNode).where(RemixNode.node_id == node_id)
+    )
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+    
+    # 2. Calculate VDG summary
+    summary = await evidence_service.calculate_vdg_summary(
+        db=db,
+        parent_node_id=str(node.id),
+        period=period
+    )
+    
+    return {
+        "node_id": node_id,
+        "period": period,
+        **summary
+    }
+
