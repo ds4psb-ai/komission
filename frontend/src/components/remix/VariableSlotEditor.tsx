@@ -1,0 +1,99 @@
+// frontend/src/components/remix/VariableSlotEditor.tsx
+"use client";
+
+import { useSessionStore } from "@/stores/useSessionStore";
+import type { VariableSlot } from "@/lib/types/session";
+
+interface VariableSlotEditorProps {
+    slots?: VariableSlot[];
+    onChange?: (slotId: string, value: unknown) => void;
+}
+
+export function VariableSlotEditor({ slots, onChange }: VariableSlotEditorProps) {
+    const storeSlots = useSessionStore((s) => s.slots);
+    const patchSlot = useSessionStore((s) => s.patchSlot);
+
+    const activeSlots = slots || storeSlots;
+
+    if (!activeSlots || activeSlots.length === 0) {
+        return null;
+    }
+
+    const handleChange = (slotId: string, value: unknown) => {
+        patchSlot(slotId, value);
+        onChange?.(slotId, value);
+    };
+
+    return (
+        <div className="glass-panel p-6 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                    🎯 커스터마이즈
+                </h2>
+                <span className="text-xs text-pink-400 bg-pink-500/20 px-2 py-1 rounded-full border border-pink-500/30">
+                    편집 가능한 슬롯
+                </span>
+            </div>
+
+            <div className="space-y-4">
+                {activeSlots.map((slot) => (
+                    <div key={slot.slotId} className="space-y-2">
+                        <label className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-white/80">
+                                {slot.label}
+                                {slot.required && <span className="text-pink-400 ml-1">*</span>}
+                            </span>
+                            {slot.kind === "toggle" && (
+                                <button
+                                    onClick={() => handleChange(slot.slotId, !slot.value)}
+                                    className={`w-12 h-6 rounded-full transition-all ${slot.value
+                                            ? "bg-violet-500"
+                                            : "bg-white/20"
+                                        }`}
+                                >
+                                    <div
+                                        className={`w-5 h-5 rounded-full bg-white shadow-lg transform transition-transform ${slot.value ? "translate-x-6" : "translate-x-0.5"
+                                            }`}
+                                    />
+                                </button>
+                            )}
+                        </label>
+
+                        {slot.kind === "text" && (
+                            <input
+                                type="text"
+                                value={(slot.value as string) || ""}
+                                onChange={(e) => handleChange(slot.slotId, e.target.value)}
+                                placeholder={`${slot.label} 입력...`}
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all"
+                            />
+                        )}
+
+                        {slot.kind === "number" && (
+                            <input
+                                type="number"
+                                value={(slot.value as number) || 0}
+                                onChange={(e) => handleChange(slot.slotId, parseFloat(e.target.value))}
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all"
+                            />
+                        )}
+
+                        {slot.kind === "choice" && Array.isArray(slot.value) && (
+                            <div className="flex flex-wrap gap-2">
+                                {(slot.value as string[]).map((option, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => handleChange(slot.slotId, option)}
+                                        className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white/70 hover:border-violet-500 hover:text-white transition-all"
+                                    >
+                                        {option}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
