@@ -8,6 +8,9 @@ import { api } from "@/lib/api";
 import { QuickGuide } from "@/components/remix/QuickGuide";
 import { VariableSlotEditor } from "@/components/remix/VariableSlotEditor";
 import { QuestChip } from "@/components/remix/QuestChip";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Target, Clapperboard } from "lucide-react";
 
 export default function ShootPage() {
     const params = useParams();
@@ -48,43 +51,38 @@ export default function ShootPage() {
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             {/* Hero CTA */}
-            <div className="p-[2px] rounded-3xl bg-gradient-to-r from-violet-500 via-pink-500 to-orange-500 shadow-[0_0_50px_rgba(139,92,246,0.3)]">
+            <div className="p-[2px] rounded-3xl bg-gradient-to-r from-[rgb(var(--color-violet))] via-[rgb(var(--color-pink))] to-[rgb(var(--color-orange))] shadow-[0_0_50px_rgba(var(--color-violet),0.3)]">
                 <div className="bg-[#050505] rounded-[22px] p-8">
                     <div className="flex flex-col md:flex-row items-center gap-8">
                         {/* Left: Summary */}
                         <div className="flex-1 text-center md:text-left">
-                            <h1 className="text-2xl font-black text-white mb-2">
+                            <h1 className="text-2xl font-black text-white mb-2 ml-1">
                                 {outlier?.title || "리믹스 촬영"}
                             </h1>
-                            <div className="text-sm text-white/50 mb-4">
+                            <div className="text-sm text-white/50 mb-4 ml-1">
                                 예상 조회수 <span className="text-white font-bold">50K ~ 100K</span>
                             </div>
                             {quest && (
-                                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 text-sm font-bold rounded-full border border-emerald-500/30">
-                                    🎯 +{quest.rewardPoints}P 퀘스트 적용됨
-                                </span>
+                                <Badge variant="subtle" color="emerald" className="gap-1.5 py-1 px-3">
+                                    <Target className="w-3.5 h-3.5" />
+                                    +{quest.rewardPoints}P 퀘스트 적용됨
+                                </Badge>
                             )}
                         </div>
 
                         {/* Right: CTA */}
                         <div className="flex flex-col gap-4 w-full md:w-auto">
-                            <button
+                            <Button
+                                variant="primary"
+                                size="lg"
                                 onClick={handleStartFilming}
+                                isLoading={isStarting}
                                 disabled={isStarting}
-                                className="px-10 py-5 rounded-2xl bg-gradient-to-r from-violet-500 to-pink-500 text-white font-black text-xl hover:from-violet-400 hover:to-pink-400 disabled:opacity-70 transition-all shadow-[0_0_40px_rgba(139,92,246,0.5)] flex items-center justify-center gap-3"
+                                className="w-full md:w-auto text-xl py-6 px-10 shadow-[0_0_40px_rgba(var(--color-violet),0.5)] bg-gradient-to-r from-[rgb(var(--color-violet))] to-[rgb(var(--color-pink))]"
+                                leftIcon={<Clapperboard className="w-8 h-8 mr-2" />}
                             >
-                                {isStarting ? (
-                                    <>
-                                        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                        <span>준비 중...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="text-3xl">🎬</span>
-                                        <span>촬영 시작</span>
-                                    </>
-                                )}
-                            </button>
+                                촬영 시작
+                            </Button>
                         </div>
                     </div>
                 </div>
