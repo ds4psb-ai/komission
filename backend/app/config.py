@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Komission FACTORY v5.2"
     VERSION: str = "5.2.0"
     ENVIRONMENT: str = "development"  # development | staging | production
+    ALLOW_DEV_LOGIN: bool = False  # Enable /api/v1/auth/token in development only
 
     # PostgreSQL Database
     POSTGRES_USER: str = "kmeme_user"
@@ -75,3 +76,29 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+DEFAULT_JWT_SECRET = "your-super-secret-key-change-in-production-256-bits-minimum"
+DEFAULT_DB_PASSWORD = "kmeme_password"
+
+
+def validate_runtime_settings() -> None:
+    """
+    Fail fast observed unsafe defaults outside development.
+    """
+    if settings.ENVIRONMENT == "development":
+        return
+
+    missing_or_default = []
+    if settings.JWT_SECRET_KEY == DEFAULT_JWT_SECRET:
+        missing_or_default.append("JWT_SECRET_KEY")
+    if settings.POSTGRES_PASSWORD == DEFAULT_DB_PASSWORD:
+        missing_or_default.append("POSTGRES_PASSWORD")
+    if settings.NEO4J_PASSWORD == DEFAULT_DB_PASSWORD:
+        missing_or_default.append("NEO4J_PASSWORD")
+    if not settings.GOOGLE_CLIENT_ID:
+        missing_or_default.append("GOOGLE_CLIENT_ID")
+
+    if missing_or_default:
+        raise RuntimeError(
+            "Missing or unsafe settings for non-development environment: "
+            + ", ".join(missing_or_default)
+        )

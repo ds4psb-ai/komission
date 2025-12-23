@@ -85,7 +85,10 @@ class ApiClient {
     // Google OAuth login
     async googleAuth(credential: string): Promise<AuthResponse> {
         // MOCK AUTH HANDLING
-        if (credential === 'mock.credential.token') {
+        if (
+            process.env.NEXT_PUBLIC_MOCK_AUTH === 'true' &&
+            credential === 'mock.credential.token'
+        ) {
             console.log('Using Mock Auth Login...');
             // 1. Get Token via Dev Backdoor
             const tokenData = await this.login('admin@komission.ai', 'ignored'); // Password ignored in dev

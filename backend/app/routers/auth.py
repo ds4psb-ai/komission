@@ -153,8 +153,19 @@ async def verify_google_token(credential: str) -> dict:
             
             token_info = response.json()
             
-            # Verify audience (client_id) if configured
-            if settings.GOOGLE_CLIENT_ID:
+            # Verify audience (client_id)
+            if settings.ENVIRONMENT != "development":
+                if not settings.GOOGLE_CLIENT_ID:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Google client ID not configured"
+                    )
+                if token_info.get("aud") != settings.GOOGLE_CLIENT_ID:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Token was not issued for this application"
+                    )
+            elif settings.GOOGLE_CLIENT_ID:
                 if token_info.get("aud") != settings.GOOGLE_CLIENT_ID:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -249,6 +260,9 @@ async def login(
     OAuth2 compatible token login (for development/testing).
     In production, use /google endpoint.
     """
+    if settings.ENVIRONMENT != "development" or not settings.ALLOW_DEV_LOGIN:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
     # Find user by email
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()

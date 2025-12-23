@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.config import settings
+from app.config import settings, validate_runtime_settings
 from app.database import init_db
 from app.middleware.security import SecurityHeadersMiddleware
 from app.middleware.rate_limit import setup_rate_limiting
@@ -32,6 +32,9 @@ async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events"""
     # Startup
     print(f"🚀 Starting {settings.PROJECT_NAME} v{settings.VERSION}")
+
+    # Validate runtime settings early
+    validate_runtime_settings()
     
     # Initialize Database
     await init_db()
