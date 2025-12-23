@@ -40,7 +40,7 @@ export function SessionHUD({ nodeId }: SessionHUDProps) {
     const nextAction = getNextAction();
 
     return (
-        <div className="border-b border-white/5 bg-[var(--background)]/80 backdrop-blur-md sticky top-0 z-40">
+        <div className="border-b border-white/5 bg-black sticky top-0 z-40">
             <div className="container mx-auto px-4 py-3">
                 <div className="flex items-center justify-between gap-4">
 
@@ -75,8 +75,8 @@ export function SessionHUD({ nodeId }: SessionHUDProps) {
                             <button
                                 onClick={() => setMode("simple")}
                                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all ${mode === "simple"
-                                        ? "bg-[rgb(var(--color-violet))] text-white shadow-sm"
-                                        : "text-white/50 hover:text-white hover:bg-white/5"
+                                    ? "bg-[rgb(var(--color-violet))] text-white shadow-sm"
+                                    : "text-white/50 hover:text-white hover:bg-white/5"
                                     }`}
                             >
                                 <Zap className="w-3 h-3" />
@@ -85,8 +85,8 @@ export function SessionHUD({ nodeId }: SessionHUDProps) {
                             <button
                                 onClick={() => setMode("pro")}
                                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all ${mode === "pro"
-                                        ? "bg-[rgb(var(--color-pink))] text-white shadow-sm"
-                                        : "text-white/50 hover:text-white hover:bg-white/5"
+                                    ? "bg-[rgb(var(--color-pink))] text-white shadow-sm"
+                                    : "text-white/50 hover:text-white hover:bg-white/5"
                                     }`}
                             >
                                 <Settings2 className="w-3 h-3" />

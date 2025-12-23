@@ -132,10 +132,23 @@ function EarnTabContent({ nodeId }: { nodeId: string }) {
     const quest = useSessionStore((s) => s.quest);
     const acceptQuest = useSessionStore((s) => s.acceptQuest);
 
+    // Campaign types: instant (즉시), onsite (방문), shipment (배송)
     const availableQuests = [
-        { campaignId: "quest-1", title: "삼양 불닭볶음면 챌린지", rewardPoints: 500, brand: "삼양식품", description: "불닭볶음면을 활용한 리믹스 제작", type: "instant" },
-        { campaignId: "quest-2", title: "올리브영 뷰티 리뷰", rewardPoints: 300, brand: "올리브영", description: "최신 뷰티 제품 리뷰 콘텐츠", type: "onsite" },
+        { campaignId: "quest-1", title: "삼양 불닭볶음면 챌린지", rewardPoints: 500, brand: "삼양식품", description: "불닭볶음면을 활용한 리믹스 제작", type: "instant" as const },
+        { campaignId: "quest-2", title: "올리브영 뷰티 리뷰", rewardPoints: 300, brand: "올리브영", description: "최신 뷰티 제품 리뷰 콘텐츠", type: "onsite" as const },
+        { campaignId: "quest-3", title: "쿠팡 신상 언박싱", rewardPoints: 800, brand: "쿠팡", description: "배송 제품 언박싱 및 첫인상 리뷰", type: "shipment" as const, shipmentStatus: 1 },
     ];
+
+    const getTypeConfig = (type: string) => {
+        switch (type) {
+            case "instant": return { color: "cyan" as const, label: "🔵 즉시", desc: "바로 촬영 가능" };
+            case "onsite": return { color: "orange" as const, label: "🟠 방문", desc: "위치 인증 필요" };
+            case "shipment": return { color: "violet" as const, label: "🟣 배송", desc: "제품 수령 후 촬영" };
+            default: return { color: "default" as const, label: "기본", desc: "" };
+        }
+    };
+
+    const shipmentSteps = ["신청", "선정", "배송", "촬영"];
 
     return (
         <div className="space-y-6">
@@ -162,36 +175,58 @@ function EarnTabContent({ nodeId }: { nodeId: string }) {
 
             <div className="space-y-4">
                 <h2 className="text-lg font-bold text-white/80">추천 퀘스트</h2>
-                {availableQuests.map((q) => (
-                    <Card key={q.campaignId} variant="hover">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400">
-                                    <Target className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-white">{q.title}</h3>
-                                        <Badge variant="outline" color={q.type === "instant" ? "cyan" : "orange"}>
-                                            {q.type === "instant" ? "즉시" : "방문"}
-                                        </Badge>
+                {availableQuests.map((q) => {
+                    const typeConfig = getTypeConfig(q.type);
+                    return (
+                        <Card key={q.campaignId} variant="hover">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400">
+                                        <Target className="w-5 h-5" />
                                     </div>
-                                    <div className="text-xs text-white/50">{q.brand}</div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-bold text-white">{q.title}</h3>
+                                            <Badge variant="outline" color={typeConfig.color}>
+                                                {typeConfig.label}
+                                            </Badge>
+                                        </div>
+                                        <div className="text-xs text-white/50">{q.brand} · {typeConfig.desc}</div>
+                                    </div>
                                 </div>
+                                <div className="text-xl font-black text-orange-400">+{q.rewardPoints}P</div>
                             </div>
-                            <div className="text-xl font-black text-orange-400">+{q.rewardPoints}P</div>
-                        </div>
-                        <p className="text-sm text-white/60 mb-4">{q.description}</p>
-                        <Button
-                            variant="ghost"
-                            onClick={() => acceptQuest({ ...q, status: "suggested" })}
-                            disabled={!!quest}
-                            className="w-full border border-white/10"
-                        >
-                            퀘스트 수락
-                        </Button>
-                    </Card>
-                ))}
+
+                            {/* Shipment Progress Stepper */}
+                            {q.type === "shipment" && q.shipmentStatus && (
+                                <div className="mb-4 p-3 bg-violet-500/10 rounded-lg border border-violet-500/20">
+                                    <div className="flex items-center justify-between text-xs text-white/60 mb-2">
+                                        <span>배송 진행 상태</span>
+                                        <span>{q.shipmentStatus} / {shipmentSteps.length}</span>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        {shipmentSteps.map((step, idx) => (
+                                            <div key={step} className="flex-1 flex flex-col items-center gap-1">
+                                                <div className={`w-full h-1.5 rounded-full ${idx < q.shipmentStatus ? "bg-violet-500" : "bg-white/10"}`} />
+                                                <span className={`text-[10px] ${idx < q.shipmentStatus ? "text-violet-400" : "text-white/30"}`}>{step}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <p className="text-sm text-white/60 mb-4">{q.description}</p>
+                            <Button
+                                variant="ghost"
+                                onClick={() => acceptQuest({ ...q, status: "suggested" })}
+                                disabled={!!quest}
+                                className="w-full border border-white/10"
+                            >
+                                퀘스트 수락
+                            </Button>
+                        </Card>
+                    );
+                })}
             </div>
 
             <Card variant="default">
