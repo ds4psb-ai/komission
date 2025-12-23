@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import uuid
 
 from app.config import settings
-from app.models import RemixNode, O2OLocation, User, NodeLayer, NodePermission, NodeGovernance, Base
+from app.models import RemixNode, O2OLocation, O2OCampaign, User, NodeLayer, NodePermission, NodeGovernance, Base
 
 # Database URL
 DATABASE_URL = f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
@@ -52,6 +52,7 @@ async def seed_data():
                 lng=127.056045,
                 brand="Samsung Galaxy",
                 campaign_title="Capture the Night Challenge",
+                category="lifestyle",
                 verification_method="gps_match",
                 reward_points=500,
                 reward_product="Galaxy Case 20% Off",
@@ -70,6 +71,7 @@ async def seed_data():
                 lng=127.025538,
                 brand="Nike",
                 campaign_title="Run Your Way",
+                category="fashion",
                 verification_method="gps_match",
                 reward_points=300,
                 reward_product="Nike Headband",
@@ -85,6 +87,45 @@ async def seed_data():
             exists = await db.get(O2OLocation, loc.id)
             if not exists:
                 db.add(loc)
+
+        # 1-2. Create O2O Campaigns (Instant/Shipment)
+        campaigns = [
+            O2OCampaign(
+                id=uuid.uuid4(),
+                campaign_id="camp_instant_001",
+                campaign_type="instant",
+                campaign_title="브랜드 릴스 즉시 챌린지",
+                brand="Komission",
+                category="lifestyle",
+                description="브랜드 가이드에 맞춰 즉시 촬영 가능한 온라인 챌린지",
+                reward_points=250,
+                reward_product=None,
+                fulfillment_steps={"steps": ["촬영", "제출", "승인"]},
+                active_start=datetime.now() - timedelta(days=2),
+                active_end=datetime.now() + timedelta(days=20),
+                max_participants=2000,
+            ),
+            O2OCampaign(
+                id=uuid.uuid4(),
+                campaign_id="camp_ship_001",
+                campaign_type="shipment",
+                campaign_title="신제품 언박싱 배송형 캠페인",
+                brand="Coupang",
+                category="lifestyle",
+                description="선정 후 제품 배송 → 언박싱 촬영",
+                reward_points=800,
+                reward_product="신제품 체험 키트",
+                fulfillment_steps={"steps": ["신청", "선정", "배송", "촬영"]},
+                active_start=datetime.now() - timedelta(days=1),
+                active_end=datetime.now() + timedelta(days=25),
+                max_participants=500,
+            ),
+        ]
+
+        for camp in campaigns:
+            exists = await db.execute(select(O2OCampaign).where(O2OCampaign.campaign_id == camp.campaign_id))
+            if not exists.scalar_one_or_none():
+                db.add(camp)
 
         # 2. Create Remix Nodes (Outliers)
         nodes = [

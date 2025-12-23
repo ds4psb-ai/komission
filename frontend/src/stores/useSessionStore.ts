@@ -76,15 +76,25 @@ export const useSessionStore = create<RemixSession & SessionActions>()(
 
             // ─── Initialization ───────────────────────────────────
             initFromRoute: ({ nodeId, tab, sessionId }) =>
-                set((s) => ({
-                    ...s,
-                    sessionId: sessionId ?? s.sessionId,
-                    activeTab: tab ?? s.activeTab,
-                    outlier: nodeId
-                        ? { ...(s.outlier ?? ({} as Outlier)), nodeId }
-                        : s.outlier,
-                    updatedAt: Date.now(),
-                })),
+                set((s) => {
+                    const isNewNode =
+                        !!nodeId &&
+                        !!s.outlier?.nodeId &&
+                        s.outlier.nodeId !== nodeId &&
+                        !sessionId;
+
+                    const base = isNewNode ? newSession() : s;
+
+                    return {
+                        ...base,
+                        sessionId: sessionId ?? base.sessionId,
+                        activeTab: tab ?? base.activeTab,
+                        outlier: nodeId
+                            ? { ...(base.outlier ?? ({} as Outlier)), nodeId }
+                            : base.outlier,
+                        updatedAt: Date.now(),
+                    };
+                }),
 
             // ─── Mode & Tab ───────────────────────────────────────
             setMode: (mode) => set({ mode, updatedAt: Date.now() }),

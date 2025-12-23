@@ -30,6 +30,15 @@ class NodeGovernance(str, enum.Enum):
     CREATOR_VERIFIED = "creator_verified"
 
 
+class O2OApplicationStatus(str, enum.Enum):
+    APPLIED = "applied"
+    SELECTED = "selected"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+    COMPLETED = "completed"
+    REJECTED = "rejected"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -162,6 +171,43 @@ class O2OLocation(Base):
     max_participants: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class O2OCampaign(Base):
+    """Non-location O2O campaigns (instant/shipment)"""
+    __tablename__ = "o2o_campaigns"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    campaign_id: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    campaign_type: Mapped[str] = mapped_column(String(50))  # instant, shipment
+    campaign_title: Mapped[str] = mapped_column(String(255))
+    brand: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    reward_points: Mapped[int] = mapped_column(Integer, default=0)
+    reward_product: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    fulfillment_steps: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+
+    active_start: Mapped[datetime] = mapped_column(DateTime)
+    active_end: Mapped[datetime] = mapped_column(DateTime)
+    max_participants: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class O2OApplication(Base):
+    """User application for shipment/instant O2O campaigns"""
+    __tablename__ = "o2o_applications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    campaign_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("o2o_campaigns.id"))
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    status: Mapped[str] = mapped_column(SQLEnum(O2OApplicationStatus), default=O2OApplicationStatus.APPLIED)
+    shipment_tracking: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class Pipeline(Base):
@@ -359,3 +405,146 @@ class PatternConfidence(Base):
     # 메타데이터
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_updated: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ==================
+# EVIDENCE LOOP SYSTEM (Phase 4)
+# ==================
+
+class OutlierSource(Base):
+    """
+    외부 아웃라이어 소스 사이트
+    크롤링 대상 사이트 관리
+    """
+    __tablename__ = "outlier_sources"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(100))  # "TrendAnalyzer", "ViralHunter"
+    base_url: Mapped[str] = mapped_column(String(500))
+    auth_type: Mapped[str] = mapped_column(String(50))  # "api_key", "session", "none"
+    auth_config: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)  # 인증 설정
+    
+    # 크롤링 상태
+    last_crawled: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    crawl_interval_hours: Mapped[int] = mapped_column(Integer, default=24)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    items: Mapped[List["OutlierItem"]] = relationship("OutlierItem", back_populates="source")
+
+
+class OutlierItemStatus(str, enum.Enum):
+    PENDING = "pending"        # 수집됨, 미검토
+    SELECTED = "selected"      # Parent 후보로 선정
+    REJECTED = "rejected"      # 제외됨
+    PROMOTED = "promoted"      # RemixNode(Parent)로 승격됨
+
+
+class OutlierItem(Base):
+    """
+    크롤링된 아웃라이어 후보
+    외부 소스에서 발견된 바이럴 콘텐츠
+    """
+    __tablename__ = "outlier_items"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("outlier_sources.id"), index=True)
+    external_id: Mapped[str] = mapped_column(String(200), unique=True, index=True)  # 소스별 고유ID
+    
+    # 콘텐츠 정보
+    video_url: Mapped[str] = mapped_column(String(500))
+    title: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    thumbnail_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    platform: Mapped[str] = mapped_column(String(50))  # tiktok, instagram, youtube
+    category: Mapped[str] = mapped_column(String(50), index=True)  # beauty, meme, food...
+    
+    # 크롤링 시 수집된 메트릭
+    view_count: Mapped[int] = mapped_column(Integer, default=0)
+    like_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    share_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    growth_rate: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # "+350%"
+    
+    # 선별 상태
+    status: Mapped[str] = mapped_column(SQLEnum(OutlierItemStatus), default=OutlierItemStatus.PENDING)
+    promoted_to_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True
+    )  # Parent로 승격된 경우
+    
+    crawled_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    source: Mapped["OutlierSource"] = relationship("OutlierSource", back_populates="items")
+    promoted_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode", foreign_keys=[promoted_to_node_id])
+
+
+class MetricDaily(Base):
+    """
+    일별 성과 추적 (14일+)
+    노드별 일일 메트릭 히스토리
+    """
+    __tablename__ = "metric_daily"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    node_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("remix_nodes.id"), index=True)
+    
+    date: Mapped[datetime] = mapped_column(DateTime, index=True)
+    
+    # 절대값
+    view_count: Mapped[int] = mapped_column(Integer, default=0)
+    like_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    share_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    comment_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    # 전일 대비 증분
+    delta_views: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    delta_rate: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # "+15%"
+    
+    # 데이터 소스
+    data_source: Mapped[str] = mapped_column(String(50), default="manual")  # manual, api, crawler
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    node: Mapped["RemixNode"] = relationship("RemixNode", backref="daily_metrics")
+
+
+class EvidenceSnapshot(Base):
+    """
+    증거 스냅샷 (VDG 요약)
+    Parent 노드의 변주 성과 요약
+    """
+    __tablename__ = "evidence_snapshots"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    parent_node_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("remix_nodes.id"), index=True)
+    
+    # 스냅샷 기간
+    snapshot_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    period: Mapped[str] = mapped_column(String(10))  # "4w", "12w", "1y"
+    
+    # 집계 데이터 (JSONB)
+    # 예: {"audio": {"VIS_KPOP": {"success_rate": 0.85, "sample_count": 12, "avg_delta": "+127%"}}}
+    depth1_summary: Mapped[dict] = mapped_column(JSONB)  # 변주별 성공률
+    depth2_summary: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    
+    # 최고/최저 변주
+    top_mutation_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # audio, visual
+    top_mutation_pattern: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    top_mutation_rate: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    
+    # 통계
+    sample_count: Mapped[int] = mapped_column(Integer, default=0)
+    confidence: Mapped[float] = mapped_column(default=0.5)
+    
+    # 시트 연동
+    sheet_synced: Mapped[bool] = mapped_column(Boolean, default=False)
+    sheet_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    parent_node: Mapped["RemixNode"] = relationship("RemixNode", backref="evidence_snapshots")
+

@@ -1,15 +1,28 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, O2OLocation } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
+import { Badge } from "@/components/ui/Badge";
 
 export default function O2OPage() {
     const [locations, setLocations] = useState<O2OLocation[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedLoc, setSelectedLoc] = useState<O2OLocation | null>(null);
     const [verifying, setVerifying] = useState(false);
+
+    const getTypeMeta = (type?: string) => {
+        const normalized = type?.toLowerCase() || "";
+        if (normalized.includes("ship") || normalized.includes("delivery")) {
+            return { label: "배송", color: "violet" as const, desc: "배송 후 촬영" };
+        }
+        if (normalized.includes("instant") || normalized.includes("digital")) {
+            return { label: "즉시", color: "cyan" as const, desc: "바로 촬영 가능" };
+        }
+        return { label: "방문", color: "orange" as const, desc: "위치 인증 필요" };
+    };
+
+    const selectedTypeMeta = selectedLoc ? getTypeMeta(selectedLoc.campaign_type) : null;
 
     useEffect(() => {
         fetchLocations();
@@ -113,6 +126,16 @@ export default function O2OPage() {
                                         <h2 className="text-2xl font-bold mb-1">{selectedLoc.campaign_title}</h2>
                                         <p className="text-sm text-white/50">{selectedLoc.address}</p>
                                     </div>
+                                    {selectedTypeMeta && (
+                                        <div className="flex flex-col items-end gap-2">
+                                            <Badge variant="outline" color={selectedTypeMeta.color}>
+                                                {selectedTypeMeta.label}
+                                            </Badge>
+                                            <span className="text-[10px] text-white/40">
+                                                {selectedTypeMeta.desc}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-4 mb-8">

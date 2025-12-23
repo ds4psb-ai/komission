@@ -40,7 +40,7 @@ export function SessionHUD({ nodeId }: SessionHUDProps) {
     const nextAction = getNextAction();
 
     return (
-        <div className="border-b border-white/5 bg-black sticky top-0 z-40">
+        <div className="border-b border-white/5 bg-black sticky top-16 z-40">
             <div className="container mx-auto px-4 py-3">
                 <div className="flex items-center justify-between gap-4">
 
@@ -109,4 +109,3 @@ export function SessionHUD({ nodeId }: SessionHUDProps) {
         </div>
     );
 }
-

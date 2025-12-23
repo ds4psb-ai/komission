@@ -37,6 +37,11 @@ export interface QuestRef {
     title: string;
     rewardPoints: number;
     status: "suggested" | "accepted" | "applied" | "completed";
+    campaignType?: "instant" | "onsite" | "shipment";
+    placeName?: string;
+    address?: string;
+    deadline?: string;
+    rewardProduct?: string | null;
 }
 
 export interface RunRef {

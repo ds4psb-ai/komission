@@ -2,10 +2,12 @@
 "use client";
 
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { SessionHUD } from "./SessionHUD";
 import { RemixTabsNav } from "./RemixTabsNav";
 import { useSessionStore } from "@/stores/useSessionStore";
+import { SESSION_TABS, type SessionTab } from "@/lib/types/session";
 
 interface NodeSummary {
     node_id: string;
@@ -26,10 +28,13 @@ interface RemixShellProps {
 export function RemixShell({ children, nodeId, nodeSummary }: RemixShellProps) {
     const initFromRoute = useSessionStore((s) => s.initFromRoute);
     const setOutlier = useSessionStore((s) => s.setOutlier);
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get("tab");
+    const routeTab = SESSION_TABS.find((entry) => entry.tab === tabParam)?.tab as SessionTab | undefined;
 
     // Initialize session from route
     useEffect(() => {
-        initFromRoute({ nodeId });
+        initFromRoute({ nodeId, tab: routeTab });
 
         // Set outlier if we have node summary
         if (nodeSummary) {
@@ -43,7 +48,7 @@ export function RemixShell({ children, nodeId, nodeSummary }: RemixShellProps) {
                     : undefined,
             });
         }
-    }, [nodeId, nodeSummary, initFromRoute, setOutlier]);
+    }, [nodeId, nodeSummary, routeTab, initFromRoute, setOutlier]);
 
     return (
         <div className="min-h-screen bg-black text-white">

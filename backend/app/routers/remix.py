@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
-from app.models import RemixNode, NodeLayer, NodePermission, NodeGovernance
+from app.models import RemixNode, NodeLayer, NodePermission, NodeGovernance, O2OCampaign, O2OLocation
 from app.routers.auth import get_current_user, require_admin, User
 from app.services.gemini_pipeline import gemini_pipeline
 from app.services.royalty_engine import RoyaltyEngine
@@ -468,9 +468,11 @@ class QuestRecommendation(BaseModel):
     category: Optional[str]
     reward_points: int
     reward_product: Optional[str]
-    place_name: str
-    address: str
+    place_name: Optional[str]
+    address: Optional[str]
     deadline: datetime
+    campaign_type: str
+    fulfillment_steps: Optional[List[str]] = None
 
 
 @router.post("/{node_id}/matching")
@@ -485,8 +487,6 @@ async def get_quest_matching(
     Matches node's inferred category/genre with active O2O campaigns.
     Used in Remix Detail Page to show "Recommended Quests" section.
     """
-    from app.models import O2OLocation
-    
     # 1. Get the node to infer category if not provided
     result = await db.execute(select(RemixNode).where(RemixNode.node_id == node_id))
     node = result.scalar_one_or_none()
@@ -502,38 +502,76 @@ async def get_quest_matching(
         if isinstance(analysis, dict):
             category = analysis.get("category") or analysis.get("content_type")
     
-    # 3. Query active O2O campaigns
+    # 3. Query active O2O location campaigns (visit)
     now = datetime.utcnow()
-    query = select(O2OLocation).where(
+    location_query = select(O2OLocation).where(
         (O2OLocation.active_start <= now) &
         (O2OLocation.active_end >= now)
     )
     
     # Filter by category if available
     if category:
-        query = query.where(O2OLocation.category == category)
+        location_query = location_query.where(O2OLocation.category == category)
     
-    # Limit results
-    query = query.order_by(O2OLocation.reward_points.desc()).limit(5)
+    location_query = location_query.order_by(O2OLocation.reward_points.desc()).limit(5)
+    location_result = await db.execute(location_query)
+    locations = location_result.scalars().all()
+
+    # 4. Query active O2O campaigns (instant/shipment)
+    campaign_query = select(O2OCampaign).where(
+        (O2OCampaign.active_start <= now) &
+        (O2OCampaign.active_end >= now)
+    )
+    if category:
+        campaign_query = campaign_query.where(O2OCampaign.category == category)
+    campaign_query = campaign_query.order_by(O2OCampaign.reward_points.desc()).limit(5)
+    campaign_result = await db.execute(campaign_query)
+    campaigns = campaign_result.scalars().all()
     
-    result = await db.execute(query)
-    locations = result.scalars().all()
-    
-    # 4. Format response
-    recommendations = [
-        QuestRecommendation(
-            id=str(loc.id),
-            brand=loc.brand,
-            campaign_title=loc.campaign_title,
-            category=loc.category,
-            reward_points=loc.reward_points,
-            reward_product=loc.reward_product,
-            place_name=loc.place_name,
-            address=loc.address,
-            deadline=loc.active_end
+    # 5. Format response
+    recommendations: List[QuestRecommendation] = []
+
+    for loc in locations:
+        recommendations.append(
+            QuestRecommendation(
+                id=str(loc.id),
+                brand=loc.brand,
+                campaign_title=loc.campaign_title,
+                category=loc.category,
+                reward_points=loc.reward_points,
+                reward_product=loc.reward_product,
+                place_name=loc.place_name,
+                address=loc.address,
+                deadline=loc.active_end,
+                campaign_type="visit",
+                fulfillment_steps=["위치 인증", "촬영"],
+            )
         )
-        for loc in locations
-    ]
+
+    for camp in campaigns:
+        steps = None
+        if isinstance(camp.fulfillment_steps, dict):
+            steps = camp.fulfillment_steps.get("steps")
+        elif isinstance(camp.fulfillment_steps, list):
+            steps = camp.fulfillment_steps
+
+        recommendations.append(
+            QuestRecommendation(
+                id=str(camp.id),
+                brand=camp.brand,
+                campaign_title=camp.campaign_title,
+                category=camp.category,
+                reward_points=camp.reward_points,
+                reward_product=camp.reward_product,
+                place_name=None,
+                address=None,
+                deadline=camp.active_end,
+                campaign_type=camp.campaign_type,
+                fulfillment_steps=steps,
+            )
+        )
+
+    recommendations.sort(key=lambda item: item.reward_points, reverse=True)
     
     return {
         "node_id": node_id,
@@ -787,4 +825,3 @@ async def get_quick_pattern_suggestions(
         "suggestions": suggestions,
         "source": "pattern_confidence" if top_patterns else "default"
     }
-

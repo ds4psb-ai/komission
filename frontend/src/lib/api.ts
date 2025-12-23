@@ -265,6 +265,20 @@ class ApiClient {
         return this.request<O2OLocation[]>('/api/v1/o2o/locations');
     }
 
+    async listO2OCampaigns() {
+        return this.request<O2OCampaign[]>('/api/v1/o2o/campaigns');
+    }
+
+    async applyO2OCampaign(campaignId: string) {
+        return this.request<O2OApplication>(`/api/v1/o2o/campaigns/${campaignId}/apply`, {
+            method: 'POST',
+        });
+    }
+
+    async listMyO2OApplications() {
+        return this.request<O2OApplication[]>('/api/v1/o2o/applications/me');
+    }
+
     async verifyLocation(locationId: string, lat: number, lng: number) {
         return this.request<{
             status: string;
@@ -395,6 +409,32 @@ export interface O2OLocation {
     reward_points: number;
     reward_product?: string;
     active_end: string;
+}
+
+export interface O2OCampaign {
+    id: string;
+    campaign_type: string;
+    campaign_title: string;
+    brand: string | null;
+    category: string | null;
+    reward_points: number;
+    reward_product: string | null;
+    description: string | null;
+    fulfillment_steps: string[] | null;
+    place_name: string | null;
+    address: string | null;
+    active_start: string;
+    active_end: string;
+    max_participants: number | null;
+}
+
+export interface O2OApplication {
+    id: string;
+    campaign_id: string;
+    campaign_title: string;
+    campaign_type: string;
+    status: string;
+    created_at: string;
 }
 
 export interface User {
@@ -590,9 +630,11 @@ export interface QuestRecommendation {
     category: string | null;
     reward_points: number;
     reward_product: string | null;
-    place_name: string;
-    address: string;
+    place_name?: string | null;
+    address?: string | null;
     deadline: string;
+    campaign_type?: string | null;
+    fulfillment_steps?: string[] | null;
 }
 
 export interface QuestMatchingResponse {

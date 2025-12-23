@@ -629,8 +629,8 @@ function CanvasFlow() {
                                     <div className="text-[10px] text-emerald-400 font-bold">🎁 300 K-Points</div>
                                 </div>
                             </div>
-                            <a href="/wizard" className="block mt-2 text-[10px] text-center text-white/40 hover:text-white/60 transition-colors">
-                                → 모바일에서 미션 수행하기
+                            <a href="/o2o" className="block mt-2 text-[10px] text-center text-white/40 hover:text-white/60 transition-colors">
+                                → O2O 캠페인으로 이동
                             </a>
                         </div>
                     </div>

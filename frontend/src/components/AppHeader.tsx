@@ -8,7 +8,7 @@ import { useState, useRef, useEffect } from "react";
 const navItems = [
     { href: "/", label: "🔥 아웃라이어" },
     { href: "/canvas", label: "🕸️ 캔버스" },
-    { href: "/pipelines", label: "🛒 마켓" },
+    { href: "/o2o", label: "🛒 마켓" },
     { href: "/my", label: "👤 마이" },
 ];
 

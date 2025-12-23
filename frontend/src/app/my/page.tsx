@@ -437,22 +437,22 @@ export default function MyPage() {
                             <div className="text-xs text-white/50">빈 캔버스에서 시작</div>
                         </Link>
                         <Link
-                            href="/pipelines"
+                            href="/o2o"
                             className="p-8 bg-black/40 backdrop-blur-xl border border-white/10 hover:border-white/20 rounded-3xl relative overflow-hidden group transition-all hover:-translate-y-1"
                         >
                             <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">🛒</div>
-                            <div className="font-bold text-lg mb-1">마켓플레이스</div>
-                            <div className="text-xs text-white/50">바이럴 템플릿 탐색</div>
+                            <div className="font-bold text-lg mb-1">O2O 체험단</div>
+                            <div className="text-xs text-white/50">방문형 캠페인 탐색</div>
                         </Link>
                         <Link
-                            href="/wizard"
+                            href="/"
                             className="p-8 bg-black/40 backdrop-blur-xl border border-white/10 hover:border-white/20 rounded-3xl relative overflow-hidden group transition-all hover:-translate-y-1"
                         >
                             <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">📍</div>
-                            <div className="font-bold text-lg mb-1">O2O 미션</div>
-                            <div className="text-xs text-white/50">현실 세계에서 K-Point 적립</div>
+                            <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">🔁</div>
+                            <div className="font-bold text-lg mb-1">다음 리믹스 찾기</div>
+                            <div className="text-xs text-white/50">아웃라이어로 돌아가기</div>
                         </Link>
                     </div>
                 </div>
