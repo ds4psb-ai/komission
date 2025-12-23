@@ -38,6 +38,21 @@ Creator 실행 + O2O know-how 연결
 
 **네이밍 규칙**: `VDG_*` 접두어 사용 (예: `VDG_Evidence`)
 
+## 1. Google Sheets Infrastructure
+
+**Generated Sheets (as of 2025-02-13):**
+- **VDG_Outlier_Raw**: `1bFYFBMMgOz8a4Q8VIJJgdr7-jhfTU4iTn9rdG-GXxSs`
+- **VDG_Parent_Candidates**: `1PmD_jtNWar6iyqYO9h2styRPl6LV3DF38NZVpa8lMeQ`
+- **VDG_Evidence**: `1wYYOkAx4c__qkP_5q77qCEYqOkgx85w-ysIzDzjhakg`
+- **VDG_Decision**: `1Po1CYEqN_Rlj78qWFqzZFRn87ESCBe8u1Vq1WQpcCtQ`
+- **VDG_Experiment**: `1WIcagWwbb4AtRHHNR7hha73hale2htzUHjG03eM9nfs`
+- **VDG_Progress**: `11BTl6Mhp8vaSNdGSlpwxrsJFWJtlmSFFBt5gFC6K8IM`
+- **VDG_O2O_Campaigns**: `1ntnsUXW8WxYsAlUD9uH9ahhwUvb2QlYQ8Z2u0MxfYrk`
+- **VDG_O2O_Applications**: `1Bjgd5mKsa-jOH6gRFqRNODWnCtEklG7NU0vZO5_cY3Q`
+- **VDG_Insights**: `1NDYuTfQNuct1eBeIHwLsQyuJIbheAmwfps5Op8i0cjg`
+
+The following sheets form the core database for the Evidence Loop.
+
 ### 3.1 Outlier Raw Sheet (옵션)
 **목적**: 외부 구독 소스 크롤링 결과를 사람이 검토/선별
 

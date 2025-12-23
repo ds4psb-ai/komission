@@ -36,7 +36,7 @@ export default function PipelineMarketplacePage() {
             const list = await api.listPublicPipelines();
             setPipelines(list);
         } catch (e) {
-            console.error(e);
+            console.warn('공개 파이프라인 로드 실패', e);
             setError('공개 파이프라인 로드 실패');
         } finally {
             setLoading(false);

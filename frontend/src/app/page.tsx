@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState, FormEvent, useRef } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { api, RemixNode } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import { OutlierCard } from "@/components/OutlierCard";
+import { TemplateGallery } from "@/components/TemplateGallery";
 
 export default function Home() {
   const router = useRouter();
@@ -24,7 +24,7 @@ export default function Home() {
       const data = await api.listRemixNodes({ limit: 50 });
       setNodes(data);
     } catch (err) {
-      console.error("Failed to fetch nodes:", err);
+      console.warn("아웃라이어 로드 실패:", err);
       // Fallback mock data for development/demo
       setNodes([
         {
@@ -244,135 +244,9 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        <TemplateGallery />
       </main>
-    </div>
-  );
-}
-
-function getGradient(layer: string) {
-  switch (layer) {
-    case 'master': return 'from-violet-900 via-purple-900 to-indigo-950';
-    case 'fork': return 'from-emerald-900 via-green-900 to-teal-950';
-    case 'fork_of_fork': return 'from-rose-900 via-pink-900 to-red-950';
-    default: return 'from-zinc-800 to-zinc-950';
-  }
-}
-
-function getBadgeStyle(layer: string) {
-  switch (layer) {
-    case 'master': return 'bg-violet-500/10 border-violet-500/30 text-violet-300';
-    case 'fork': return 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300';
-    case 'fork_of_fork': return 'bg-rose-500/10 border-rose-500/30 text-rose-300';
-    default: return 'bg-white/5 border-white/10 text-white/40';
-  }
-}
-
-function TiltCard({ node, index }: { node: RemixNode; index: number }) {
-  const [rotate, setRotate] = useState({ x: 0, y: 0 });
-  const [isVisible, setIsVisible] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  // Scroll Reveal Effect - Simplified to always show for now
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const rotateX = ((y - centerY) / centerY) * -8;
-    const rotateY = ((x - centerX) / centerX) * 8;
-    setRotate({ x: rotateX, y: rotateY });
-  };
-
-  const handleMouseLeave = () => {
-    setRotate({ x: 0, y: 0 });
-  };
-
-  return (
-    <div
-      ref={cardRef}
-      className={`transition-all duration-700 ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
-    >
-      <Link href={`/remix/${node.node_id}`} className="group block relative perspective-1000 h-full">
-        {/* Ranking Badge (Top 3) */}
-        {index < 3 && (
-          <div className="absolute -top-3 -left-3 z-30 w-10 h-10 flex items-center justify-center font-black text-lg italic bg-[#0a0a0a] border border-white/20 shadow-xl rounded-xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-300 group-hover:scale-110">
-            <span className={index === 0 ? "text-yellow-400" : index === 1 ? "text-slate-300" : "text-amber-600"}>
-              #{index + 1}
-            </span>
-          </div>
-        )}
-
-        {/* 3D Card Container */}
-        <div
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          style={{
-            transform: `perspective(1000px) rotateX(${rotate.x}deg) rotateY(${rotate.y}deg)`,
-            transition: 'transform 0.1s ease-out'
-          }}
-          className="relative rounded-[2rem] overflow-hidden aspect-[9/16] bg-[#111] border border-white/5 group-hover:border-white/20 shadow-2xl h-full will-change-transform"
-        >
-          {/* Background Image / Gradient */}
-          <div className={`absolute inset-0 bg-gradient-to-br ${getGradient(node.layer)} opacity-30 group-hover:opacity-60 transition-opacity duration-700`}></div>
-
-          {/* Dynamic Spotlight */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-          {/* Noise Texture */}
-          <div className="absolute inset-0 bg-[url('/noise.png')] opacity-20 mix-blend-overlay"></div>
-
-          {/* Top Badges */}
-          <div className="absolute top-5 left-5 right-5 z-20 flex justify-between items-start">
-            <span className="px-3 py-1.5 text-[10px] font-bold uppercase bg-black/40 backdrop-blur-md border border-white/10 rounded-lg text-white/90 shadow-lg">
-              {node.platform === 'tiktok' ? '🎵 TikTok' : node.platform === 'instagram' ? '📷 Instagram' : '▶️ Video'}
-            </span>
-            {node.performance_delta && (
-              <span className="px-2.5 py-1.5 text-[10px] font-bold bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 rounded-lg text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse">
-                {node.performance_delta}
-              </span>
-            )}
-          </div>
-
-          {/* Play Button Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100">
-            <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/30 text-white flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)] group-hover:bg-white/20">
-              <span className="text-3xl ml-1">▶</span>
-            </div>
-          </div>
-
-          {/* Bottom Content Area */}
-          <div className="absolute inset-x-0 bottom-0 p-6 flex flex-col justify-end h-3/5 bg-gradient-to-t from-black via-black/90 to-transparent">
-            <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-              {/* Genealogy Badge */}
-              <span className={`inline-flex items-center px-2 py-0.5 mb-3 text-[10px] font-bold uppercase tracking-wider rounded border ${getBadgeStyle(node.layer)}`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-pulse"></span>
-                {node.layer === 'master' ? '마스터 소스' : '변종 포크'}
-              </span>
-
-              {/* Title */}
-              <h3 className="text-xl font-black leading-tight mb-3 text-white drop-shadow-lg line-clamp-2 group-hover:text-violet-200 transition-colors">
-                {node.title}
-              </h3>
-
-              {/* Meta Info */}
-              <div className="flex items-center justify-between text-xs text-white/40 pt-4 border-t border-white/10 group-hover:border-white/20 transition-colors">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <span className="opacity-70">👁️</span> {(node.view_count / 10000).toFixed(1)}만
-                </span>
-                <span className="font-mono opacity-50 text-[10px]">
-                  {new Date(node.created_at).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Link>
     </div>
   );
 }

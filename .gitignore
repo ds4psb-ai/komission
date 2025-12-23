@@ -1,9 +1,56 @@
+# Virtual environments
 backend/venv/
+.venv/
+venv/
+
+# Dependencies
 frontend/node_modules/
+node_modules/
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Environment files
 .env
 .env.*
 !.env.example
 !**/.env.example
 backend/.env
+
+# Logs
 *.log
+backend/*.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# Misc
+*.bak
+*.tmp

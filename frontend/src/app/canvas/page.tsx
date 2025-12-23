@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SourceNode, ProcessNode, OutputNode } from '@/components/canvas/CustomNodes';
 import { EvidenceNode, DecisionNode } from '@/components/canvas/EvidenceNodes';
+import { CapsuleNode, type CapsuleDefinition } from '@/components/canvas/CapsuleNode';
 import { Inspector } from '@/components/canvas/Inspector';
 import { StoryboardPreview } from '@/components/canvas/StoryboardPreview';
 import { AppHeader } from '@/components/AppHeader';
@@ -33,11 +34,33 @@ const nodeTypes = {
     output: OutputNode,
     evidence: EvidenceNode,
     decision: DecisionNode,
+    capsule: CapsuleNode,
 };
 
 // Initial Data (Empty canvas)
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
+
+const defaultCapsuleDefinition: CapsuleDefinition = {
+    id: "capsule.evidence.v1",
+    title: "Evidence Synthesizer",
+    summary: "Outlier 깊이 데이터를 요약하고 실험 결론을 생성합니다.",
+    provider: "Opal + NotebookLM",
+    inputs: ["Parent/Outlier set", "기간", "카테고리"],
+    outputs: ["EvidenceRef", "DecisionSummary"],
+    params: [
+        { key: "window", label: "기간", type: "select", options: ["4w", "12w", "1y"], value: "4w" },
+        { key: "category", label: "카테고리", type: "select", options: ["Beauty", "Meme", "Food", "Lifestyle"], value: "Beauty" },
+        { key: "risk", label: "리스크 허용", type: "select", options: ["Low", "Medium", "High"], value: "Medium" },
+        { key: "syncSheets", label: "Sheets 동기화", type: "toggle", value: true },
+    ],
+    status: "idle",
+};
+
+const createCapsuleDefinition = (): CapsuleDefinition => ({
+    ...defaultCapsuleDefinition,
+    params: defaultCapsuleDefinition.params?.map((param) => ({ ...param })),
+});
 
 // Generate unique ID using UUID
 const generateNodeId = () => `node_${crypto.randomUUID().slice(0, 8)}`;
@@ -70,11 +93,15 @@ function CanvasFlow() {
     const [isLoading, setIsLoading] = useState(false);
 
     // Inspector state
-    const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [showInspector, setShowInspector] = useState(true);
 
     // Storyboard Preview state
     const [showStoryboard, setShowStoryboard] = useState(false);
+
+    const selectedNode = selectedNodeId
+        ? nodes.find((node) => node.id === selectedNodeId) || null
+        : null;
 
     // Auth state for access control
     const { user } = useAuth();
@@ -431,6 +458,9 @@ function CanvasFlow() {
                     nodeId: createdNodeId || undefined,  // Pass real nodeId for API calls
                     evidence: data?.evidence,
                 }),
+                ...(type === 'capsule' && {
+                    capsule: createCapsuleDefinition(),
+                }),
                 ...(type === 'decision' && {
                     status: 'pending' as const,
                     onGenerateDecision: () => {
@@ -543,13 +573,23 @@ function CanvasFlow() {
                 console.log('Edges after filter:', filtered.length);
                 return filtered;
             });
-            setSelectedNode(null);
+            setSelectedNodeId(null);
             showToast('노드 삭제됨', 'info');
         } catch (err) {
             console.error('Error in handleDeleteNode:', err);
             showToast('노드 삭제 실패', 'error');
         }
     }, [setNodes, setEdges, takeSnapshot, nodes, edges, showToast]);
+
+    const handleUpdateNodeData = useCallback((nodeId: string, patch: Record<string, unknown>) => {
+        setNodes((nds) =>
+            nds.map((node) =>
+                node.id === nodeId
+                    ? { ...node, data: { ...(node.data || {}), ...patch } }
+                    : node
+            )
+        );
+    }, [setNodes]);
 
     return (
         <div className="flex flex-col h-screen bg-[#050505] selection:bg-violet-500/30 selection:text-violet-200 overflow-hidden relative">
@@ -673,6 +713,19 @@ function CanvasFlow() {
                                 <div>
                                     <span className="text-sm font-bold">Decision Node</span>
                                     <div className="text-[10px] text-amber-300">Opal 결정/실험 계획</div>
+                                </div>
+                            </div>
+
+                            <div
+                                className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl cursor-pointer hover:border-rose-500/50 transition-all mb-2 flex items-center gap-3"
+                                onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'capsule')}
+                                onClick={() => addNode('capsule')}
+                                draggable
+                            >
+                                <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400">🔒</div>
+                                <div>
+                                    <span className="text-sm font-bold">Capsule Node</span>
+                                    <div className="text-[10px] text-rose-300">Opal/NotebookLM 래핑</div>
                                 </div>
                             </div>
                         </div>
@@ -808,8 +861,8 @@ function CanvasFlow() {
                         onDrop={onDrop}
                         onDragOver={onDragOver}
                         onNodeDragStart={onNodeDragStart}
-                        onNodeClick={(_, node) => setSelectedNode(node)}
-                        onPaneClick={() => setSelectedNode(null)}
+                        onNodeClick={(_, node) => setSelectedNodeId(node.id)}
+                        onPaneClick={() => setSelectedNodeId(null)}
                         nodeTypes={nodeTypes}
                         fitView
                         className="bg-transparent"
@@ -826,6 +879,7 @@ function CanvasFlow() {
                         selectedNode={selectedNode}
                         onClose={() => setShowInspector(false)}
                         onDeleteNode={handleDeleteNode}
+                        onUpdateNodeData={handleUpdateNodeData}
                         viralData={selectedNode ? {
                             performanceDelta: '+127%',
                             parentViews: 245000,

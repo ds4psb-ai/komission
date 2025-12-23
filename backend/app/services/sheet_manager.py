@@ -122,3 +122,64 @@ class SheetManager:
             created_sheets[title] = sheet_id
         
         return created_sheets
+
+    def find_sheet_id(self, title: str) -> Optional[str]:
+        """Find a Google Sheet ID by its name."""
+        try:
+            query = f"name = '{title}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false"
+            results = self.drive_service.files().list(
+                q=query,
+                spaces='drive',
+                fields='files(id, name)',
+                pageSize=1
+            ).execute()
+            files = results.get('files', [])
+            if not files:
+                logger.warning(f"No sheet found with title: {title}")
+                return None
+            return files[0]['id']
+        except HttpError as error:
+            logger.error(f"An error occurred searching for sheet '{title}': {error}")
+            return None
+
+    def append_data(self, sheet_title: str, rows: List[List[object]]):
+        """Append data rows to the specified sheet."""
+        sheet_id = self.find_sheet_id(sheet_title)
+        if not sheet_id:
+            logger.error(f"Cannot append data: Sheet '{sheet_title}' not found.")
+            return
+
+        try:
+            body = {
+                'values': rows
+            }
+            result = self.sheets_service.spreadsheets().values().append(
+                spreadsheetId=sheet_id,
+                range='A1',
+                valueInputOption='RAW',
+                insertDataOption='INSERT_ROWS',
+                body=body
+            ).execute()
+            logger.info(f"Appended {result.get('updates').get('updatedRows')} rows to {sheet_title} ({sheet_id})")
+        except HttpError as error:
+            logger.error(f"An error occurred appending data to {sheet_title}: {error}")
+            raise
+
+    def share_sheet(self, sheet_id: str, email_address: str, role: str = 'writer'):
+        """Share a sheet with a specific email address."""
+        try:
+            user_permission = {
+                'type': 'user',
+                'role': role,
+                'emailAddress': email_address
+            }
+            self.drive_service.permissions().create(
+                fileId=sheet_id,
+                body=user_permission,
+                fields='id',
+            ).execute()
+            logger.info(f"Shared sheet {sheet_id} with {email_address} as {role}")
+        except HttpError as error:
+            logger.error(f"An error occurred sharing sheet {sheet_id}: {error}")
+            # Don't raise here to allow batch operations to continue even if one fails (e.g. already shared)
+

@@ -34,7 +34,7 @@ export default function O2OPage() {
             setLocations(data);
             if (data.length > 0) setSelectedLoc(data[0]);
         } catch (err) {
-            console.error(err);
+            console.warn('O2O 캠페인 로드 실패', err);
         } finally {
             setLoading(false);
         }

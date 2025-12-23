@@ -15,7 +15,10 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.6.0",
-    "zustand": "^5.0.9"
+    "zustand": "^5.0.9",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0",
+    "framer-motion": "^11.18.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

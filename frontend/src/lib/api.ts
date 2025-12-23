@@ -6,8 +6,9 @@
 const API_BASE_URL = ''; // Use relative path to leverage Next.js proxy
 
 
-interface ApiError {
-    detail: string;
+interface ApiErrorPayload {
+    detail?: string;
+    message?: string;
 }
 
 class ApiClient {
@@ -46,10 +47,18 @@ class ApiClient {
             ...options.headers,
         };
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            ...options,
-            headers,
-        });
+        let response: Response;
+        try {
+            response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                ...options,
+                headers,
+            });
+        } catch (error) {
+            throw new Error('서버에 연결할 수 없습니다.');
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
 
         if (!response.ok) {
             // Handle token expiration (401 Unauthorized)
@@ -67,13 +76,44 @@ class ApiClient {
                 throw new Error('세션이 만료되었습니다. 다시 로그인해 주세요.');
             }
 
-            const error: ApiError = await response.json().catch(() => ({
-                detail: '오류가 발생했습니다.',
-            }));
-            throw new Error(error.detail);
+            let detail = `${response.status} ${response.statusText}`;
+            if (isJson) {
+                const error: ApiErrorPayload | null = await response.json().catch(() => null);
+                if (error?.detail) detail = error.detail;
+                if (!error?.detail && error?.message) detail = error.message;
+            } else {
+                const text = await response.text().catch(() => '');
+                if (text) detail = text.slice(0, 140);
+            }
+
+            throw new Error(detail || '오류가 발생했습니다.');
         }
 
-        return response.json();
+        if (response.status === 204) {
+            return null as T;
+        }
+
+        if (isJson) {
+            return response.json();
+        }
+
+        const text = await response.text();
+        return text as unknown as T;
+    }
+
+    private async safeRequest<T>(
+        endpoint: string,
+        options: RequestInit,
+        fallback: T
+    ): Promise<T> {
+        try {
+            return await this.request<T>(endpoint, options);
+        } catch (error) {
+            if (process.env.NODE_ENV !== 'production') {
+                console.warn(`[API] ${endpoint} failed`, error);
+            }
+            return fallback;
+        }
     }
 
     // Auth
@@ -262,7 +302,7 @@ class ApiClient {
 
     // O2O Locations
     async listO2OLocations() {
-        return this.request<O2OLocation[]>('/api/v1/o2o/locations');
+        return this.safeRequest<O2OLocation[]>('/api/v1/o2o/locations', {}, []);
     }
 
     async listO2OCampaigns() {
@@ -306,7 +346,7 @@ class ApiClient {
 
     // Pipelines (Canvas Persistence)
     async listPublicPipelines() {
-        return this.request<Pipeline[]>('/api/v1/pipelines/public');
+        return this.safeRequest<Pipeline[]>('/api/v1/pipelines/public', {}, []);
     }
 
     async listPipelines() {

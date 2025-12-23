@@ -2,11 +2,14 @@
 
 import React from 'react';
 import { Node } from '@xyflow/react';
+import type { CapsuleDefinition, CapsuleParam } from '@/components/canvas/CapsuleNode';
+import { cn } from '@/lib/utils';
 
 interface InspectorProps {
     selectedNode: Node | null;
     onClose: () => void;
     onDeleteNode?: (nodeId: string) => void;
+    onUpdateNodeData?: (nodeId: string, patch: Record<string, unknown>) => void;
     viralData?: {
         performanceDelta?: string;
         parentViews?: number;
@@ -15,7 +18,7 @@ interface InspectorProps {
     };
 }
 
-export function Inspector({ selectedNode, onClose, onDeleteNode, viralData }: InspectorProps) {
+export function Inspector({ selectedNode, onClose, onDeleteNode, onUpdateNodeData, viralData }: InspectorProps) {
     if (!selectedNode) {
         return (
             <aside className="w-80 bg-black/40 backdrop-blur-xl border-l border-white/5 p-6 flex flex-col relative overflow-hidden">
@@ -35,6 +38,20 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, viralData }: In
 
     const nodeType = selectedNode.type || 'unknown';
     const nodeData = selectedNode.data as Record<string, unknown>;
+    const capsule = (nodeData.capsule as CapsuleDefinition | undefined)
+        || (nodeType === 'capsule' ? (nodeData as unknown as CapsuleDefinition) : undefined);
+
+    const updateCapsuleParam = (param: CapsuleParam, value: string | number | boolean) => {
+        if (!capsule || !onUpdateNodeData) return;
+
+        const nextParams = (capsule.params || []).map((item) =>
+            item.key === param.key ? { ...item, value } : item
+        );
+
+        onUpdateNodeData(selectedNode.id, {
+            capsule: { ...capsule, params: nextParams },
+        });
+    };
 
     return (
         <aside className="w-80 bg-black/60 backdrop-blur-2xl border-l border-white/5 flex flex-col overflow-y-auto relative h-full shadow-2xl">
@@ -56,11 +73,13 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, viralData }: In
                 {/* Node Type Badge */}
                 <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md ${nodeType === 'source' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]' :
                     nodeType === 'process' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20 shadow-[0_0_15px_rgba(139,92,246,0.1)]' :
-                        'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
+                        nodeType === 'capsule' ? 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.15)]' :
+                            'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
                     }`}>
                     {nodeType === 'source' && '📹'}
                     {nodeType === 'process' && '🧠'}
                     {nodeType === 'output' && '🎬'}
+                    {nodeType === 'capsule' && '🔒'}
                     <span className="uppercase tracking-wider">{nodeType} Node</span>
                 </div>
             </div>
@@ -146,6 +165,15 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, viralData }: In
                             </div>
                         )}
 
+                        {capsule?.id && (
+                            <div className="group">
+                                <label className="text-[10px] text-white/30 uppercase mb-1 block">Capsule ID</label>
+                                <div className="text-[10px] font-mono text-rose-300/80 bg-rose-900/10 px-3 py-2 rounded-lg border border-rose-500/20">
+                                    {capsule.id}
+                                </div>
+                            </div>
+                        )}
+
                         {Boolean(nodeData.isLocked) && (
                             <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-3">
                                 <span className="text-xl">🔒</span>
@@ -157,6 +185,90 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, viralData }: In
                         )}
                     </div>
                 </div>
+
+                {capsule && (
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <span className="w-1 h-1 rounded-full bg-rose-400"></span>
+                            Capsule 파라미터
+                        </h4>
+
+                        <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-200/80">
+                            내부 체인은 비공개입니다. 노출된 파라미터만 조정할 수 있습니다.
+                        </div>
+
+                        <div className="space-y-3">
+                            {(capsule.params || []).map((param) => {
+                                const disabled = !onUpdateNodeData;
+
+                                if (param.type === 'select') {
+                                    return (
+                                        <div key={param.key} className="space-y-1">
+                                            <label className="text-[10px] text-white/40 uppercase">{param.label}</label>
+                                            <select
+                                                disabled={disabled}
+                                                value={String(param.value ?? '')}
+                                                onChange={(e) => updateCapsuleParam(param, e.target.value)}
+                                                className={cn(
+                                                    "w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/70 focus:outline-none focus:border-rose-500/40",
+                                                    disabled && "opacity-60 cursor-not-allowed"
+                                                )}
+                                            >
+                                                {(param.options || []).map((option) => (
+                                                    <option key={option} value={option}>
+                                                        {option}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    );
+                                }
+
+                                if (param.type === 'toggle') {
+                                    return (
+                                        <button
+                                            key={param.key}
+                                            type="button"
+                                            disabled={disabled}
+                                            onClick={() => updateCapsuleParam(param, !param.value)}
+                                            className={cn(
+                                                "w-full flex items-center justify-between px-3 py-2 rounded-lg border text-xs",
+                                                param.value
+                                                    ? "border-rose-400/40 text-rose-200 bg-rose-500/10"
+                                                    : "border-white/10 text-white/50 bg-black/30",
+                                                disabled && "opacity-60 cursor-not-allowed"
+                                            )}
+                                        >
+                                            <span>{param.label}</span>
+                                            <span>{param.value ? "ON" : "OFF"}</span>
+                                        </button>
+                                    );
+                                }
+
+                                return (
+                                    <div key={param.key} className="space-y-1">
+                                        <label className="text-[10px] text-white/40 uppercase">{param.label}</label>
+                                        <input
+                                            type={param.type === 'number' ? 'number' : 'text'}
+                                            disabled={disabled}
+                                            value={String(param.value ?? '')}
+                                            onChange={(e) =>
+                                                updateCapsuleParam(
+                                                    param,
+                                                    param.type === 'number' ? Number(e.target.value) : e.target.value
+                                                )
+                                            }
+                                            className={cn(
+                                                "w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/70 focus:outline-none focus:border-rose-500/40",
+                                                disabled && "opacity-60 cursor-not-allowed"
+                                            )}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Actions */}

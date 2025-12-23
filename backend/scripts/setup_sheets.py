@@ -10,8 +10,8 @@ import google.oauth2.credentials
 
 def get_gcloud_token():
     try:
-        # Run gcloud command to get access token (cloud-platform scope covers Drive/Sheets)
-        scopes = "https://www.googleapis.com/auth/cloud-platform"
+        # Run gcloud command to get access token (requesting drive and spreadsheets explicitly)
+        scopes = "https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/spreadsheets"
         result = subprocess.run(
             ['gcloud', 'auth', 'print-access-token', f'--scopes={scopes}'],
             capture_output=True,
@@ -33,8 +33,7 @@ def main():
             print("✅ Acquired gcloud access token.")
             # Create credentials object with the token and scopes
             # Passing scopes here helps the library know what scopes are active
-            # Use cloud-platform scope as that is what gcloud provided
-            scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+            scopes = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets"]
             creds = google.oauth2.credentials.Credentials(token, scopes=scopes)
         else:
             print("⚠️ Could not get gcloud token, trying default credentials chain...")
