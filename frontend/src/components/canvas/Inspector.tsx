@@ -4,6 +4,7 @@ import React from 'react';
 import { Node } from '@xyflow/react';
 import type { CapsuleDefinition, CapsuleParam } from '@/components/canvas/CapsuleNode';
 import { cn } from '@/lib/utils';
+import { Video, Brain, Clapperboard, Lock } from 'lucide-react';
 
 interface InspectorProps {
     selectedNode: Node | null;
@@ -76,10 +77,10 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, onUpdateNodeDat
                         nodeType === 'capsule' ? 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.15)]' :
                             'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
                     }`}>
-                    {nodeType === 'source' && '📹'}
-                    {nodeType === 'process' && '🧠'}
-                    {nodeType === 'output' && '🎬'}
-                    {nodeType === 'capsule' && '🔒'}
+                    {nodeType === 'source' && <Video className="w-3 h-3" />}
+                    {nodeType === 'process' && <Brain className="w-3 h-3" />}
+                    {nodeType === 'output' && <Clapperboard className="w-3 h-3" />}
+                    {nodeType === 'capsule' && <Lock className="w-3 h-3" />}
                     <span className="uppercase tracking-wider">{nodeType} Node</span>
                 </div>
             </div>

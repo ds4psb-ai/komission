@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useState, useRef, useEffect } from "react";
+import { Flame, Network, Puzzle, ShoppingBag, User, Wallet, LogOut } from 'lucide-react';
 
 const navItems = [
-    { href: "/", label: "🔥 아웃라이어" },
-    { href: "/canvas", label: "🕸️ 캔버스" },
-    { href: "/pipelines", label: "🧩 템플릿" },
-    { href: "/o2o", label: "🛒 마켓" },
-    { href: "/my", label: "👤 마이" },
+    { href: "/", label: "아웃라이어", icon: Flame },
+    { href: "/canvas", label: "캔버스", icon: Network },
+    { href: "/pipelines", label: "템플릿", icon: Puzzle },
+    { href: "/o2o", label: "마켓", icon: ShoppingBag },
+    { href: "/my", label: "마이", icon: User },
 ];
 
 export function AppHeader() {
@@ -61,7 +62,10 @@ export function AppHeader() {
                                     : "text-white/60 hover:text-white"
                                     }`}
                             >
-                                {item.label}
+                                <span className="flex items-center gap-1.5">
+                                    <item.icon className="w-3.5 h-3.5" />
+                                    {item.label}
+                                </span>
                             </Link>
                         );
                     })}
@@ -109,20 +113,20 @@ export function AppHeader() {
                                                 className="block px-4 py-2 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-colors"
                                                 onClick={() => setShowDropdown(false)}
                                             >
-                                                👤 마이페이지
+                                                <span className="flex items-center gap-2"><User className="w-4 h-4" /> 마이페이지</span>
                                             </Link>
                                             <Link
                                                 href="/my/royalty"
                                                 className="block px-4 py-2 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-colors"
                                                 onClick={() => setShowDropdown(false)}
                                             >
-                                                💰 로열티 내역
+                                                <span className="flex items-center gap-2"><Wallet className="w-4 h-4" /> 로열티 내역</span>
                                             </Link>
                                             <button
                                                 onClick={handleLogout}
                                                 className="w-full text-left px-4 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
                                             >
-                                                🚪 로그아웃
+                                                <span className="flex items-center gap-2"><LogOut className="w-4 h-4" /> 로그아웃</span>
                                             </button>
                                         </div>
                                     </div>

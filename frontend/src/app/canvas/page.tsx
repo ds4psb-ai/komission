@@ -26,6 +26,7 @@ import { api, Pipeline } from '@/lib/api';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useAuth } from '@/lib/auth';
 import { OutlierSelector } from '@/components/canvas/OutlierSelector';
+import { Video, Lock, Dna, Brain, BarChart3, Scale, Clapperboard, MapPin, Zap, FileText, Globe } from 'lucide-react';
 
 // Custom Node Types
 const nodeTypes = {
@@ -638,12 +639,12 @@ function CanvasFlow() {
                                     onClick={() => addNode('source')}
                                     draggable
                                 >
-                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">📹</div>
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400"><Video className="w-4 h-4" /></div>
                                     <span className="text-sm font-bold">미디어 소스</span>
                                 </div>
                             ) : (
                                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl mb-2 flex items-center gap-3 opacity-50 cursor-not-allowed" title="관리자 전용">
-                                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white/30">🔒</div>
+                                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white/30"><Lock className="w-4 h-4" /></div>
                                     <span className="text-sm font-bold text-white/30">새 미디어 (관리자)</span>
                                 </div>
                             )}
@@ -654,7 +655,7 @@ function CanvasFlow() {
                                 onClick={() => setShowOutlierSelector(true)}
                                 draggable={false}
                             >
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center text-white">🧬</div>
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center text-white"><Dna className="w-4 h-4" /></div>
                                 <div>
                                     <span className="text-sm font-bold text-white">아웃라이어 노드</span>
                                     <div className="text-[10px] text-violet-300">바이럴 히트에서 시작</div>
@@ -670,7 +671,7 @@ function CanvasFlow() {
                                 onClick={() => addNode('process')}
                                 draggable
                             >
-                                <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400">🧠</div>
+                                <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400"><Brain className="w-4 h-4" /></div>
                                 <span className="text-sm font-bold">AI 리믹스 엔진</span>
                             </div>
                         </div>
@@ -696,7 +697,7 @@ function CanvasFlow() {
                                 })}
                                 draggable
                             >
-                                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400">📊</div>
+                                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400"><BarChart3 className="w-4 h-4" /></div>
                                 <div>
                                     <span className="text-sm font-bold">Evidence Node</span>
                                     <div className="text-[10px] text-blue-300">VDG 성과 테이블</div>
@@ -709,7 +710,7 @@ function CanvasFlow() {
                                 onClick={() => addNode('decision')}
                                 draggable
                             >
-                                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400">⚖️</div>
+                                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400"><Scale className="w-4 h-4" /></div>
                                 <div>
                                     <span className="text-sm font-bold">Decision Node</span>
                                     <div className="text-[10px] text-amber-300">Opal 결정/실험 계획</div>
@@ -722,7 +723,7 @@ function CanvasFlow() {
                                 onClick={() => addNode('capsule')}
                                 draggable
                             >
-                                <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400">🔒</div>
+                                <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400"><Lock className="w-4 h-4" /></div>
                                 <div>
                                     <span className="text-sm font-bold">Capsule Node</span>
                                     <div className="text-[10px] text-rose-300">Opal/NotebookLM 래핑</div>
@@ -738,7 +739,7 @@ function CanvasFlow() {
                                 onClick={() => addNode('output')}
                                 draggable
                             >
-                                <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400">🎬</div>
+                                <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400"><Clapperboard className="w-4 h-4" /></div>
                                 <span className="text-sm font-bold">템플릿 내보내기</span>
                             </div>
                         </div>
@@ -746,7 +747,7 @@ function CanvasFlow() {
                         {/* O2O Campaigns Section */}
                         <div>
                             <h3 className="text-xs font-bold text-white/40 uppercase mb-3 tracking-wider flex items-center gap-2">
-                                <span>📍</span> O2O 캠페인
+                                <MapPin className="w-3 h-3" /> O2O 캠페인
                             </h3>
                             <div className="space-y-2 max-h-40 overflow-y-auto">
                                 <div
