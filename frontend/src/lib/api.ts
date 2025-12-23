@@ -389,13 +389,87 @@ class ApiClient {
         return this.request<GamificationLeaderboardEntry[]>(`/api/v1/gamification/leaderboard?limit=${limit}`);
     }
 
+    // --- Evidence Loop (Phase 4) ---
+    async getEvidenceTable(nodeId: string, period = "4w", format: "json" | "csv" = "json") {
+        if (format === "csv") {
+            // For CSV, we need to handle the blob download
+            const token = this.getToken();
+            const response = await fetch(`${API_BASE_URL}/api/v1/remix/${nodeId}/evidence?period=${period}&format=csv`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            if (!response.ok) throw new Error("Failed to download CSV");
+            return response.blob();
+        }
+        return this.request<EvidenceTableResponse>(`/api/v1/remix/${nodeId}/evidence?period=${period}`);
+    }
+
+    async createEvidenceSnapshot(nodeId: string, period = "4w") {
+        return this.request<EvidenceSnapshotResponse>(`/api/v1/remix/${nodeId}/evidence/snapshot?period=${period}`, {
+            method: 'POST'
+        });
+    }
+
+    async getVDGSummary(nodeId: string, period = "4w") {
+        return this.request<VDGSummaryResponse>(`/api/v1/remix/${nodeId}/vdg-summary?period=${period}`);
+    }
+
     // Health
     async health() {
         return this.request<{ status: string; version: string }>('/health');
     }
 }
 
-// Types
+// Evidence Loop Types
+export interface EvidenceTableResponse {
+    parent_node_id: string;
+    generated_at: string;
+    period: string;
+    rows: Array<{
+        parent_node_id: string;
+        mutation_type: string;
+        before_pattern: string;
+        after_pattern: string;
+        success_rate: number;
+        sample_count: number;
+        avg_delta: string;
+        period: string;
+        depth: number;
+        confidence: number;
+        risk: string;
+        updated_at: string;
+    }>;
+    total_samples: number;
+    top_recommendation: string | null;
+}
+
+export interface EvidenceSnapshotResponse {
+    snapshot_id: string;
+    parent_node_id: string;
+    period: string;
+    sample_count: number;
+    top_mutation: string | null;
+    created_at: string;
+}
+
+export interface VDGSummaryResponse {
+    node_id: string;
+    period: string;
+    depth1: Record<string, Record<string, {
+        success_rate: number;
+        sample_count: number;
+        avg_delta: string;
+        confidence: number;
+    }>>;
+    depth2: Record<string, any> | null;
+    sample_count: number;
+    top_mutation: {
+        type: string;
+        pattern: string;
+        rate: string;
+        confidence: number;
+    } | null;
+}
+
 export interface O2OLocation {
     id: string;
     location_id: string;
@@ -409,7 +483,17 @@ export interface O2OLocation {
     reward_points: number;
     reward_product?: string;
     active_end: string;
+    category?: string | null; // Added for matching
 }
+
+export interface LeaderboardEntry {
+    rank: number;
+    user_id: string;
+    user_name: string | null;
+    total_royalty: number;
+    node_count: number;
+}
+
 
 export interface O2OCampaign {
     id: string;

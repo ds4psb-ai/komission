@@ -833,22 +833,19 @@ from app.services.evidence_service import evidence_service
 from app.schemas.evidence import EvidenceTableResponse, EvidenceSnapshotResponse
 
 
-@router.get("/{node_id}/evidence", response_model=EvidenceTableResponse)
+@router.get("/{node_id}/evidence")
 async def get_node_evidence(
     node_id: str,
     period: str = Query(default="4w", regex="^(4w|12w|1y)$"),
+    format: str = Query(default="json", regex="^(json|csv)$"),
     db: AsyncSession = Depends(get_db)
 ):
     """
     [Evidence Loop] Parent 노드의 VDG 증거 테이블 조회
     
     Depth 1/2 자식 노드들의 mutation 성과를 집계하여 반환
-    - mutation_type별 success_rate, sample_count, avg_delta
-    - top_recommendation: 가장 성공적인 변주 추천
-    - Sheets 내보내기용 EvidenceRow 포맷
-    
-    Args:
-        period: 분석 기간 (4w: 4주, 12w: 12주, 1y: 1년)
+    - json: API 응답용
+    - csv: NotebookLM/Sheets 업로드용 파일 다운로드 (text/csv)
     """
     # 1. Verify node exists
     result = await db.execute(
@@ -858,7 +855,17 @@ async def get_node_evidence(
     if not node:
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
     
-    # 2. Generate Evidence Table
+    # 2. CSV Export (for NotebookLM)
+    if format == "csv":
+        csv_content = await evidence_service.generate_evidence_csv(
+            db=db,
+            parent_node_id=str(node.id),
+            period=period
+        )
+        from fastapi.responses import Response
+        return Response(content=csv_content, media_type="text/csv")
+    
+    # 3. JSON Response (for API)
     evidence_table = await evidence_service.generate_evidence_table(
         db=db,
         parent_node_id=str(node.id),

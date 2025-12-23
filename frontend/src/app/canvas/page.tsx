@@ -17,6 +17,7 @@ import '@xyflow/react/dist/style.css';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SourceNode, ProcessNode, OutputNode } from '@/components/canvas/CustomNodes';
+import { EvidenceNode, DecisionNode } from '@/components/canvas/EvidenceNodes';
 import { Inspector } from '@/components/canvas/Inspector';
 import { StoryboardPreview } from '@/components/canvas/StoryboardPreview';
 import { AppHeader } from '@/components/AppHeader';
@@ -30,6 +31,8 @@ const nodeTypes = {
     source: SourceNode,
     process: ProcessNode,
     output: OutputNode,
+    evidence: EvidenceNode,
+    decision: DecisionNode,
 };
 
 // Initial Data (Empty canvas)
@@ -424,6 +427,55 @@ function CanvasFlow() {
                 }), // Pre-filled outlier data
                 ...(type === 'process' && { onAnalyze: handleAnalyze, nodeId: createdNodeId }),
                 ...(type === 'output' && { onExport: handleExport, nodeId: createdNodeId, onPreview: () => setShowStoryboard(true) }),
+                ...(type === 'evidence' && {
+                    nodeId: createdNodeId || undefined,  // Pass real nodeId for API calls
+                    evidence: data?.evidence,
+                }),
+                ...(type === 'decision' && {
+                    status: 'pending' as const,
+                    onGenerateDecision: () => {
+                        // Step 1: Set to generating state
+                        setNodes(nds => nds.map(n => {
+                            if (n.id === newNode.id) {
+                                return {
+                                    ...n,
+                                    data: { ...n.data, status: 'generating' }
+                                };
+                            }
+                            return n;
+                        }));
+
+                        // Step 2: Simulate Opal generating decision
+                        setTimeout(() => {
+                            setNodes(nds => nds.map(n => {
+                                if (n.id === newNode.id) {
+                                    return {
+                                        ...n,
+                                        data: {
+                                            ...n.data,
+                                            status: 'decided',
+                                            decision: {
+                                                rationale: "ZOOM_FACE 패턴이 +127% 성과로 Depth 1에서 압도적. Hook 초반 3초 적용 시 CTR 상승 예상. FAST_CUT은 -12%로 리스크.",
+                                                experiment: {
+                                                    id: `exp_${Date.now()}`,
+                                                    target_metric: "CTR",
+                                                    variants: [
+                                                        { name: "Control", mutation: "Original (변경 없음)" },
+                                                        { name: "Test A", mutation: "ZOOM_FACE (Hook 0-3초)" },
+                                                        { name: "Test B", mutation: "ZOOM_FACE + Slow Motion (Hook+Climax)" }
+                                                    ]
+                                                },
+                                                confidence: 0.87
+                                            }
+                                        }
+                                    };
+                                }
+                                return n;
+                            }));
+                            showToast('✅ Opal: 실험 계획 생성 완료!', 'success');
+                        }, 2000);
+                    }
+                }),
             },
         };
 
@@ -580,6 +632,48 @@ function CanvasFlow() {
                             >
                                 <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400">🧠</div>
                                 <span className="text-sm font-bold">AI 리믹스 엔진</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-xs font-bold text-white/40 uppercase mb-3 tracking-wider">에비던스 루프</h3>
+
+                            <div
+                                className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl cursor-pointer hover:border-blue-500/50 transition-all mb-2 flex items-center gap-3"
+                                onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'evidence')}
+                                onClick={() => addNode('evidence', undefined, {
+                                    evidence: {
+                                        period: '4w',
+                                        depth1: {
+                                            visual: {
+                                                'ZOOM_FACE': { success_rate: 0.85, sample_count: 12, avg_delta: '+127%', confidence: 0.9 },
+                                                'FAST_CUT': { success_rate: 0.45, sample_count: 8, avg_delta: '-12%', confidence: 0.7 }
+                                            }
+                                        },
+                                        topMutation: { type: 'visual', pattern: 'ZOOM_FACE', avgDelta: '+127%', confidence: 0.9 },
+                                        sampleCount: 20
+                                    }
+                                })}
+                                draggable
+                            >
+                                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400">📊</div>
+                                <div>
+                                    <span className="text-sm font-bold">Evidence Node</span>
+                                    <div className="text-[10px] text-blue-300">VDG 성과 테이블</div>
+                                </div>
+                            </div>
+
+                            <div
+                                className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl cursor-pointer hover:border-amber-500/50 transition-all mb-2 flex items-center gap-3"
+                                onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'decision')}
+                                onClick={() => addNode('decision')}
+                                draggable
+                            >
+                                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400">⚖️</div>
+                                <div>
+                                    <span className="text-sm font-bold">Decision Node</span>
+                                    <div className="text-[10px] text-amber-300">Opal 결정/실험 계획</div>
+                                </div>
                             </div>
                         </div>
 

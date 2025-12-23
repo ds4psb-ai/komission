@@ -259,6 +259,26 @@ class EvidenceService:
             top_recommendation=f"{top['type']}:{top['pattern']}" if top else None,
         )
     
+    async def generate_evidence_csv(
+        self,
+        db: AsyncSession,
+        parent_node_id: str,
+        period: str = "4w"
+    ) -> str:
+        """Evidence Table을 CSV 문자열로 변환 (NotebookLM용)"""
+        table = await self.generate_evidence_table(db, parent_node_id, period)
+        
+        # CSV Header
+        csv_lines = [
+            "parent_node_id,mutation_type,before,after,success_rate,sample_count,avg_delta,period,depth,confidence,risk,updated_at"
+        ]
+        
+        for row in table.rows:
+            line = f"{row.parent_node_id},{row.mutation_type},{row.before_pattern},{row.after_pattern},{row.success_rate:.2f},{row.sample_count},{row.avg_delta},{row.period},{row.depth},{row.confidence:.2f},{row.risk},{row.updated_at.isoformat()}"
+            csv_lines.append(line)
+            
+        return "\n".join(csv_lines)
+
     def _parse_period(self, period: str) -> int:
         """기간 문자열을 일수로 변환"""
         if period.endswith("w"):
