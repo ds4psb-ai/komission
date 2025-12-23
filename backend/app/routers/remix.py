@@ -14,6 +14,7 @@ from app.models import RemixNode, NodeLayer, NodePermission, NodeGovernance
 from app.routers.auth import get_current_user, require_admin, User
 from app.services.gemini_pipeline import gemini_pipeline
 from app.services.royalty_engine import RoyaltyEngine
+from app.services.neo4j_graph import neo4j_graph
 
 router = APIRouter()
 
@@ -103,7 +104,7 @@ async def list_outliers(
 
 
 
-@router.get("/", response_model=List[RemixNodeResponse])
+@router.get("", response_model=List[RemixNodeResponse])
 async def list_remix_nodes(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -177,10 +178,10 @@ async def get_remix_node(
     )
 
 
-@router.post("/", response_model=RemixNodeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=RemixNodeResponse, status_code=status.HTTP_201_CREATED)
 async def create_remix_node(
     data: RemixNodeCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new master remix node (Admin only)"""
@@ -201,7 +202,7 @@ async def create_remix_node(
         permission=NodePermission.READ_ONLY,
         governed_by=NodeGovernance.OPEN_COMMUNITY,
         created_by=current_user.id,
-        owner_type="admin"
+        owner_type="user"
     )
     
     db.add(node)
@@ -227,7 +228,7 @@ async def create_remix_node(
 @router.post("/{node_id}/analyze")
 async def analyze_node_video(
     node_id: str,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Run Gemini analysis + Claude Planning on a node's source video (Admin only)"""
@@ -539,5 +540,251 @@ async def get_quest_matching(
         "inferred_category": category,
         "recommended_quests": [r.model_dump() for r in recommendations],
         "total_count": len(recommendations)
+    }
+
+
+# --- Mutation Strategy (Genealogy Graph) ---
+
+class MutationStrategyResponse(BaseModel):
+    mutation_strategy: dict
+    expected_boost: str
+    reference_views: Optional[int]
+    confidence: float
+    rationale: str
+
+
+@router.get("/mutation-strategy/{node_id}", response_model=List[MutationStrategyResponse])
+async def get_mutation_strategy(
+    node_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    [Genealogy Graph] 이 노드에서 어떤 변주를 하면 터질까?
+    
+    과거 성공 사례 기반으로 추천 변주 전략 반환
+    - Neo4j EVOLVED_TO 엣지에서 성공 패턴 추출
+    - 데이터 없으면 Mock 데이터 반환
+    """
+    # 1. Verify node exists
+    result = await db.execute(
+        select(RemixNode).where(RemixNode.node_id == node_id)
+    )
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+    
+    # 2. Query Neo4j for mutation strategies
+    strategies = await neo4j_graph.query_mutation_strategy(
+        template_node_id=node_id
+    )
+    
+    return strategies
+
+
+@router.get("/genealogy/{node_id}")
+async def get_genealogy_tree(
+    node_id: str,
+    depth: int = Query(default=3, ge=1, le=5),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    [Genealogy Graph] 특정 노드의 가계도(Family Tree) 반환
+    
+    - root: 요청한 노드 ID
+    - edges: 부모→자식 관계 목록
+    - total_nodes: 전체 노드 수
+    """
+    # 1. Verify node exists
+    result = await db.execute(
+        select(RemixNode).where(RemixNode.node_id == node_id)
+    )
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+    
+    # 2. Query Neo4j for genealogy tree
+    tree = await neo4j_graph.get_genealogy_tree(
+        node_id=node_id,
+        depth=depth
+    )
+    
+    return tree
+
+
+# --- Feedback Loop (Pattern Calibration) ---
+
+from app.services.pattern_calibrator import pattern_calibrator
+
+class PerformanceReport(BaseModel):
+    node_id: str
+    actual_retention: float = Field(..., ge=0.0, le=1.0)
+    actual_views: int = 0
+    source: str = "manual"  # "tiktok_api" | "youtube_api" | "manual"
+
+
+@router.post("/calibrate")
+async def calibrate_node_performance(
+    report: PerformanceReport,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    [Feedback Loop] 실제 성과 데이터 보고 및 패턴 신뢰도 보정
+    
+    사용 시나리오:
+    1. 사용자가 영상 업로드 후 24-48시간 뒤
+    2. 실제 조회수/유지율 데이터 수집
+    3. 이 API 호출 → 패턴 신뢰도 자동 보정
+    """
+    # 1. Verify node exists
+    result = await db.execute(
+        select(RemixNode).where(RemixNode.node_id == report.node_id)
+    )
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node {report.node_id} not found")
+    
+    # 2. Record actual performance and calibrate
+    calibration_result = await pattern_calibrator.record_actual_performance(
+        db=db,
+        node_id=report.node_id,
+        actual_retention=report.actual_retention,
+        actual_views=report.actual_views,
+        source=report.source
+    )
+    
+    return calibration_result
+
+
+@router.get("/pattern-confidence/{pattern_code}")
+async def get_pattern_confidence(
+    pattern_code: str,
+    pattern_type: str = Query(default="visual"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    [Feedback Loop] 특정 패턴의 예측 신뢰도 조회
+    
+    - confidence_score: 높을수록 예측이 정확함 (0.0 ~ 1.0)
+    - sample_count: 검증된 샘플 수 (많을수록 신뢰)
+    """
+    confidence = await pattern_calibrator.get_pattern_confidence(
+        db=db,
+        pattern_code=pattern_code,
+        pattern_type=pattern_type
+    )
+    
+    return confidence
+
+
+@router.get("/pattern-confidence-ranking")
+async def get_pattern_confidence_ranking(
+    min_samples: int = Query(default=5, ge=1),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    [Feedback Loop] 모든 패턴의 신뢰도 랭킹 조회
+    
+    - 신뢰도가 높은 패턴일수록 예측이 정확함
+    - min_samples 이상 검증된 패턴만 반환
+    """
+    ranking = await pattern_calibrator.get_all_pattern_confidences(
+        db=db,
+        min_samples=min_samples
+    )
+    
+    return {
+        "total_patterns": len(ranking),
+        "ranking": ranking
+    }
+
+
+# --- GA/RL Pattern Optimizer ---
+
+from app.services.viral_pattern_optimizer import viral_pattern_ga
+
+class OptimizeRequest(BaseModel):
+    category: Optional[str] = None
+    mood: Optional[str] = None
+    sequence_length: int = Field(default=5, ge=3, le=10)
+    generations: int = Field(default=30, ge=10, le=100)
+
+
+@router.post("/optimize-pattern")
+async def optimize_pattern_sequence(
+    request: OptimizeRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    [GA/RL] 유전 알고리즘으로 최적 바이럴 패턴 시퀀스 탐색
+    
+    - PatternConfidence 데이터를 fitness function으로 활용
+    - 데이터가 쌓일수록 추천 정확도 향상
+    
+    Returns:
+        {
+            "best_sequence": [...패턴 시퀀스...],
+            "best_fitness": 0.85,
+            "generations": 30,
+            "improvement": 0.2
+        }
+    """
+    # 1. 패턴 신뢰도 데이터 로드
+    await viral_pattern_ga.load_pattern_confidences(db)
+    
+    # 2. GA 파라미터 설정
+    viral_pattern_ga.sequence_length = request.sequence_length
+    
+    # 3. 최적화 실행
+    result = viral_pattern_ga.suggest_pattern_sequence(
+        category=request.category,
+        target_mood=request.mood
+    )
+    
+    return result
+
+
+@router.get("/pattern-suggestions")
+async def get_quick_pattern_suggestions(
+    category: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    [GA/RL] 빠른 패턴 조합 추천 (간소화 버전)
+    
+    전체 GA 실행 없이 PatternConfidence 기반 상위 패턴 반환
+    """
+    from app.models import PatternConfidence
+    
+    # 상위 신뢰도 패턴 조회
+    result = await db.execute(
+        select(PatternConfidence)
+        .where(PatternConfidence.sample_count >= 3)
+        .order_by(PatternConfidence.confidence_score.desc())
+        .limit(10)
+    )
+    top_patterns = result.scalars().all()
+    
+    if top_patterns:
+        suggestions = [
+            {
+                "pattern": p.pattern_code,
+                "type": p.pattern_type,
+                "confidence": p.confidence_score,
+                "samples": p.sample_count
+            }
+            for p in top_patterns
+        ]
+    else:
+        # 데이터 없으면 기본 추천
+        suggestions = [
+            {"pattern": "VIS_ZOOM_TO_FACE", "type": "visual", "confidence": 0.7, "samples": 0},
+            {"pattern": "AUD_BASS_DROP", "type": "audio", "confidence": 0.75, "samples": 0},
+            {"pattern": "VIS_RAPID_CUT", "type": "visual", "confidence": 0.68, "samples": 0},
+        ]
+    
+    return {
+        "category": category,
+        "suggestions": suggestions,
+        "source": "pattern_confidence" if top_patterns else "default"
     }
 

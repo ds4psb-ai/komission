@@ -5,6 +5,7 @@ import { useEffect, useState, FormEvent, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api, RemixNode } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
+import { OutlierCard } from "@/components/OutlierCard";
 
 export default function Home() {
   const router = useRouter();
@@ -20,12 +21,7 @@ export default function Home() {
 
   async function fetchNodes() {
     try {
-      // Add timeout to prevent infinite loading
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-
       const data = await api.listRemixNodes({ limit: 50 });
-      clearTimeout(timeoutId);
       setNodes(data);
     } catch (err) {
       console.error("Failed to fetch nodes:", err);
@@ -100,9 +96,16 @@ export default function Home() {
 
       router.push(`/remix/${node.node_id}`);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('분석에 실패했습니다. 올바른 URL인지 확인해주세요.');
+      // Check if it's an authentication error
+      if (error.message?.includes('credentials') || error.message?.includes('401') || error.message?.includes('인증')) {
+        if (confirm('로그인이 필요합니다. 로그인 페이지로 이동할까요?')) {
+          router.push('/login');
+        }
+      } else {
+        alert('분석에 실패했습니다. 올바른 URL인지 확인해주세요.');
+      }
       setIsSubmitting(false);
       setLoadingStage("");
     }
@@ -227,7 +230,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             {nodes.map((node, index) => (
-              <TiltCard key={node.id} node={node} index={index} />
+              <OutlierCard key={node.id} node={node as any} index={index} />
             ))}
 
             {/* Empty State Card */}

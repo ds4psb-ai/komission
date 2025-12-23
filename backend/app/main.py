@@ -69,6 +69,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
     redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
+    redirect_slashes=False,  # Prevent 307 redirects that lose auth headers
 )
 
 # Middlewares (order matters: last added = first executed)

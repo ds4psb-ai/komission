@@ -42,6 +42,10 @@ class User(Base):
     k_points: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
+    # Curator System - Special permissions for dev curators
+    is_curator: Mapped[bool] = mapped_column(Boolean, default=False)
+    curator_since: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    
     # Creator Royalty System
     total_royalty_received: Mapped[int] = mapped_column(Integer, default=0)  # Lifetime royalty earned
     pending_royalty: Mapped[int] = mapped_column(Integer, default=0)         # Unsettled royalty
@@ -302,3 +306,56 @@ class DailyMission(Base):
     points_earned: Mapped[int] = mapped_column(Integer, default=0)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+
+# --- Feedback Loop System (Pattern Learning) ---
+
+class PatternPrediction(Base):
+    """
+    개별 예측 기록
+    영상 분석 시 생성된 패턴별 예측값 저장
+    """
+    __tablename__ = "pattern_predictions"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    node_id: Mapped[str] = mapped_column(String(100), index=True)  # RemixNode.node_id
+    
+    # 패턴 정보
+    pattern_code: Mapped[str] = mapped_column(String(100), index=True)  # e.g., "VIS_RAPID_CUT"
+    pattern_type: Mapped[str] = mapped_column(String(20))  # "visual" | "audio" | "semantic"
+    segment_index: Mapped[int] = mapped_column(Integer, default=0)  # Viral Mosaic 인덱스
+    
+    # 예측값
+    predicted_retention: Mapped[float] = mapped_column(default=0.5)
+    
+    # 실제값 (나중에 채워짐)
+    actual_retention: Mapped[Optional[float]] = mapped_column(nullable=True)
+    prediction_error: Mapped[Optional[float]] = mapped_column(nullable=True)
+    
+    # 검증 정보
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    verification_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # "tiktok_api" | "youtube_api" | "manual"
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class PatternConfidence(Base):
+    """
+    패턴별 신뢰도 (집계 테이블)
+    실제 성과 데이터가 쌓일수록 정확도 향상
+    """
+    __tablename__ = "pattern_confidences"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # 패턴 식별
+    pattern_code: Mapped[str] = mapped_column(String(100), unique=True, index=True)  # e.g., "VIS_RAPID_CUT"
+    pattern_type: Mapped[str] = mapped_column(String(20))  # "visual" | "audio" | "semantic"
+    
+    # 신뢰도 통계
+    sample_count: Mapped[int] = mapped_column(Integer, default=0)  # 검증된 샘플 수
+    avg_absolute_error: Mapped[float] = mapped_column(default=0.0)  # 평균 절대 오차
+    confidence_score: Mapped[float] = mapped_column(default=0.5)  # 0.0 ~ 1.0 (높을수록 신뢰)
+    
+    # 메타데이터
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_updated: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

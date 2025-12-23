@@ -7,15 +7,18 @@ interface NodeWrapperProps {
     title: string;
     colorClass: string;
     status?: 'idle' | 'running' | 'done' | 'error';
-    isLocked?: boolean;  // Governance: Brand protection
+    isLocked?: boolean;  // Governance: Brand protection (Master node)
+    isVariableSlot?: boolean;  // Phase 4: Editable/customizable slot
     viralBadge?: string; // Viral performance insight
 }
 
-const NodeWrapper = ({ children, title, colorClass, status, isLocked, viralBadge }: NodeWrapperProps) => {
-    // Governance styling: locked = gold border + glow
+const NodeWrapper = ({ children, title, colorClass, status, isLocked, isVariableSlot, viralBadge }: NodeWrapperProps) => {
+    // Governance styling: locked = gold border + glow (Master nodes)
     const lockedStyles = isLocked
         ? 'border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.2)]'
-        : 'hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:border-white/40';
+        : isVariableSlot
+            ? 'border-pink-500 shadow-[0_0_25px_rgba(236,72,153,0.3)] ring-2 ring-pink-500/20'
+            : 'hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:border-white/40';
 
     const pulsingClass = !isLocked && status !== 'done'
         ? 'animate-[pulse_4s_ease-in-out_infinite]'
@@ -24,7 +27,8 @@ const NodeWrapper = ({ children, title, colorClass, status, isLocked, viralBadge
     // Gradient header based on color class
     const headerGradient = colorClass.includes('emerald') ? 'from-emerald-900/40 to-emerald-800/20' :
         colorClass.includes('violet') ? 'from-violet-900/40 to-violet-800/20' :
-            'from-cyan-900/40 to-cyan-800/20';
+            colorClass.includes('pink') && isVariableSlot ? 'from-pink-900/40 to-pink-800/20' :
+                'from-cyan-900/40 to-cyan-800/20';
 
     return (
         <div className={`glass-panel rounded-2xl min-w-[300px] overflow-hidden border ${colorClass} ${lockedStyles} ${pulsingClass} transition-all duration-300 group`}>
@@ -32,7 +36,13 @@ const NodeWrapper = ({ children, title, colorClass, status, isLocked, viralBadge
             <div className={`px-5 py-3 border-b bg-gradient-to-r ${headerGradient} flex items-center justify-between ${colorClass}`}>
                 <div className="flex items-center gap-2">
                     {isLocked && <span className="text-amber-400 text-lg drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]">🔒</span>}
+                    {isVariableSlot && !isLocked && <span className="text-pink-400 text-lg drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]">🎯</span>}
                     <span className="font-bold text-sm tracking-widest text-white/90 uppercase">{title}</span>
+                    {isVariableSlot && !isLocked && (
+                        <span className="text-[9px] px-2 py-0.5 bg-pink-500/20 text-pink-300 border border-pink-500/30 rounded-full font-bold">
+                            편집 가능
+                        </span>
+                    )}
                 </div>
                 <div className="flex gap-2 items-center">
                     {viralBadge && (
@@ -67,6 +77,11 @@ const NodeWrapper = ({ children, title, colorClass, status, isLocked, viralBadge
                 {isLocked && (
                     <div className="mb-4 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-300 font-bold text-center shadow-[inset_0_0_10px_rgba(251,191,36,0.1)]">
                         ⚠️ 브랜드 보호 노드 - 수정 불가
+                    </div>
+                )}
+                {isVariableSlot && !isLocked && (
+                    <div className="mb-4 px-3 py-2 bg-pink-500/10 border border-pink-500/30 rounded-lg text-xs text-pink-300 font-bold text-center shadow-[inset_0_0_10px_rgba(236,72,153,0.1)]">
+                        🎯 이 슬롯을 자유롭게 수정하세요!
                     </div>
                 )}
                 <div className="relative z-10">

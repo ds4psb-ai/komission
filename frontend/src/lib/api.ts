@@ -52,6 +52,21 @@ class ApiClient {
         });
 
         if (!response.ok) {
+            // Handle token expiration (401 Unauthorized)
+            if (response.status === 401) {
+                console.warn('[API] Token expired or invalid, logging out...');
+                this.clearToken();
+
+                // Redirect to login page (only in browser)
+                if (typeof window !== 'undefined') {
+                    // Avoid redirect loop if already on login page
+                    if (!window.location.pathname.includes('/login')) {
+                        window.location.href = '/login?expired=true';
+                    }
+                }
+                throw new Error('세션이 만료되었습니다. 다시 로그인해 주세요.');
+            }
+
             const error: ApiError = await response.json().catch(() => ({
                 detail: '오류가 발생했습니다.',
             }));
@@ -138,7 +153,7 @@ class ApiClient {
         if (params?.limit) query.set('limit', params.limit.toString());
         if (params?.layer) query.set('layer', params.layer);
 
-        return this.request<RemixNode[]>(`/api/v1/remix/?${query}`);
+        return this.request<RemixNode[]>(`/api/v1/remix?${query}`);
     }
 
     async getMyStats(): Promise<UserStats> {
@@ -150,7 +165,7 @@ class ApiClient {
     }
 
     async createRemixNode(data: CreateRemixNodeInput) {
-        return this.request<RemixNode>('/api/v1/remix/', {
+        return this.request<RemixNode>('/api/v1/remix', {
             method: 'POST',
             body: JSON.stringify(data),
         });
@@ -173,9 +188,6 @@ class ApiClient {
         });
     }
 
-    async getRemixNodeGenealogy(nodeId: string) {
-        return this.request<GenealogyResponse>(`/api/v1/remix/${nodeId}/genealogy`);
-    }
 
     /**
      * Generate a simple browser fingerprint for anti-abuse.
@@ -207,6 +219,45 @@ class ApiClient {
             `/api/v1/remix/${nodeId}/analyze`,
             { method: 'POST' }
         );
+    }
+
+    // --- Mutation Strategy & Genealogy ---
+    async getMutationStrategy(nodeId: string) {
+        return this.request<MutationStrategyResponse[]>(`/api/v1/remix/mutation-strategy/${nodeId}`);
+    }
+
+    async getRemixNodeGenealogy(nodeId: string, depth = 3) {
+        return this.request<GenealogyResponse>(`/api/v1/remix/genealogy/${nodeId}?depth=${depth}`);
+    }
+
+    // --- Feedback Loop ---
+    async reportPerformance(data: { node_id: string; actual_retention: number; actual_views?: number; source?: string }) {
+        return this.request<{ calibrated: boolean; details: unknown[] }>('/api/v1/remix/calibrate', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async getPatternConfidence(patternCode: string, type = 'visual') {
+        return this.request<PatternConfidenceResponse>(`/api/v1/remix/pattern-confidence/${patternCode}?pattern_type=${type}`);
+    }
+
+    async getPatternConfidenceRanking(minSamples = 5) {
+        return this.request<PatternRankingResponse>(`/api/v1/remix/pattern-confidence-ranking?min_samples=${minSamples}`);
+    }
+
+    // --- GA/RL Optimization ---
+    async optimizePattern(data: { category?: string; mood?: string; sequence_length?: number; generations?: number }) {
+        return this.request<PatternOptimizationResponse>('/api/v1/remix/optimize-pattern', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async getPatternSuggestions(category?: string) {
+        let url = '/api/v1/remix/pattern-suggestions';
+        if (category) url += `?category=${category}`;
+        return this.request<PatternSuggestionResponse>(url);
     }
 
     // O2O Locations
@@ -363,11 +414,62 @@ export interface AuthResponse {
 }
 
 export interface GenealogyResponse {
-    current: { id: string; title: string };
-    ancestors: Array<{ id: string; title: string }>;
-    children: Array<{ id: string; title: string }>;
-    source?: string;
+    root: string;
+    total_nodes: number;
+    edges: Array<{
+        parent: string;
+        child: string;
+        delta: string;
+    }>;
     error?: string;
+}
+
+export interface MutationStrategyResponse {
+    mutation_strategy: Record<string, any>;
+    expected_boost: string;
+    reference_views?: number;
+    confidence: number;
+    rationale: string;
+}
+
+export interface PatternConfidenceResponse {
+    pattern_code: string;
+    confidence_score: number;
+    sample_count: number;
+    avg_error: number | null;
+    status: string;
+}
+
+export interface PatternRankingResponse {
+    total_patterns: number;
+    ranking: Array<{
+        pattern_code: string;
+        pattern_type: string;
+        confidence: number;
+        samples: number;
+        avg_error: number;
+    }>;
+}
+
+export interface PatternOptimizationResponse {
+    best_sequence: Record<string, any>;
+    best_fitness: number;
+    generations: number;
+    initial_fitness: number;
+    improvement: number;
+    history: number[];
+    recommendation: string;
+}
+
+export interface PatternSuggestionResponse {
+    category: string | null;
+    suggestions: Array<{
+        pattern: string;
+        type: string;
+        confidence: number;
+        samples: number;
+    }>;
+    source: string;
 }
 
 export interface UserStats {
@@ -553,4 +655,3 @@ export interface GamificationLeaderboardEntry {
 
 // Singleton instance
 export const api = new ApiClient();
-

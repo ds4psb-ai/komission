@@ -19,6 +19,14 @@ function LoginContent() {
     const [spotlight, setSpotlight] = useState({ x: 50, y: 50 });
 
     const redirectTo = searchParams.get('redirect') || '/my';
+    const isSessionExpired = searchParams.get('expired') === 'true';
+
+    // Show session expired message on mount
+    React.useEffect(() => {
+        if (isSessionExpired) {
+            setError('세션이 만료되었습니다. 다시 로그인해 주세요.');
+        }
+    }, [isSessionExpired]);
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!cardRef.current) return;

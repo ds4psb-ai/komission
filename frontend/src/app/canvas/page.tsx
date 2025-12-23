@@ -501,11 +501,7 @@ function CanvasFlow() {
 
     return (
         <div className="flex flex-col h-screen bg-[#050505] selection:bg-violet-500/30 selection:text-violet-200 overflow-hidden relative">
-            {/* Aurora Background */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-                <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-violet-600/10 blur-[150px] rounded-full animate-float" />
-                <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-pink-600/10 blur-[150px] rounded-full animate-float delay-1000" />
-            </div>
+            {/* Aurora Background removed - Phase 5: Production tools should prioritize information density */}
 
             {/* Global Header */}
             <AppHeader />

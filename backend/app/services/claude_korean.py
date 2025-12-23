@@ -33,18 +33,32 @@ class ClaudeKoreanPlanner:
             return self._get_mock_scenario()
 
         # Construct Prompt
-        meme_dna = gemini_result.get("meme_dna", {})
-        metadata = gemini_result.get("metadata", {})
+        # Construct Prompt
+        # Support for V3 Reconstructible Schema
+        if "global_context" in gemini_result:
+            ctx = gemini_result["global_context"]
+            title = ctx.get("title", "Untitled")
+            mood = ctx.get("mood", "Viral")
+            key_action = ctx.get("key_action_description", "")
+            humor_point = ctx.get("viral_hook_summary", "")
+        else:
+            # Legacy Schema
+            meme_dna = gemini_result.get("meme_dna", {})
+            metadata = gemini_result.get("metadata", {})
+            title = metadata.get("title")
+            mood = metadata.get("mood")
+            key_action = meme_dna.get("key_action")
+            humor_point = meme_dna.get("humor_point")
         
         prompt = f"""
         당신은 한국의 틱톡/릴스 트렌드를 선도하는 '바이럴 콘텐츠 디렉터'입니다.
         주어진 비디오 분석 데이터(Gemini Analysis)를 바탕으로, 한국 시청자들에게 먹히는 '숏폼 챌린지 시나리오'를 기획해주세요.
 
         [입력 데이터]
-        - Title: {metadata.get('title')}
-        - Mood: {metadata.get('mood')}
-        - Key Action: {meme_dna.get('key_action')}
-        - Humor Point: {meme_dna.get('humor_point')}
+        - Title: {title}
+        - Mood: {mood}
+        - Key Action: {key_action}
+        - Humor Point: {humor_point}
         - Context: {context}
 
         [요청 사항]

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
 import { api, RemixNode, RoyaltySummary, EarningNode, UserStats, GenealogyResponse } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useRealTimeMetrics } from '@/hooks/useRealTimeMetrics';
 
 interface TreeNode {
     id: string;
@@ -78,6 +79,12 @@ export default function MyPage() {
     // User Stats
     const [stats, setStats] = useState<UserStats | null>(null);
 
+    // 🔴 Real-time WebSocket Metrics (Expert Recommendation)
+    const { metrics: realTimeMetrics, isConnected: wsConnected, lastUpdate } = useRealTimeMetrics({
+        userId: user?.id || null,
+        enabled: isAuthenticated && !!user?.id,
+    });
+
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
             router.push('/login?redirect=/my');
@@ -147,37 +154,35 @@ export default function MyPage() {
     }
 
     function transformGenealogyToTree(data: GenealogyResponse): TreeNode {
-        // Build Current Node
-        let root: TreeNode = {
-            id: data.current.id,
-            title: data.current.title,
-            views: 0,
-            forks: data.children.length,
-            depth: data.ancestors.length,
-            children: data.children.map(c => ({
-                id: c.id,
-                title: c.title,
-                views: 0,
-                forks: 0,
-                depth: data.ancestors.length + 1,
-                children: []
-            }))
-        };
+        // Build tree from edge-based schema
+        // New schema has: root, total_nodes, edges: Array<{parent, child, delta}>
 
-        // If ancestors exist, chain them
-        if (data.ancestors && data.ancestors.length > 0) {
-            const parent = data.ancestors[0];
-            root = {
-                id: parent.id,
-                title: parent.title,
+        // Create a map of node IDs to their children
+        const nodeChildren: Record<string, string[]> = {};
+        const nodeDeltas: Record<string, string> = {};
+
+        data.edges.forEach(edge => {
+            if (!nodeChildren[edge.parent]) {
+                nodeChildren[edge.parent] = [];
+            }
+            nodeChildren[edge.parent].push(edge.child);
+            nodeDeltas[edge.child] = edge.delta;
+        });
+
+        // Build tree recursively from root
+        function buildNode(nodeId: string, depth: number): TreeNode {
+            const children = nodeChildren[nodeId] || [];
+            return {
+                id: nodeId,
+                title: nodeId.substring(0, 8) + '...', // Truncated ID as title
                 views: 0,
-                forks: 1, // At least the current node
-                depth: 0,
-                children: [root]
+                forks: children.length,
+                depth: depth,
+                children: children.map(childId => buildNode(childId, depth + 1))
             };
         }
 
-        return root;
+        return buildNode(data.root, 0);
     }
 
     async function loadRoyaltyData() {
@@ -206,9 +211,19 @@ export default function MyPage() {
                                 <br />
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-pink-400 to-orange-400 animate-text-shimmer">대시보드</span>
                             </h1>
-                            <p className="text-xl text-white/40 max-w-2xl">
-                                AI 리믹스 성과와 확산 계보를 실시간으로 추적하세요.
-                            </p>
+                            <div className="flex items-center gap-4">
+                                <p className="text-xl text-white/40 max-w-2xl">
+                                    AI 리믹스 성과와 확산 계보를 실시간으로 추적하세요.
+                                </p>
+                                {/* 🔴 Real-time Connection Indicator */}
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${wsConnected
+                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                    : 'bg-white/5 text-white/30 border border-white/10'
+                                    }`}>
+                                    <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-emerald-400 animate-pulse' : 'bg-white/30'}`}></span>
+                                    {wsConnected ? 'LIVE' : 'Offline'}
+                                </div>
+                            </div>
                         </div>
 
                         {/* 🆕 Expert Recommendation: Big CTA - Next Remix */}

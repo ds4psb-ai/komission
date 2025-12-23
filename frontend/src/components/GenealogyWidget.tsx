@@ -1,54 +1,69 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { api, GenealogyResponse } from '@/lib/api';
 
 interface GenealogyWidgetProps {
-    depth: number;
-    layer: string;
-    parentId?: string;
-    performanceDelta?: string; // e.g. "+350%"
+    nodeId: string;
+    layer?: string;
+    depth?: number;
 }
 
-export function GenealogyWidget({ depth, layer, parentId, performanceDelta }: GenealogyWidgetProps) {
-    const steps = [];
+export function GenealogyWidget({ nodeId, layer = 'fork', depth = 3 }: GenealogyWidgetProps) {
+    const [data, setData] = useState<GenealogyResponse | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    // Construct a mock history based on depth
-    // In a real app, this would fetch the full graph path from Neo4j
-    for (let i = 0; i <= depth; i++) {
-        steps.push(i);
-    }
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const res = await api.getRemixNodeGenealogy(nodeId, depth);
+                setData(res);
+            } catch (err) {
+                console.error("Failed to fetch genealogy:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (nodeId) {
+            fetchData();
+        }
+    }, [nodeId, depth]);
+
+    if (loading) return <div className="text-white/50 text-sm animate-pulse">Loading genealogy...</div>;
+    if (!data || data.edges.length === 0) return null;
 
     return (
         <div className="glass-panel p-6 rounded-2xl mb-6">
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest">바이럴 계보</h3>
+                <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest">바이럴 계보 (Genealogy)</h3>
                 <span className="text-xs bg-violet-500/20 text-violet-300 px-3 py-1 rounded-full border border-violet-500/30">
-                    깊이: {depth}
+                    세대 깊이: {data.total_nodes}
                 </span>
             </div>
 
             <div className="relative flex flex-col gap-8 pl-4 border-l-2 border-dashed border-white/10 ml-3">
-                {/* Render Ancestors */}
-                {depth > 0 && (
-                    <div className="relative group">
+                {/* Render Edges (Ancestors) */}
+                {data.edges.map((edge, index) => (
+                    <div key={index} className="relative group">
                         {/* Node Dot */}
                         <div className="absolute -left-[21px] top-3 w-4 h-4 rounded-full bg-slate-700 border-2 border-slate-500 z-10 group-hover:scale-125 transition-transform"></div>
 
                         <div className="bg-white/5 border border-white/5 p-3 rounded-xl hover:bg-white/10 transition-colors cursor-pointer flex gap-4 items-center">
                             <div className="w-12 h-12 bg-slate-800 rounded-lg flex-shrink-0 flex items-center justify-center text-xs text-white/30">
-                                부모
+                                {edge.parent.substring(0, 4)}...
                             </div>
                             <div>
-                                <div className="text-xs text-white/40 mb-1">원본 노드</div>
-                                <div className="text-sm font-medium text-slate-300">오리지널 컨셉</div>
+                                <div className="text-xs text-white/40 mb-1">부모 노드</div>
+                                <div className="text-sm font-medium text-slate-300">{edge.parent}</div>
                             </div>
                         </div>
 
                         {/* Connection Label */}
                         <div className="absolute -left-[14px] top-14 h-8 border-l border-violet-500/50"></div>
                         <div className="absolute left-6 -bottom-6 text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                            변이: {performanceDelta || "+??%"} 🚀
+                            성과: {edge.delta} 🚀
                         </div>
                     </div>
-                )}
+                ))}
 
                 {/* Current Node */}
                 <div className="relative">
@@ -60,7 +75,7 @@ export function GenealogyWidget({ depth, layer, parentId, performanceDelta }: Ge
                         </div>
 
                         <div className="relative z-10">
-                            <div className="text-xs text-violet-400 font-bold mb-1 uppercase">현재 노드</div>
+                            <div className="text-xs text-violet-400 font-bold mb-1 uppercase">현재 노드 ({nodeId.substring(0, 8)})</div>
                             <div className="text-lg font-bold text-white">
                                 {layer === 'master' ? '마스터 오리진' : '진화된 변이'}
                             </div>

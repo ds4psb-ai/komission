@@ -131,6 +131,19 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+async def require_curator(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Require curator privileges.
+    Curators have special permissions for video curation and analysis.
+    """
+    if not current_user.is_curator and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Curator access required. Contact admin for curator privileges."
+        )
+    return current_user
+
+
 # ============ Google OAuth ============
 
 async def verify_google_token(credential: str) -> dict:
