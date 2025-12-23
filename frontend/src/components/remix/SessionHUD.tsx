@@ -52,17 +52,17 @@ export function SessionHUD({ nodeId }: SessionHUDProps) {
                     {/* Center: Context Info (Hidden on mobile) */}
                     <div className="hidden lg:flex items-center gap-2 flex-1 justify-center">
                         {outlier && (
-                            <Badge variant="subtle" color="emerald" className="max-w-[150px] truncate">
+                            <Badge variant="soft" intent="success" className="max-w-[150px] truncate">
                                 📍 {outlier.title}
                             </Badge>
                         )}
                         {quest && (
-                            <Badge variant="subtle" color="orange">
+                            <Badge variant="soft" intent="warning">
                                 🎯 +{quest.rewardPoints}P
                             </Badge>
                         )}
                         {run && (
-                            <Badge variant="subtle" color="pink">
+                            <Badge variant="soft" intent="error">
                                 🎬 {run.status}
                             </Badge>
                         )}

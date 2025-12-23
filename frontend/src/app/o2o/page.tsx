@@ -14,12 +14,12 @@ export default function O2OPage() {
     const getTypeMeta = (type?: string) => {
         const normalized = type?.toLowerCase() || "";
         if (normalized.includes("ship") || normalized.includes("delivery")) {
-            return { label: "배송", color: "violet" as const, desc: "배송 후 촬영" };
+            return { label: "배송", intent: "brand" as const, desc: "배송 후 촬영" };
         }
         if (normalized.includes("instant") || normalized.includes("digital")) {
-            return { label: "즉시", color: "cyan" as const, desc: "바로 촬영 가능" };
+            return { label: "즉시", intent: "cyan" as const, desc: "바로 촬영 가능" };
         }
-        return { label: "방문", color: "orange" as const, desc: "위치 인증 필요" };
+        return { label: "방문", intent: "warning" as const, desc: "위치 인증 필요" };
     };
 
     const selectedTypeMeta = selectedLoc ? getTypeMeta(selectedLoc.campaign_type) : null;
@@ -128,7 +128,7 @@ export default function O2OPage() {
                                     </div>
                                     {selectedTypeMeta && (
                                         <div className="flex flex-col items-end gap-2">
-                                            <Badge variant="outline" color={selectedTypeMeta.color}>
+                                            <Badge variant="outline" intent={selectedTypeMeta.intent}>
                                                 {selectedTypeMeta.label}
                                             </Badge>
                                             <span className="text-[10px] text-white/40">

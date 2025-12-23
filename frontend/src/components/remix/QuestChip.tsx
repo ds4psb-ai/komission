@@ -18,11 +18,11 @@ export function QuestChip() {
 
     const typeMeta =
         quest.campaignType === "instant"
-            ? { label: "즉시", color: "cyan" as const, note: "즉시 촬영 가능" }
+            ? { label: "즉시", intent: "cyan" as const, note: "즉시 촬영 가능" }
             : quest.campaignType === "shipment"
-                ? { label: "배송", color: "violet" as const, note: "제품 수령 후 촬영" }
+                ? { label: "배송", intent: "brand" as const, note: "제품 수령 후 촬영" }
                 : quest.campaignType === "onsite"
-                    ? { label: "방문", color: "orange" as const, note: "위치 인증 필요" }
+                    ? { label: "방문", intent: "warning" as const, note: "위치 인증 필요" }
                     : null;
 
     return (
@@ -37,7 +37,7 @@ export function QuestChip() {
                         <div className="flex items-center gap-2 text-xs text-white/50">
                             <span>{quest.status === "accepted" ? "진행 중" : "추천됨"}</span>
                             {typeMeta && (
-                                <Badge variant="outline" color={typeMeta.color}>
+                                <Badge variant="outline" intent={typeMeta.intent}>
                                     {typeMeta.label}
                                 </Badge>
                             )}

@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { Database, Lock, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 
 export type CapsuleStatus = "idle" | "running" | "done" | "error";
@@ -52,12 +53,20 @@ export const CapsuleNode = memo(({ data }: { data: CapsuleNodeData }) => {
                     <span className="font-bold text-xs tracking-[0.3em] text-white/80 uppercase">
                         Capsule
                     </span>
-                    <span className="text-[9px] px-2 py-0.5 rounded-full border border-white/10 text-white/40">
+                    <Badge variant="outline" intent="error" className="text-[9px] px-2 py-0.5 border-white/10 text-white/40">
                         SEALED
-                    </span>
+                    </Badge>
                 </div>
-                <div className="flex items-center gap-2 text-[10px] text-white/50">
-                    <span className={cn("w-2 h-2 rounded-full", statusStyles[status])} />
+                <div className="flex items-center gap-2">
+                    <Badge
+                        variant="glow"
+                        intent={
+                            status === 'running' ? 'warning' :
+                                status === 'done' ? 'success' :
+                                    status === 'error' ? 'error' : 'neutral'
+                        }
+                        className={cn("w-2 h-2 p-0 rounded-full", status === 'running' && "animate-pulse")}
+                    />
                 </div>
             </div>
 

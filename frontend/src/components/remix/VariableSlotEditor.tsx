@@ -34,7 +34,7 @@ export function VariableSlotEditor({ slots, onChange }: VariableSlotEditorProps)
                 <h2 className="text-lg font-bold flex items-center gap-2">
                     🎯 커스터마이즈
                 </h2>
-                <Badge variant="subtle" color="pink">
+                <Badge variant="soft" intent="error">
                     편집 가능한 슬롯
                 </Badge>
             </div>
@@ -51,8 +51,8 @@ export function VariableSlotEditor({ slots, onChange }: VariableSlotEditorProps)
                                 <button
                                     onClick={() => handleChange(slot.slotId, !slot.value)}
                                     className={`w-12 h-6 rounded-full transition-all ${slot.value
-                                            ? "bg-[rgb(var(--color-violet))]"
-                                            : "bg-white/20"
+                                        ? "bg-[rgb(var(--color-violet))]"
+                                        : "bg-white/20"
                                         }`}
                                 >
                                     <div

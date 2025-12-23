@@ -1,101 +1,104 @@
 @import "tailwindcss";
 
 :root {
-  /* 🎨 Premium Neon Noir Palette */
+  /* 🌌 Deep Space Palette (OKLCH where possible, fallback to custom RGB) */
   --background: #050505;
   --foreground: #ffffff;
-  --foreground-muted: rgba(255, 255, 255, 0.6);
+  --foreground-muted: rgba(255, 255, 255, 0.5);
 
-  /* Brand Colors (RGB for opacity support) */
-  --color-violet: 139 92 246;  /* #8b5cf6 */
-  --color-pink: 236 72 153;    /* #ec4899 */
-  --color-cyan: 6 182 212;     /* #06b6d4 */
-  --color-orange: 249 115 22;  /* #f97316 */
-  --color-emerald: 16 185 129; /* #10b981 */
-  --color-danger: 239 68 68;   /* #ef4444 */
+  /* Brand Colors (RGB for opacity) */
+  /* Indigo Glow: More depth than plain violets */
+  --color-violet: 124 58 237;
+  /* #7c3aed */
+  /* Rose Pink: Sophisticated, less neon */
+  --color-pink: 244 63 94;
+  /* #f43f5e */
+  /* Cyan: Electric but grounded */
+  --color-cyan: 34 211 238;
+  /* #22d3ee */
+  /* Amber: Warmth for alerts */
+  --color-orange: 251 146 60;
+  /* #fb923c */
+  /* Emerald: Success signals */
+  --color-emerald: 52 211 153;
+  /* #34d399 */
 
-  /* Surface Colors */
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-surface: rgba(255, 255, 255, 0.03);
-  --glass-surface-hover: rgba(255, 255, 255, 0.06);
-  --glass-surface-active: rgba(255, 255, 255, 0.08);
+  /* Surface System */
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-surface: rgba(10, 10, 12, 0.4);
+  /* Darker base for contrast */
+  --glass-surface-hover: rgba(255, 255, 255, 0.03);
+  --glass-highlight: rgba(255, 255, 255, 0.1);
 }
 
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  
-  /* Extend palette with brand colors */
+
   --color-brand-violet: rgb(var(--color-violet));
   --color-brand-pink: rgb(var(--color-pink));
   --color-brand-cyan: rgb(var(--color-cyan));
-  --color-brand-orange: rgb(var(--color-orange));
-  --color-brand-emerald: rgb(var(--color-emerald));
-  
-  --animate-pulse-glow: pulse-glow 3s infinite cubic-bezier(0.4, 0, 0.6, 1);
-  --animate-aurora: aurora-flow 15s ease infinite;
-  --animate-float: float 6s ease-in-out infinite;
-  
-  --keyframes-pulse-glow: {
-    0%, 100% { opacity: 0.5; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.05); }
-  };
-  
-  --keyframes-aurora-flow: {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  };
-  
-  --keyframes-float: {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-  };
+
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+
+  --keyframes-shimmer: {
+    from {
+      background-position: 0 0;
+    }
+
+    to {
+      background-position: -200% 0;
+    }
+  }
+
+  ;
 }
 
 /* 🛠️ Utility Classes */
+
+/* 1. Base Glass Material */
 @utility glass-panel {
-  background-color: var(--glass-surface);
-  backdrop-filter: blur(12px);
+  background: var(--glass-surface);
+  backdrop-filter: blur(16px);
+  /* Heavier blur for premium feel */
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+
+  /* Subtle inner light */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, transparent 40%);
+    pointer-events: none;
+  }
 }
 
-@utility glass-panel-hover {
-  transition-property: all;
-  transition-duration: 300ms;
+/* 2. Interactive States */
+@utility hover-glow {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
   &:hover {
-    background-color: var(--glass-surface-hover);
-    border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 0 15px rgba(var(--color-violet), 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px -5px rgba(var(--color-violet), 0.15);
+    border-color: rgba(var(--color-violet), 0.3);
   }
 }
 
-@utility glass-button {
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(4px);
-  transition: all 0.2s;
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-  &:active {
-    transform: scale(0.98);
-  }
+/* 3. Text Typography */
+@utility text-balance {
+  text-wrap: balance;
 }
 
-@utility text-glow {
-  text-shadow: 0 0 20px rgba(var(--color-violet), 0.5);
-}
-
-@utility neon-border {
-  box-shadow: 0 0 10px rgba(var(--color-violet), 0.3), inset 0 0 20px rgba(var(--color-violet), 0.1);
-}
-
+/* 4. Scrollbar hiding */
 @utility hide-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
   &::-webkit-scrollbar {
     display: none;
   }
@@ -130,6 +133,7 @@ body {
   background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid var(--glass-border);
   fill: white;
+
   &:hover {
     background: rgba(255, 255, 255, 0.1);
   }

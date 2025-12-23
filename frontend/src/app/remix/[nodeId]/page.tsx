@@ -80,7 +80,7 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
                             예상 조회수 <span className="text-white font-bold">50K ~ 100K</span>
                         </div>
                         {quest && (
-                            <Badge variant="subtle" color="emerald" className="gap-1.5">
+                            <Badge variant="soft" intent="success" className="gap-1.5">
                                 <Target className="w-3.5 h-3.5" />
                                 +{quest.rewardPoints}P 퀘스트 적용됨
                             </Badge>
@@ -195,7 +195,7 @@ function EarnTabContent({ nodeId }: { nodeId: string }) {
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-black text-white">💰 수익 기회</h1>
                 {quest && (
-                    <Badge variant="solid" color="emerald" className="gap-1.5">
+                    <Badge variant="default" intent="success" className="gap-1.5">
                         <Check className="w-4 h-4" /> 퀘스트 적용됨
                     </Badge>
                 )}
@@ -204,7 +204,7 @@ function EarnTabContent({ nodeId }: { nodeId: string }) {
             <Card variant="default">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="font-bold text-white">캠페인 유형 안내</h2>
-                    <Badge variant="outline" color="orange">현재: 방문형</Badge>
+                    <Badge variant="outline" intent="warning">현재: 방문형</Badge>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3 text-xs text-white/60">
                     <div className="rounded-xl border border-white/10 bg-white/5 p-3">
@@ -264,79 +264,79 @@ function EarnTabContent({ nodeId }: { nodeId: string }) {
 
                     return (
                         <Card key={q.id} variant="hover">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400">
-                                    <Target className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-white">{q.campaign_title}</h3>
-                                        <Badge variant="outline" color={typeConfig.color}>{typeConfig.label}</Badge>
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400">
+                                        <Target className="w-5 h-5" />
                                     </div>
-                                    <div className="text-xs text-white/50">
-                                        {q.brand || "브랜드"}
-                                        {q.place_name ? ` · ${q.place_name}` : ` · ${typeConfig.desc}`}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-xl font-black text-orange-400">+{q.reward_points}P</div>
-                        </div>
-
-                        {q.address && (
-                            <div className="text-sm text-white/60 mb-3">{q.address}</div>
-                        )}
-                        {q.reward_product && (
-                            <div className="text-xs text-white/40 mb-3">제공 제품: {q.reward_product}</div>
-                        )}
-                        <div className="flex items-center justify-between text-xs text-white/40 mb-4">
-                            <span>마감 {formatDeadline(q.deadline)}</span>
-                            {normalizedType === "onsite" && (
-                                <Link href="/o2o" className="text-orange-300 hover:text-orange-200">
-                                    위치 인증 안내
-                                </Link>
-                            )}
-                        </div>
-
-                        {normalizedType === "shipment" && (
-                            <div className="mb-4 p-3 bg-violet-500/10 rounded-lg border border-violet-500/20">
-                                <div className="flex items-center justify-between text-xs text-white/60 mb-2">
-                                    <span>배송 진행 단계</span>
-                                    <span>1 / {steps.length}</span>
-                                </div>
-                                <div className="flex gap-1">
-                                    {steps.map((step, idx) => (
-                                        <div key={step} className="flex-1 flex flex-col items-center gap-1">
-                                            <div className={`w-full h-1.5 rounded-full ${idx < 1 ? "bg-violet-500" : "bg-white/10"}`} />
-                                            <span className={`text-[10px] ${idx < 1 ? "text-violet-400" : "text-white/30"}`}>{step}</span>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-bold text-white">{q.campaign_title}</h3>
+                                            <Badge variant="outline" intent={typeConfig.color === 'cyan' ? 'cyan' : typeConfig.color === 'violet' ? 'brand' : 'warning'}>{typeConfig.label}</Badge>
                                         </div>
-                                    ))}
+                                        <div className="text-xs text-white/50">
+                                            {q.brand || "브랜드"}
+                                            {q.place_name ? ` · ${q.place_name}` : ` · ${typeConfig.desc}`}
+                                        </div>
+                                    </div>
                                 </div>
+                                <div className="text-xl font-black text-orange-400">+{q.reward_points}P</div>
                             </div>
-                        )}
 
-                        <Button
-                            variant="ghost"
-                            onClick={() =>
-                                acceptQuest({
-                                    campaignId: q.id,
-                                    title: q.campaign_title,
-                                    rewardPoints: q.reward_points,
-                                    status: "accepted",
-                                    campaignType: normalizedType === "onsite" ? "onsite" : normalizedType,
-                                    placeName: q.place_name ?? undefined,
-                                    address: q.address ?? undefined,
-                                    deadline: q.deadline,
-                                    rewardProduct: q.reward_product,
-                                })
-                            }
-                            disabled={!!quest}
-                            className="w-full border border-white/10"
-                        >
-                            퀘스트 수락
-                        </Button>
-                    </Card>
-                );
+                            {q.address && (
+                                <div className="text-sm text-white/60 mb-3">{q.address}</div>
+                            )}
+                            {q.reward_product && (
+                                <div className="text-xs text-white/40 mb-3">제공 제품: {q.reward_product}</div>
+                            )}
+                            <div className="flex items-center justify-between text-xs text-white/40 mb-4">
+                                <span>마감 {formatDeadline(q.deadline)}</span>
+                                {normalizedType === "onsite" && (
+                                    <Link href="/o2o" className="text-orange-300 hover:text-orange-200">
+                                        위치 인증 안내
+                                    </Link>
+                                )}
+                            </div>
+
+                            {normalizedType === "shipment" && (
+                                <div className="mb-4 p-3 bg-violet-500/10 rounded-lg border border-violet-500/20">
+                                    <div className="flex items-center justify-between text-xs text-white/60 mb-2">
+                                        <span>배송 진행 단계</span>
+                                        <span>1 / {steps.length}</span>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        {steps.map((step, idx) => (
+                                            <div key={step} className="flex-1 flex flex-col items-center gap-1">
+                                                <div className={`w-full h-1.5 rounded-full ${idx < 1 ? "bg-violet-500" : "bg-white/10"}`} />
+                                                <span className={`text-[10px] ${idx < 1 ? "text-violet-400" : "text-white/30"}`}>{step}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <Button
+                                variant="ghost"
+                                onClick={() =>
+                                    acceptQuest({
+                                        campaignId: q.id,
+                                        title: q.campaign_title,
+                                        rewardPoints: q.reward_points,
+                                        status: "accepted",
+                                        campaignType: normalizedType === "onsite" ? "onsite" : normalizedType,
+                                        placeName: q.place_name ?? undefined,
+                                        address: q.address ?? undefined,
+                                        deadline: q.deadline,
+                                        rewardProduct: q.reward_product,
+                                    })
+                                }
+                                disabled={!!quest}
+                                className="w-full border border-white/10"
+                            >
+                                퀘스트 수락
+                            </Button>
+                        </Card>
+                    );
                 })}
             </div>
 
@@ -363,7 +363,7 @@ function AnalyzeTabContent({ nodeId }: { nodeId: string }) {
         <div className="space-y-6">
             <h1 className="text-2xl font-black flex items-center gap-3">
                 🧬 AI 비디오 DNA
-                <Badge variant="solid" color="violet">PRO</Badge>
+                <Badge variant="default" intent="brand">PRO</Badge>
             </h1>
 
             <Card>
@@ -390,7 +390,7 @@ function GenealogyTabContent({ nodeId }: { nodeId: string }) {
         <div className="space-y-6">
             <h1 className="text-2xl font-black flex items-center gap-3">
                 🌳 Genealogy
-                <Badge variant="solid" color="violet">PRO</Badge>
+                <Badge variant="default" intent="brand">PRO</Badge>
             </h1>
             <Card className="min-h-[400px]">
                 <GenealogyWidget nodeId={nodeId} />
@@ -404,7 +404,7 @@ function StudioTabContent({ nodeId }: { nodeId: string }) {
         <div className="space-y-6">
             <h1 className="text-2xl font-black flex items-center gap-3">
                 🎛️ Studio
-                <Badge variant="solid" color="violet">PRO</Badge>
+                <Badge variant="default" intent="brand">PRO</Badge>
             </h1>
             <Card className="text-center py-12">
                 <p className="text-white/60 mb-4">고급 편집 기능은 캔버스에서 사용 가능합니다.</p>

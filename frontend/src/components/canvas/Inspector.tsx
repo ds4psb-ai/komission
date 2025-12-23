@@ -5,6 +5,7 @@ import { Node } from '@xyflow/react';
 import type { CapsuleDefinition, CapsuleParam } from '@/components/canvas/CapsuleNode';
 import { cn } from '@/lib/utils';
 import { Video, Brain, Clapperboard, Lock } from 'lucide-react';
+import { Badge } from "@/components/ui/Badge";
 
 interface InspectorProps {
     selectedNode: Node | null;
@@ -59,29 +60,40 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, onUpdateNodeDat
             {/* Ambient Background */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/10 blur-[100px] pointer-events-none" />
 
+
+
             {/* Header */}
-            <div className="p-6 border-b border-white/5 bg-gradient-to-r from-white/5 to-transparent relative z-10">
+            <div className="p-6 border-b border-white/5 bg-gradient-to-r from-white/5 to-transparent relative z-10 backdrop-blur-3xl">
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-black text-white text-lg tracking-tight">인스펙터</h3>
+                    <h3 className="font-black text-white text-lg tracking-tight flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
+                        Inspector
+                    </h3>
                     <button
                         onClick={onClose}
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all"
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all hover:rotate-90"
                     >
                         ✕
                     </button>
                 </div>
 
                 {/* Node Type Badge */}
-                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md ${nodeType === 'source' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]' :
-                    nodeType === 'process' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20 shadow-[0_0_15px_rgba(139,92,246,0.1)]' :
-                        nodeType === 'capsule' ? 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.15)]' :
-                            'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
-                    }`}>
-                    {nodeType === 'source' && <Video className="w-3 h-3" />}
-                    {nodeType === 'process' && <Brain className="w-3 h-3" />}
-                    {nodeType === 'output' && <Clapperboard className="w-3 h-3" />}
-                    {nodeType === 'capsule' && <Lock className="w-3 h-3" />}
-                    <span className="uppercase tracking-wider">{nodeType} Node</span>
+                <div className="flex items-center gap-2">
+                    <Badge
+                        variant="glow"
+                        intent={
+                            nodeType === 'source' ? 'success' :
+                                nodeType === 'process' ? 'brand' :
+                                    nodeType === 'capsule' ? 'error' : 'cyan'
+                        }
+                        className="gap-1.5 px-3 py-1.5"
+                    >
+                        {nodeType === 'source' && <Video className="w-3.5 h-3.5" />}
+                        {nodeType === 'process' && <Brain className="w-3.5 h-3.5" />}
+                        {nodeType === 'output' && <Clapperboard className="w-3.5 h-3.5" />}
+                        {nodeType === 'capsule' && <Lock className="w-3.5 h-3.5" />}
+                        <span className="uppercase tracking-wider text-[10px]">{nodeType} Node</span>
+                    </Badge>
                 </div>
             </div>
 
