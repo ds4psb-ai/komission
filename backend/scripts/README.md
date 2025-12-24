@@ -18,6 +18,7 @@ Other utilities:
 - `ingest_notebook_library.py` — NotebookLM JSON/JSONL → notebook_library (DB)
 - `sync_notebook_library_to_sheet.py` — notebook_library → VDG_Insights
 - `ingest_outlier_csv_db.py` — provider CSV → DB outliers (SoR)
+- `pull_provider_csv.py` — provider CSV fetch → DB ingest
 - `ingest_outlier_csv.py` — import external outlier CSV into `VDG_Outlier_Raw`
 - `ingest_progress_csv.py` — import progress CSV into `VDG_Progress`
 - `setup_sheets.py` — create initial `VDG_*` sheets

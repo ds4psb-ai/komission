@@ -49,6 +49,13 @@ python backend/scripts/ingest_outlier_csv.py --csv /path/to/outliers.csv --sourc
 `ingest_outlier_csv_db.py`는 DB(SoR)에 적재하며, 필요 시 `sync_outliers_to_sheet.py`로 `VDG_Outlier_Raw`에 동기화합니다.  
 `ingest_outlier_csv.py`는 **시트 직접 입력**(운영 보조) 용도로만 사용합니다.
 
+### CSV 자동 수집 (옵션)
+구독 사이트에서 CSV 다운로드 URL이 제공되는 경우:
+```bash
+python backend/scripts/pull_provider_csv.py --config backend/provider_sources.json
+```
+`backend/provider_sources.sample.json`을 참고해 `provider_sources.json`을 구성합니다.
+
 ### 관리자 수동 입력 (API)
 관리자가 직접 링크를 입력하는 경우:
 ```

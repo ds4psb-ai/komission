@@ -1,0 +1,12 @@
+[
+  {
+    "name": "provider-1",
+    "url": "https://example.com/export.csv",
+    "platform": "tiktok",
+    "category": "beauty",
+    "headers": {
+      "User-Agent": "KomissionBot/1.0"
+    },
+    "cookie": ""
+  }
+]

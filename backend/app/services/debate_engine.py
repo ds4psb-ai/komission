@@ -14,7 +14,7 @@ class DebateEngine:
     def __init__(self, sheet_manager: SheetManager):
         self.sheet_manager = sheet_manager
         self.client = gemini_pipeline.client 
-        self.model = "gemini-2.0-flash-exp"
+        self.model = "gemini-3.0-pro"
 
     async def run_debate_cycle(self):
         """

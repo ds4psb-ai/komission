@@ -17,7 +17,7 @@ class OpalEngine:
         self.sheet_manager = sheet_manager
         # Use gemini_pipeline's client
         self.client = gemini_pipeline.client
-        self.model = "gemini-2.0-flash-exp"  # Fast model for reasoning
+        self.model = "gemini-3.0-pro"
         
         # Fail-fast check for missing AI client
         if not self.client:

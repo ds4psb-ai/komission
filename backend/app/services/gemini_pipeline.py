@@ -21,8 +21,9 @@ from app.services.video_downloader import video_downloader, VideoMetadata
 
 class GeminiPipeline:
     def __init__(self):
-        # Use gemini-2.0-flash-exp for best physics reasoning
-        self.model = "gemini-2.0-flash-exp"
+        if settings.GEMINI_MODEL != "gemini-3.0-pro":
+            raise ValueError("Only gemini-3.0-pro is supported.")
+        self.model = "gemini-3.0-pro"
         
         if settings.GEMINI_API_KEY:
             self.client = genai.Client(api_key=settings.GEMINI_API_KEY)

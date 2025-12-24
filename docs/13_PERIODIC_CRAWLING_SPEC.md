@@ -477,7 +477,7 @@ class PlatformUpdatesCrawler:
         """
         
         response = self.genai_client.models.generate_content(
-            model="gemini-2.0-flash-exp",
+            model="gemini-3.0-pro",
             contents=prompt
         )
         
