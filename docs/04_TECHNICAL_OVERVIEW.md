@@ -68,6 +68,7 @@ python backend/scripts/run_real_evidence_loop.py
 
 ## 5) CSV 수동 수집 (초기 운영용)
 ```bash
+python backend/scripts/ingest_outlier_csv_db.py --csv /path/to/outliers.csv --source-name "ProviderName"
 python backend/scripts/ingest_outlier_csv.py --csv /path/to/outliers.csv --source-name "ProviderName"
 python backend/scripts/ingest_progress_csv.py --csv /path/to/progress.csv
 ```

@@ -38,6 +38,7 @@
 외부 구독 사이트에서 CSV를 내려받는 경우, 아래 스크립트로 즉시 적재합니다.
 
 ```bash
+python backend/scripts/ingest_outlier_csv_db.py --csv /path/to/outliers.csv --source-name "ProviderName"
 python backend/scripts/ingest_outlier_csv.py --csv /path/to/outliers.csv --source-name "ProviderName"
 ```
 
@@ -45,7 +46,8 @@ python backend/scripts/ingest_outlier_csv.py --csv /path/to/outliers.csv --sourc
 - `source_url`, `title`는 필수
 - `platform`, `category`, `views`, `growth_rate`, `author`, `posted_at`는 선택
 
-입력된 데이터는 `VDG_Outlier_Raw`에 쌓이며, 이후 자동으로 Parent 후보로 승격됩니다.
+`ingest_outlier_csv_db.py`는 DB(SoR)에 적재하며, 필요 시 `sync_outliers_to_sheet.py`로 `VDG_Outlier_Raw`에 동기화합니다.  
+`ingest_outlier_csv.py`는 **시트 직접 입력**(운영 보조) 용도로만 사용합니다.
 
 ### 관리자 수동 입력 (API)
 관리자가 직접 링크를 입력하는 경우:
