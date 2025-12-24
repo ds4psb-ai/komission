@@ -78,6 +78,13 @@ API로 들어온 Outlier를 Evidence Loop 시트에 반영:
 python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,selected
 ```
 
+## 5.2) NotebookLM → DB → Insights Sheet
+NotebookLM 결과를 DB에 적재 후 공유용 시트로 동기화:
+```bash
+python backend/scripts/ingest_notebook_library.py --json /path/to/notebooklm.json
+python backend/scripts/sync_notebook_library_to_sheet.py --limit 200
+```
+
 ---
 
 ## 6) 핵심 API (요약)

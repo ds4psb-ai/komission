@@ -548,3 +548,22 @@ class EvidenceSnapshot(Base):
     # Relationships
     parent_node: Mapped["RemixNode"] = relationship("RemixNode", backref="evidence_snapshots")
 
+
+class NotebookLibraryEntry(Base):
+    """
+    NotebookLM 요약 결과를 DB에 래핑한 라이브러리 엔트리
+    """
+    __tablename__ = "notebook_library"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_url: Mapped[str] = mapped_column(Text)
+    platform: Mapped[str] = mapped_column(String(50))
+    category: Mapped[str] = mapped_column(String(50))
+    summary: Mapped[dict] = mapped_column(JSONB)
+    cluster_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    parent_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    parent_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode")

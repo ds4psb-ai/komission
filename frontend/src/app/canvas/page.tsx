@@ -16,7 +16,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { SourceNode, ProcessNode, OutputNode } from '@/components/canvas/CustomNodes';
+import { SourceNode, ProcessNode, OutputNode, NotebookNode } from '@/components/canvas/CustomNodes';
 import { EvidenceNode, DecisionNode } from '@/components/canvas/EvidenceNodes';
 import { CapsuleNode, type CapsuleDefinition } from '@/components/canvas/CapsuleNode';
 import { Inspector } from '@/components/canvas/Inspector';
@@ -36,6 +36,7 @@ const nodeTypes = {
     evidence: EvidenceNode,
     decision: DecisionNode,
     capsule: CapsuleNode,
+    notebook: NotebookNode,
 };
 
 // Initial Data (Empty canvas)
@@ -462,6 +463,11 @@ function CanvasFlow() {
                 ...(type === 'capsule' && {
                     capsule: createCapsuleDefinition(),
                 }),
+                ...(type === 'notebook' && {
+                    summary: data?.summary || '훅/씬/오디오 패턴 요약을 여기에 표시합니다.',
+                    clusterId: data?.clusterId || 'Hook-2s-TextPunch',
+                    sourceUrl: data?.sourceUrl,
+                }),
                 ...(type === 'decision' && {
                     status: 'pending' as const,
                     onGenerateDecision: () => {
@@ -701,6 +707,19 @@ function CanvasFlow() {
                                 <div>
                                     <span className="text-sm font-bold">Evidence Node</span>
                                     <div className="text-[10px] text-blue-300">VDG 성과 테이블</div>
+                                </div>
+                            </div>
+
+                            <div
+                                className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl cursor-pointer hover:border-sky-500/50 transition-all mb-2 flex items-center gap-3"
+                                onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'notebook')}
+                                onClick={() => addNode('notebook')}
+                                draggable
+                            >
+                                <div className="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center text-sky-400"><FileText className="w-4 h-4" /></div>
+                                <div>
+                                    <span className="text-sm font-bold">Notebook Library</span>
+                                    <div className="text-[10px] text-sky-300">요약/클러스터</div>
                                 </div>
                             </div>
 

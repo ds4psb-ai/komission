@@ -344,3 +344,42 @@ export const OutputNode = memo(({ data }: { data: OutputNodeData }) => {
         </NodeWrapper>
     );
 });
+
+interface NotebookNodeData {
+    summary?: string;
+    clusterId?: string;
+    sourceUrl?: string;
+}
+
+export const NotebookNode = memo(({ data }: { data: NotebookNodeData }) => {
+    const summary = data.summary || 'NotebookLM 요약을 불러오는 중입니다.';
+    const clusterId = data.clusterId || 'Cluster 미지정';
+
+    return (
+        <NodeWrapper title="Notebook Library" colorClass="border-sky-500/40">
+            <Handle type="target" position={Position.Left} className="!bg-sky-500 !w-3 !h-3 !border-2 !border-black" />
+            <div className="space-y-3">
+                <div className="text-[10px] text-sky-300 uppercase tracking-widest">클러스터</div>
+                <div className="text-xs text-white/80 font-mono bg-sky-500/10 border border-sky-500/20 px-3 py-2 rounded-lg">
+                    {clusterId}
+                </div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest">요약</div>
+                <div className="text-xs text-white/70 bg-black/50 border border-white/10 rounded-lg px-3 py-2 max-h-24 overflow-y-auto custom-scrollbar">
+                    {summary}
+                </div>
+                {data.sourceUrl && (
+                    <a
+                        href={data.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-sky-300 hover:text-sky-200 underline underline-offset-2"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        원본 링크 열기
+                    </a>
+                )}
+            </div>
+            <Handle type="source" position={Position.Right} className="!bg-sky-500 !w-3 !h-3 !border-2 !border-black" />
+        </NodeWrapper>
+    );
+});

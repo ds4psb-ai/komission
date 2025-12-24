@@ -42,6 +42,15 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, onUpdateNodeDat
     const nodeData = selectedNode.data as Record<string, unknown>;
     const capsule = (nodeData.capsule as CapsuleDefinition | undefined)
         || (nodeType === 'capsule' ? (nodeData as unknown as CapsuleDefinition) : undefined);
+    const notebookSummary = nodeType === 'notebook'
+        ? String(nodeData.summary || '')
+        : '';
+    const notebookClusterId = nodeType === 'notebook'
+        ? String(nodeData.clusterId || '')
+        : '';
+    const notebookSourceUrl = nodeType === 'notebook'
+        ? String(nodeData.sourceUrl || '')
+        : '';
 
     const updateCapsuleParam = (param: CapsuleParam, value: string | number | boolean) => {
         if (!capsule || !onUpdateNodeData) return;
@@ -176,6 +185,40 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, onUpdateNodeDat
                                     {String(nodeData.nodeId)}
                                 </div>
                             </div>
+                        )}
+
+                        {nodeType === 'notebook' && (
+                            <>
+                                {notebookClusterId && (
+                                    <div className="group">
+                                        <label className="text-[10px] text-white/30 uppercase mb-1 block">클러스터</label>
+                                        <div className="text-[10px] font-mono text-sky-300 bg-sky-900/10 px-3 py-2 rounded-lg border border-sky-500/20">
+                                            {notebookClusterId}
+                                        </div>
+                                    </div>
+                                )}
+                                {notebookSummary && (
+                                    <div className="group">
+                                        <label className="text-[10px] text-white/30 uppercase mb-1 block">요약</label>
+                                        <div className="text-[10px] text-white/70 bg-black/50 px-3 py-2 rounded-lg border border-white/10 max-h-32 overflow-y-auto custom-scrollbar">
+                                            {notebookSummary}
+                                        </div>
+                                    </div>
+                                )}
+                                {notebookSourceUrl && (
+                                    <div className="group">
+                                        <label className="text-[10px] text-white/30 uppercase mb-1 block">원본 링크</label>
+                                        <a
+                                            href={notebookSourceUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] text-sky-300 underline underline-offset-2 break-all"
+                                        >
+                                            {notebookSourceUrl}
+                                        </a>
+                                    </div>
+                                )}
+                            </>
                         )}
 
                         {capsule?.id && (

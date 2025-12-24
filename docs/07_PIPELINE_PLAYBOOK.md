@@ -29,7 +29,10 @@
 
 ### 실행 커맨드
 ```bash
+python backend/scripts/ingest_notebook_library.py --json /path/to/notebooklm.json
+python backend/scripts/sync_notebook_library_to_sheet.py --limit 200
 python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,selected
+python backend/scripts/run_selector.py
 python backend/scripts/run_real_evidence_loop.py
 ```
 

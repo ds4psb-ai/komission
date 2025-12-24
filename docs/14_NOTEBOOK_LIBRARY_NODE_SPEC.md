@@ -94,6 +94,7 @@ CREATE TABLE notebook_library (
   category VARCHAR(50),
   summary JSONB,             -- hook/scene/audio/text patterns
   cluster_id VARCHAR(100),
+  parent_node_id UUID,       -- optional link to Parent
   created_at TIMESTAMP
 );
 ```
