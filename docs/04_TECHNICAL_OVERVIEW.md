@@ -1,6 +1,6 @@
 # Technical Overview (최신)
 
-**작성**: 2026-01-06
+**작성**: 2026-01-07
 
 ---
 
@@ -10,13 +10,15 @@
 - Cache: Redis (옵션)
 - Frontend: Next.js
 - Automation: n8n or cron
+- Capsule: Opal/NotebookLM/Sheets 래핑 실행 노드
 
 ---
 
 ## 2) 핵심 데이터 흐름
 ```
-Outlier Source → vdg_parents/variants → vdg_metric_daily
-  → vdg_evidence → Evidence Sheet → Decision Sheet → Canvas UI
+Outlier Source(수동/크롤링) → (NotebookLM Cluster, 옵션) → vdg_parents/variants
+  → vdg_pattern_trace + vdg_metric_daily
+  → vdg_evidence → Evidence Sheet → Decision Sheet → Capsule → Canvas UI
 ```
 
 ---
@@ -28,7 +30,7 @@ docker-compose up -d
 
 # backend
 cd backend
-python3.9 -m venv venv && source venv/bin/activate
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 
@@ -38,15 +40,66 @@ bun install
 bun run dev
 ```
 
+## 4) Evidence Loop Runner (Sheets + Opal)
+환경변수는 `backend/.env`에서 로드됩니다.
+
+필수:
+- `KOMISSION_SHARE_EMAIL`
+- `GOOGLE_APPLICATION_CREDENTIALS` (서비스 계정 JSON 경로, 없으면 `backend/credentials.json` 시도)
+
+옵션:
+- `KOMISSION_FOLDER_ID`
+- `KOMISSION_PRIMARY_PLATFORMS` (기본: tiktok,instagram)
+- `KOMISSION_PRIMARY_VIEW_THRESHOLD`
+- `KOMISSION_PRIMARY_GROWTH_THRESHOLD`
+- `KOMISSION_SECONDARY_VIEW_THRESHOLD`
+- `KOMISSION_SECONDARY_GROWTH_THRESHOLD`
+
+실행:
+```bash
+python backend/scripts/run_real_evidence_loop.py
+```
+
 ---
 
-## 4) 핵심 API (요약)
+## 5) CSV 수동 수집 (초기 운영용)
+```bash
+python backend/scripts/ingest_outlier_csv.py --csv /path/to/outliers.csv --source-name "ProviderName"
+python backend/scripts/ingest_progress_csv.py --csv /path/to/progress.csv
+```
+
+## 5.1) DB → Sheet 동기화 (수동 입력 연동)
+API로 들어온 Outlier를 Evidence Loop 시트에 반영:
+```bash
+python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,selected
+```
+
+---
+
+## 6) 핵심 API (요약)
+- Outliers
+  - POST /api/v1/outliers/sources
+  - GET /api/v1/outliers/sources
+  - POST /api/v1/outliers/items
+  - POST /api/v1/outliers/items/manual
+  - GET /api/v1/outliers/candidates
+  - PATCH /api/v1/outliers/items/{item_id}/status
+  - POST /api/v1/outliers/items/{item_id}/promote
+
 - Remix
   - GET /api/v1/remix
   - GET /api/v1/remix/{node_id}
   - POST /api/v1/remix/{node_id}/analyze
   - POST /api/v1/remix/{node_id}/fork
   - POST /api/v1/remix/{node_id}/matching
+
+- Pipelines
+  - GET /api/v1/pipelines/public
+  - GET /api/v1/pipelines/
+  - POST /api/v1/pipelines/
+  - GET /api/v1/pipelines/{id}
+  - PATCH /api/v1/pipelines/{id}
+  - DELETE /api/v1/pipelines/{id}
 
 - O2O
   - GET /api/v1/o2o/locations
@@ -57,9 +110,10 @@ bun run dev
 
 ---
 
-## 5) 통합 원칙
+## 7) 통합 원칙
 - **DB는 SoR**
 - **Sheets는 공유/운영 버스**
 - **NotebookLM/Opal은 옵션**
+- **Pattern Library/Trace는 엔진**
+- **Capsule은 실행 레이어**
 - **Canvas는 템플릿 UI**
-

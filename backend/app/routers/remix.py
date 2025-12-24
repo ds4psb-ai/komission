@@ -13,6 +13,7 @@ from app.database import get_db
 from app.models import RemixNode, NodeLayer, NodePermission, NodeGovernance, O2OCampaign, O2OLocation
 from app.routers.auth import get_current_user, require_admin, User
 from app.services.gemini_pipeline import gemini_pipeline
+from app.services.remix_nodes import generate_remix_node_id
 from app.services.royalty_engine import RoyaltyEngine
 from app.services.neo4j_graph import neo4j_graph
 
@@ -185,13 +186,7 @@ async def create_remix_node(
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new master remix node (Admin only)"""
-    # Generate unique node_id
-    date_str = datetime.now().strftime("%Y%m%d")
-    count_result = await db.execute(
-        select(func.count()).where(RemixNode.node_id.like(f"remix_{date_str}%"))
-    )
-    count = count_result.scalar() or 0
-    node_id = f"remix_{date_str}_{count + 1:03d}"
+    node_id = await generate_remix_node_id(db)
     
     node = RemixNode(
         node_id=node_id,
@@ -942,4 +937,3 @@ async def get_vdg_summary(
         "period": period,
         **summary
     }
-

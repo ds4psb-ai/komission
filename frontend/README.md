@@ -1,2 +1,7 @@
-Komission frontend docs are maintained in `docs/04_TECHNICAL_OVERVIEW.md`.
+Canonical docs live in `docs/README.md`.
 
+Local dev:
+```bash
+bun install
+bun run dev
+```

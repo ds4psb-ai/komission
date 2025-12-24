@@ -54,3 +54,8 @@ frontend/out/
 # Misc
 *.bak
 *.tmp
+
+# Google Cloud Credentials (NEVER COMMIT)
+**/credentials.json
+**/service-account*.json
+*.pem

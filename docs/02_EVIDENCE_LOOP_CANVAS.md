@@ -1,6 +1,6 @@
 # Evidence Loop + Canvas Template (최신)
 
-**작성**: 2026-01-06
+**작성**: 2026-01-07
 **목표**: Evidence Loop를 **Canvas 템플릿**으로 운영
 
 ---
@@ -10,14 +10,19 @@
 - **Debate는 옵션** (조건부 실행)
 - **DB=SoR, Sheets=버스**
 - NotebookLM/Opal은 **가속 옵션**
+- Capsule/Template은 **실행 레이어**
 
 ---
 
 ## 2) Evidence Loop (운영 플로우)
 ```
-Outlier: 외부 소스 크롤링
+Outlier: 수동 입력/외부 소스 크롤링
+  ↓
+Outlier Cluster (NotebookLM, 옵션)
   ↓
 Parent 후보 선정
+  ↓
+영상 해석/요약(옵션) → Pattern 후보 라벨
   ↓
 Depth1/Depth2 실험
   ↓
@@ -38,23 +43,14 @@ Creator 실행 + O2O know-how 연결
 
 **네이밍 규칙**: `VDG_*` 접두어 사용 (예: `VDG_Evidence`)
 
-## 1. Google Sheets Infrastructure
-
-**Generated Sheets (as of 2025-02-13):**
-- **VDG_Outlier_Raw**: `1bFYFBMMgOz8a4Q8VIJJgdr7-jhfTU4iTn9rdG-GXxSs`
-- **VDG_Parent_Candidates**: `1PmD_jtNWar6iyqYO9h2styRPl6LV3DF38NZVpa8lMeQ`
-- **VDG_Evidence**: `1wYYOkAx4c__qkP_5q77qCEYqOkgx85w-ysIzDzjhakg`
-- **VDG_Decision**: `1Po1CYEqN_Rlj78qWFqzZFRn87ESCBe8u1Vq1WQpcCtQ`
-- **VDG_Experiment**: `1WIcagWwbb4AtRHHNR7hha73hale2htzUHjG03eM9nfs`
-- **VDG_Progress**: `11BTl6Mhp8vaSNdGSlpwxrsJFWJtlmSFFBt5gFC6K8IM`
-- **VDG_O2O_Campaigns**: `1ntnsUXW8WxYsAlUD9uH9ahhwUvb2QlYQ8Z2u0MxfYrk`
-- **VDG_O2O_Applications**: `1Bjgd5mKsa-jOH6gRFqRNODWnCtEklG7NU0vZO5_cY3Q`
-- **VDG_Insights**: `1NDYuTfQNuct1eBeIHwLsQyuJIbheAmwfps5Op8i0cjg`
-
-The following sheets form the core database for the Evidence Loop.
+### 3.0 Google Sheets Infrastructure
+Sheets are created by the runner or setup scripts using the `VDG_*` names.
+The pipeline looks up sheets **by name**, so IDs can live in Drive without hardcoding.
+Use `KOMISSION_FOLDER_ID` to keep them in a shared folder.
 
 ### 3.1 Outlier Raw Sheet (옵션)
 **목적**: 외부 구독 소스 크롤링 결과를 사람이 검토/선별
+DB에서 수집한 Outlier는 `sync_outliers_to_sheet.py`로 동기화합니다.
 
 | 컬럼 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
@@ -68,14 +64,20 @@ The following sheets form the core database for the Evidence Loop.
 | growth_rate | float | X | 성장률(있으면) |
 | author | string | X | 크리에이터 |
 | posted_at | datetime | X | 업로드 시각 |
-| status | enum | O | new / ignored / candidate |
+| status | enum | O | new / ignored / candidate / promoted |
+
+**상태 매핑 (DB → Sheet)**
+- pending → new
+- selected → candidate
+- rejected → ignored
+- promoted → promoted
 
 ### 3.2 Parent Candidates Sheet
 **목적**: Parent 후보 확정용 관리표
 
 | 컬럼 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| parent_id | uuid | O | DB Parent ID |
+| parent_id | string | O | DB Parent ID (권장: remix_nodes.node_id) |
 | title | string | O | Parent 제목 |
 | platform | enum | O | tiktok / instagram |
 | category | string | O | 카테고리 |
@@ -85,6 +87,9 @@ The following sheets form the core database for the Evidence Loop.
 | selected_by | string | X | 선택자 |
 | selected_at | datetime | X | 선택 시각 |
 | status | enum | O | planning / depth1 / depth2 / complete |
+
+> Sheet-only 운영 시 parent_id는 임시 ID를 사용해도 됩니다.
+> DB 연동 시에는 `remix_nodes.node_id`로 정규화합니다.
 
 ### 3.3 Evidence Sheet
 **목적**: Depth 결과를 한 표로 정규화
@@ -107,6 +112,7 @@ The following sheets form the core database for the Evidence Loop.
 | rank | int | O | 순위 |
 | winner | boolean | O | 최종 후보 여부 |
 | generated_at | datetime | O | 생성 시각 |
+| data_source | enum | X | simulated / progress / api / crawler |
 
 ### 3.4 Decision Sheet
 **목적**: 자동/반자동 의사결정 결과 저장
@@ -152,6 +158,8 @@ The following sheets form the core database for the Evidence Loop.
 | retention_rate | float | X | 유지율 |
 | confidence_score | float | X | 현재 점수 |
 | status | enum | O | tracking / complete |
+| parent_id | uuid | X | Parent ID (자동 매핑용) |
+| variant_name | string | X | Variant 이름 |
 
 ### 3.7 O2O Campaigns Sheet
 **목적**: 캠페인 운영/게이팅 기준
@@ -191,7 +199,7 @@ The following sheets form the core database for the Evidence Loop.
 | --- | --- | --- | --- |
 | parent_id | uuid | O | Parent ID |
 | summary | text | O | 요약 |
-| key_patterns | text | X | 상위 패턴 |
+| key_patterns | text | X | 상위 패턴/클러스터 라벨 |
 | risks | text | X | 리스크 |
 | created_at | datetime | O | 생성 시각 |
 
@@ -200,6 +208,7 @@ The following sheets form the core database for the Evidence Loop.
 ## 4) NotebookLM/Opal 활용 (옵션)
 
 ### NotebookLM (Data Tables)
+- Outlier Raw → 클러스터링/패턴 라벨(옵션)
 - Evidence Sheet → Data Tables → Insights Sheet
 - 사람에게 설명 가능한 표/요약을 자동 생성
 
@@ -211,7 +220,49 @@ The following sheets form the core database for the Evidence Loop.
 
 ---
 
-## 5) Debate 실행 조건 (옵션)
+## 5) Pattern Library/Trace (옵션)
+패턴은 엔진이며, NotebookLM은 패턴 후보를 **요약/라벨링**하는 보조 레이어입니다.
+
+### 5.1 Pattern Library Sheet (옵션)
+| 컬럼 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| pattern_id | uuid | O | 패턴 ID |
+| name | string | O | 패턴명 |
+| pattern_type | enum | O | hook / scene / subtitle / audio / pacing |
+| description | text | X | 설명 |
+| created_at | datetime | O | 생성 시각 |
+
+### 5.2 Pattern Trace Sheet (옵션)
+| 컬럼 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| trace_id | uuid | O | Trace ID |
+| variant_id | uuid | O | 변주 ID |
+| pattern_id | uuid | O | 패턴 ID |
+| weight | float | X | 적용 강도 |
+| evidence_note | text | X | 근거 메모 |
+| created_at | datetime | O | 생성 시각 |
+
+---
+
+## 6) Capsule Node (옵션)
+Capsule은 Opal/NotebookLM/Sheets를 감싼 **보안형 실행 노드**입니다.
+
+### 6.1 Capsule Input/Output 계약
+**Input**
+- parent_id, evidence_snapshot, pattern_lift_summary
+- insights_summary (NotebookLM 요약)
+- constraints (budget/time/brand guardrails)
+
+**Output**
+- decision_json (GO/STOP/PIVOT + next_experiment)
+- decision_sheet_row_id
+- audit_log_id
+
+> 내부 체인은 서버에서만 실행되며, UI에는 입력/출력만 노출합니다.
+
+---
+
+## 7) Debate 실행 조건 (옵션)
 Debate는 아래 조건에서만 실행:
 - Top1 vs Top2 점수 차 < 0.03
 - 샘플 수 부족(Tracking < 10일)
@@ -219,7 +270,7 @@ Debate는 아래 조건에서만 실행:
 
 ---
 
-## 6) Canvas 템플릿 (MVP)
+## 8) Canvas 템플릿 (MVP)
 
 ### 템플릿 A: Evidence → Decision → Assignment
 ```
@@ -236,9 +287,14 @@ Debate는 아래 조건에서만 실행:
 [Progress Tracker] → [Winner 결정] → [Heritage 업데이트]
 ```
 
+### 템플릿 D: Cluster → Pattern → Decision (옵션)
+```
+[Outlier Cluster] → [Pattern Library] → [Evidence Table] → [Decision Summary]
+```
+
 ---
 
-## 7) 출력 형식 (UI 최소 기준)
+## 9) 출력 형식 (UI 최소 기준)
 기본 화면:
 - 결론 5줄
 - Evidence Table

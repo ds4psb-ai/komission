@@ -1,13 +1,13 @@
 # Data Sources + O2O 운영 구조 (최신)
 
-**작성**: 2026-01-06
+**작성**: 2026-01-07
 
 ---
 
 ## 1) Outlier 수집 (외부 구독 사이트)
 
 ### 입력 방식
-- 외부 구독 플랫폼에서 **주기적 크롤링**
+- 관리자 **수동 링크 입력** + 외부 구독 플랫폼 **주기적 크롤링**
 - **우선순위 플랫폼**: TikTok, Instagram
 - 수집 필드(최소): URL, 업로드일, 조회수, 플랫폼, 카테고리
 
@@ -17,11 +17,13 @@
 - 시트 연동: `VDG_Outlier_Raw`에 동기화 (수동 검토 가능)
 
 ### 파이프라인 단계
-1. **수집**: 외부 소스에서 원본 데이터 로드
+1. **수집**: 관리자 수동 입력 또는 외부 소스에서 원본 데이터 로드
 2. **정규화**: 플랫폼/카테고리/시간대 표준화
 3. **중복 제거**: URL, 작성자, 업로드일 기준
 4. **우선순위 스코어링**: 성장률/조회수/최근성
-5. **Parent 후보 등록**: 후보 리스트 확정
+5. **Outlier 클러스터링(옵션)**: NotebookLM으로 유사 패턴 묶기/라벨링
+6. **Parent 후보 등록**: 후보 리스트 확정
+7. **영상 해석/요약(옵션)**: 패턴 후보 라벨 생성
 
 ### 주기
 - 1일 1회 (초기)
@@ -31,6 +33,41 @@
 - 크롤링 정책/약관 준수
 - 개인정보/저작권 이슈 최소화
 - 불확실한 항목은 **수동 CSV 입력**으로 보완
+
+### CSV 수동 입력 (스크립트)
+외부 구독 사이트에서 CSV를 내려받는 경우, 아래 스크립트로 즉시 적재합니다.
+
+```bash
+python backend/scripts/ingest_outlier_csv.py --csv /path/to/outliers.csv --source-name "ProviderName"
+```
+
+필수/권장 컬럼(헤더명은 유사어 허용):
+- `source_url`, `title`는 필수
+- `platform`, `category`, `views`, `growth_rate`, `author`, `posted_at`는 선택
+
+입력된 데이터는 `VDG_Outlier_Raw`에 쌓이며, 이후 자동으로 Parent 후보로 승격됩니다.
+
+### 관리자 수동 입력 (API)
+관리자가 직접 링크를 입력하는 경우:
+```
+POST /api/v1/outliers/items/manual
+```
+수동 입력 후 **Parent 승격**을 거쳐 RemixNode를 생성하고, 영상 해석을 실행합니다.
+
+### DB → Sheet 동기화 (수동 입력 연동)
+API로 등록된 `outlier_items`를 Evidence Loop 시트에 반영:
+```bash
+python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,selected
+```
+기본 매핑: `pending → new`, `selected → candidate`, `rejected → ignored`, `promoted → promoted`.
+
+### 영상 해석 단계 (옵션)
+- Parent 승격 이후 `/api/v1/remix/{node_id}/analyze` 호출
+- 분석 결과는 Pattern 후보 라벨/요약으로 사용
+
+### Outlier 클러스터링 (옵션)
+- NotebookLM으로 유사 패턴을 묶고 라벨링하여 **큐레이션 속도**를 높입니다.
+- 최종 후보 확정은 **DB/규칙 기반 스코어링**으로 진행합니다.
 
 ### 수집 필드 권장(상세)
 | 필드 | 설명 |
@@ -46,6 +83,19 @@
 | author | 크리에이터 |
 | posted_at | 업로드 시각 |
 ---
+
+### Progress CSV 수동 입력 (성과 추적)
+성과 데이터를 CSV로 확보한 경우, 아래 스크립트로 `VDG_Progress`에 적재합니다.
+
+```bash
+python backend/scripts/ingest_progress_csv.py --csv /path/to/progress.csv
+```
+
+필수/권장 컬럼(헤더명은 유사어 허용):
+- `variant_id`는 필수
+- `parent_id`, `variant_name`, `date`, `views`, `engagement_rate`, `retention_rate`, `confidence_score`, `status`는 선택
+
+`parent_id`가 없으면 `variant_id`에서 `parent_xxx` 패턴을 추출해 자동 매핑합니다.
 
 ## 2) O2O 캠페인 타입
 

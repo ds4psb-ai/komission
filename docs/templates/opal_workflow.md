@@ -12,9 +12,13 @@ Opal에게 제공되어야 하는 핵심 데이터입니다.
 - **Current Depth**: `{depth}` (1 or 2)
 - **Top Variation**: `{best_variant_name}` (Views: `{views}`, Retention: `{retention}`)
 - **Insight**:
-  > NotebookLM Insights Sheet의 `summary` 및 `key_patterns` 참조
+  > NotebookLM Insights Sheet의 `summary` 및 `key_patterns` 참조 (클러스터/패턴 라벨 포함)
 
-### 1.2 Constraints
+### 1.2 Pattern Lift (옵션)
+- **Pattern Lift Summary**: `{pattern_lift_summary}`
+- **Top Patterns**: `{top_patterns}`
+
+### 1.3 Constraints
 - **Budget**: $500 (Depth 1) / $2000 (Depth 2)
 - **Time**: 7 days
 - **Brand Guardrails**: No political content, no controversy.
@@ -61,29 +65,25 @@ Opal에게 제공되어야 하는 핵심 데이터입니다.
 
 ---
 
-## 5. NotebookLM Integration (Idea Acquisition)
-
-NotebookLM을 통해 분석된 '2024 Short-form Trends'를 기반으로 자동 생성된 노드 템플릿입니다. Opal은 이 스키마를 참조하여 새로운 Remix Node를 제안할 수 있습니다.
-
-### 5.1 Viral Remix Node Schema
-> **Source**: NotebookLM Analysis (2025-02-13)
-> **Ref**: `docs/templates/generated/viral_remix_node.json`
+## 4. Output Contract (Capsule)
+Opal 결과는 Capsule 노드의 출력으로 저장됩니다.
 
 ```json
 {
-  "title": "Viral Remix Node",
-  "properties": {
-    "Hook Strategy": "Rapid Question | Visual Interruption",
-    "Visual Composition": "Lo-Fi Aesthetic (Trend 2024)",
-    "Audio Trend": { "track_name": "string", "sync_points": [0.5, 3.2] },
-    "Estimated Virality Score": 0-100
+  "decision": "GO|STOP|PIVOT",
+  "rationale": "...",
+  "risks": "...",
+  "next_experiment": {
+    "variant_name": "...",
+    "hypothesis": "...",
+    "changes": ["...", "..."]
   }
 }
 ```
 
 ---
 
-## 4. Execution Flow
+## 5. Execution Flow
 1. **Evidence Gathering**: `EvidenceNode`에서 데이터 추출
 2. **Analysis**: NotebookLM 리포트 참조
 3. **Drafting**: 위 프롬프트로 Opal 호출 (API or Manual)

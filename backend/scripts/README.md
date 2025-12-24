@@ -1,34 +1,18 @@
-# Google Sheets Setup Script
+# Backend Scripts
 
-This script automates the creation of 9 Evidence Loop sheets in Google Drive.
+Canonical docs live in `docs/README.md`. Refer to:
+- `docs/04_TECHNICAL_OVERVIEW.md` for execution and environment setup
+- `docs/05_DATA_SOURCES_O2O.md` for CSV ingestion flows
 
-## Prerequisites
+This directory contains operational scripts for the Evidence Loop.
 
-1. **Google Cloud SDK** installed and authenticated.
-2. **Drive & Sheets API** enabled in your Google Cloud Project.
-
-## Authorization (One-time)
-
-Your current gcloud session might not have Drive permissions. Run this to authorize:
-
+Common runs:
 ```bash
-gcloud auth login --enable-gdrive-access --update-adcs
-```
-*Note: `--enable-gdrive-access` is a conceptual flag; usually `gcloud auth login` requests standard scopes. If that fails, try:*
-
-```bash
-gcloud auth application-default login --scopes=https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/cloud-platform
+python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,selected
+python backend/scripts/run_real_evidence_loop.py
 ```
 
-## Running the Script
-
-Once authorized:
-
-```bash
-python3 backend/scripts/setup_sheets.py
-```
-
-This will:
-1. Create 9 Sheets in your Drive root (or specified folder).
-2. Write the contract headers defined in `docs/02_EVIDENCE_LOOP_CANVAS.md`.
-3. Print the Sheet IDs.
+Other utilities:
+- `ingest_outlier_csv.py` — import external outlier CSV into `VDG_Outlier_Raw`
+- `ingest_progress_csv.py` — import progress CSV into `VDG_Progress`
+- `setup_sheets.py` — create initial `VDG_*` sheets

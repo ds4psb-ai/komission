@@ -2,6 +2,8 @@
 Outliers API Router - Evidence Loop Phase 1
 Handles outlier source management and candidate crawling
 """
+import hashlib
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -9,16 +11,44 @@ from typing import Optional, List
 from uuid import UUID
 
 from app.database import get_db
-from app.models import OutlierSource, OutlierItem, OutlierItemStatus
+from app.models import (
+    OutlierSource,
+    OutlierItem,
+    OutlierItemStatus,
+    RemixNode,
+    NodeLayer,
+    NodePermission,
+    NodeGovernance,
+)
+from app.routers.auth import require_curator, User
+from app.services.remix_nodes import generate_remix_node_id
 from app.schemas.evidence import (
     OutlierSourceCreate,
     OutlierSourceResponse,
     OutlierItemCreate,
+    OutlierItemManualCreate,
     OutlierItemResponse,
     OutlierCandidatesResponse,
 )
 
 router = APIRouter(prefix="/outliers", tags=["Outliers"])
+
+
+async def _get_or_create_source(db: AsyncSession, name: str) -> OutlierSource:
+    result = await db.execute(select(OutlierSource).where(OutlierSource.name == name))
+    source = result.scalar_one_or_none()
+    if source:
+        return source
+
+    source = OutlierSource(
+        name=name,
+        base_url="manual://",
+        auth_type="none",
+        crawl_interval_hours=24,
+    )
+    db.add(source)
+    await db.flush()
+    return source
 
 
 # ==================
@@ -107,6 +137,44 @@ async def create_item(
     return _item_to_response(new_item)
 
 
+@router.post("/items/manual", response_model=OutlierItemResponse)
+async def create_item_manual(
+    item: OutlierItemManualCreate,
+    current_user: User = Depends(require_curator),
+    db: AsyncSession = Depends(get_db)
+):
+    """관리자 수동 아웃라이어 등록 (링크 기반)"""
+    external_id = f"manual_{hashlib.sha256(item.video_url.encode('utf-8')).hexdigest()}"
+    existing = await db.execute(
+        select(OutlierItem).where(OutlierItem.external_id == external_id)
+    )
+    existing_item = existing.scalar_one_or_none()
+    if existing_item:
+        return _item_to_response(existing_item)
+
+    source_name = (item.source_name or "manual").strip() or "manual"
+    source = await _get_or_create_source(db, source_name)
+
+    new_item = OutlierItem(
+        source_id=source.id,
+        external_id=external_id,
+        video_url=item.video_url,
+        title=item.title,
+        thumbnail_url=item.thumbnail_url,
+        platform=item.platform,
+        category=item.category,
+        view_count=item.view_count,
+        like_count=item.like_count,
+        share_count=item.share_count,
+        growth_rate=item.growth_rate,
+        status=OutlierItemStatus.PENDING,
+    )
+    db.add(new_item)
+    await db.commit()
+    await db.refresh(new_item)
+    return _item_to_response(new_item)
+
+
 @router.get("/candidates", response_model=OutlierCandidatesResponse)
 async def list_candidates(
     category: Optional[str] = None,
@@ -166,6 +234,7 @@ async def update_item_status(
 @router.post("/items/{item_id}/promote")
 async def promote_to_parent(
     item_id: str,
+    current_user: User = Depends(require_curator),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -182,18 +251,33 @@ async def promote_to_parent(
     
     if item.status == OutlierItemStatus.PROMOTED:
         raise HTTPException(status_code=400, detail="Already promoted")
-    
-    # TODO: Create RemixNode from OutlierItem
-    # node = await create_remix_node_from_outlier(item, db)
-    # item.promoted_to_node_id = node.id
-    
+
+    node_id = await generate_remix_node_id(db)
+    node = RemixNode(
+        node_id=node_id,
+        title=item.title or "Untitled Outlier",
+        source_video_url=item.video_url,
+        platform=item.platform,
+        layer=NodeLayer.MASTER,
+        permission=NodePermission.READ_ONLY,
+        governed_by=NodeGovernance.OPEN_COMMUNITY,
+        view_count=item.view_count or 0,
+        created_by=current_user.id,
+        owner_type=current_user.role,
+    )
+    db.add(node)
+    await db.flush()
+
     item.status = OutlierItemStatus.PROMOTED
+    item.promoted_to_node_id = node.id
     await db.commit()
-    
+    await db.refresh(node)
+
     return {
         "promoted": True,
         "item_id": item_id,
-        "note": "RemixNode creation logic to be implemented"
+        "node_id": node.node_id,
+        "remix_id": str(node.id),
     }
 
 

@@ -1,6 +1,6 @@
 # VDG System: Viral Depth Genealogy 데이터 모델 (최신)
 
-**작성**: 2026-01-06
+**작성**: 2026-01-07
 **목표**: Parent → Depth1/Depth2 → Evidence 계산을 표준화
 
 ---
@@ -8,6 +8,14 @@
 ## 1) 핵심 개념
 VDG는 **Parent(원본) → Depth1(1차 변주) → Depth2(최적화 변주)**의 구조를 기록합니다.
 이 계보를 통해 **성공 구조를 데이터로 증명**하고 다음 실험을 자동 제안합니다.
+
+**핵심 통찰**
+- 바이럴은 “모자이크 패턴(훅/씬/자막/오디오 반복)”이 계보에서 재등장합니다.
+- 따라서 **Pattern Library/Trace**를 기록해야 진짜 공식이 증명됩니다.
+
+**입력 흐름(전제)**
+- 관리자 수동/크롤링 아웃라이어 → Parent 후보 → Depth 실험
+- NotebookLM 클러스터는 **라벨/요약 보조**이며 SoR은 DB입니다.
 
 ---
 
@@ -71,9 +79,60 @@ CREATE TABLE vdg_evidence (
 );
 ```
 
+### 2.5 Pattern Library (재사용 단위)
+```sql
+CREATE TABLE vdg_patterns (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255),
+  pattern_type VARCHAR(50), -- hook, scene, subtitle, audio, pacing
+  description TEXT,
+  created_at TIMESTAMP
+);
+```
+
+### 2.6 Pattern Trace (변주별 적용 기록)
+```sql
+CREATE TABLE vdg_pattern_trace (
+  id UUID PRIMARY KEY,
+  variant_id UUID REFERENCES vdg_variants(id),
+  pattern_id UUID REFERENCES vdg_patterns(id),
+  weight FLOAT, -- 0~1 적용 강도
+  evidence_note TEXT,
+  created_at TIMESTAMP
+);
+```
+
+### 2.7 Pattern Lift (증명/누적)
+```sql
+CREATE TABLE vdg_pattern_lift (
+  id UUID PRIMARY KEY,
+  pattern_id UUID REFERENCES vdg_patterns(id),
+  parent_id UUID REFERENCES vdg_parents(id),
+  depth INT,
+  lift_score FLOAT,
+  sample_size INT,
+  updated_at TIMESTAMP
+);
+```
+
+### 2.8 현재 코드베이스 매핑 (실제 구현)
+`vdg_*`는 개념 스키마이며, 현재 구현은 아래 매핑을 사용합니다.
+
+| 개념 | 실제 테이블/필드 |
+| --- | --- |
+| vdg_parents | `remix_nodes` (layer=MASTER, permission=READ_ONLY) |
+| vdg_variants | `remix_nodes` (layer=FORK/FORK_OF_FORK, parent_node_id 연결) |
+| vdg_metric_daily | `metric_daily` |
+| vdg_evidence | `evidence_snapshots` (JSON 요약) |
+| vdg_patterns / trace / lift | **Phase 2 이후 테이블 도입 예정** |
+
+> 즉시 운영은 `remix_nodes` + `metric_daily` + `evidence_snapshots`로 충분하며,
+> 패턴 테이블은 Evidence가 쌓일 때 추가합니다.
+
 ---
 
-## 3) Evidence Score 계산 (기본형)
+## 3) Evidence Score + Pattern Lift 계산
+### 3.1 Evidence Score (기본형)
 ```
 Score = (Views_norm * 0.5) + (Engagement_norm * 0.3) + (Tracking_norm * 0.2)
 
@@ -84,16 +143,37 @@ Tracking_norm = min(tracking_days / 14, 1.0)
 
 > 이 계산은 **MVP 기준 기본값**입니다. 성과가 쌓이면 가중치 재조정.
 
+### 3.2 Pattern Lift (기본형)
+```
+Lift = (Variant_metric - Parent_metric) / Parent_metric
+Lift_score = avg(Lift_views, Lift_engagement, Lift_retention)
+```
+
+> Pattern Lift는 Pattern Trace와 Evidence 결과를 결합해 “공식”으로 승격합니다.
+
 ---
 
-## 4) 플랫폼 우선순위
+## 4) Pattern 유형 ↔ Mutation Profile 매핑
+MVP 기준으로 mutation_profile의 타입을 Pattern 유형으로 매핑합니다.
+
+| mutation_profile | pattern_type |
+| --- | --- |
+| audio | audio |
+| visual | scene |
+| hook | hook |
+| setting | pacing |
+
+> 이후 Pattern Library가 확장되면 세부 타입을 분리합니다.
+
+---
+
+## 5) 플랫폼 우선순위
 - **1순위**: TikTok / Instagram (가장 쉬운 수집 경로)
 - **3순위**: YouTube Shorts (보조)
 
 ---
 
-## 5) Evidence 생성 주기
+## 6) Evidence 생성 주기
 - 매일: Metric Daily 갱신
 - 주 1회: Evidence Snapshot 생성
 - Depth 종료(14일) 시: Winner 확정
-

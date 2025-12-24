@@ -1,56 +1,42 @@
-# Komission | Viral Content Intelligence
+# Komission | Viral Depth Genealogy
 
-> AI-driven viral content discovery and remix platform.
-> Now featuring **Midnight Glass** UI and **Evidence Loop** engine.
+Komission is a **Viral Depth Genealogy + Evidence Loop** platform for short-form remix experimentation.
 
-## 🚀 Key Features
+## Core Loop (요약)
+Outlier 수집 → Parent 승격 → Depth 실험 → Evidence/Decision → Capsule 실행 → O2O 연결
 
-### 💎 Midnight Glass Design System
-- **Premium Aesthetic**: Deep Space color palette with neon accents.
-- **Glassmorphism**: Translucent panels and modernized components.
-- **Visual Intelligence**: Data visualization with `Badge` indicators and Lucide icons.
+## System Snapshot
+- **DB is SoR**, Sheets are the ops/share bus
+- NotebookLM/Opal are **optional accelerators**
+- Canvas shows only **inputs/outputs** (capsule chain stays hidden)
 
-### 🧬 Evidence Loop (MVP)
-- **Opal Engine**: AI-powered decision making and gemini-backed reasoning.
-- **Debate Engine**: Multi-persona AI debates for high-risk decisions.
-- **Outlier Selector**: Intelligent candidate selection for viral content.
-- **Canvas Interface**: Visual node-based workflow for content remixing.
+## Canonical Docs
+All up-to-date docs live under `docs/`. Start here:
+- `docs/README.md`
+- `docs/00_EXECUTIVE_SUMMARY.md`
+- `docs/01_VDG_SYSTEM.md`
+- `docs/02_EVIDENCE_LOOP_CANVAS.md`
+- `docs/03_IMPLEMENTATION_ROADMAP.md`
+- `docs/04_TECHNICAL_OVERVIEW.md`
+- `docs/05_DATA_SOURCES_O2O.md`
+- `docs/06_USER_FLOW.md`
+- `docs/07_PIPELINE_PLAYBOOK.md`
+- `docs/08_CANVAS_NODE_CONTRACTS.md`
+- `docs/09_OPERATIONS_RUNBOOK.md`
 
-## 🛠️ Tech Stack
-- **Frontend**: Next.js 14, Tailwind CSS v4, React Flow, Lucide React
-- **Backend**: FastAPI, Neo4j, Redis, Google Cloud (Gemini, Sheets)
-- **Infrastructure**: Docker, Google Cloud Platform
+## Quick Start (Local)
+```bash
+docker-compose up -d
+cd backend && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
 
-## 🏁 Getting Started
+cd ../frontend && bun install && bun run dev
+```
 
-### Prerequisites
-- Node.js 18+
-- Python 3.11+
-- Neo4j Database
-- Google Cloud Credentials
+## Evidence Loop Quick Run
+```bash
+python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,selected
+python backend/scripts/run_real_evidence_loop.py
+```
 
-### Installation
-
-1. **Frontend**
-   ```bash
-   cd frontend
-   bun install
-   bun run dev
-   ```
-
-2. **Backend**
-   ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   uvicorn main:app --reload
-   ```
-
-## 📚 Documentation
-- [System Architecture](docs/01_VDG_SYSTEM.md)
-- [Evidence Loop Canvas](docs/02_EVIDENCE_LOOP_CANVAS.md)
-- [Implementation Roadmap](docs/03_IMPLEMENTATION_ROADMAP.md)
-
----
-© 2024 Komission Project. All rights reserved.
+See `docs/04_TECHNICAL_OVERVIEW.md` for full setup and env vars.
