@@ -32,6 +32,7 @@
 python backend/scripts/pull_provider_csv.py --config backend/provider_sources.json
 python backend/scripts/ingest_outlier_csv_db.py --csv /path/to/outliers.csv --source-name "ProviderName"
 python backend/scripts/ingest_notebook_library.py --json /path/to/notebooklm.json
+python backend/scripts/ingest_notebook_library_sheet.py --sheet VDG_Insights
 python backend/scripts/sync_notebook_library_to_sheet.py --limit 200
 python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,selected
 python backend/scripts/run_selector.py

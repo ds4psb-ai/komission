@@ -84,6 +84,7 @@ python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,se
 NotebookLM 결과를 DB에 적재 후 공유용 시트로 동기화:
 ```bash
 python backend/scripts/ingest_notebook_library.py --json /path/to/notebooklm.json
+python backend/scripts/ingest_notebook_library_sheet.py --sheet VDG_Insights
 python backend/scripts/sync_notebook_library_to_sheet.py --limit 200
 ```
 

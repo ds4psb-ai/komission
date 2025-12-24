@@ -16,6 +16,7 @@ Other utilities:
 - `run_crawler.py` — crawler → DB ingest (SoR)
 - `run_selector.py` — DB outliers → Parent Candidates (Sheet)
 - `ingest_notebook_library.py` — NotebookLM JSON/JSONL → notebook_library (DB)
+- `ingest_notebook_library_sheet.py` — NotebookLM Sheet → notebook_library (DB)
 - `sync_notebook_library_to_sheet.py` — notebook_library → VDG_Insights
 - `ingest_outlier_csv_db.py` — provider CSV → DB outliers (SoR)
 - `pull_provider_csv.py` — provider CSV fetch → DB ingest

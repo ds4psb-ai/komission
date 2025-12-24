@@ -210,6 +210,7 @@ DB에서 수집한 Outlier는 `sync_outliers_to_sheet.py`로 동기화합니다.
 ### NotebookLM (Data Tables)
 - Outlier Raw → 해석/라벨 → **Notebook Library(DB)**
 - Evidence Sheet → NotebookLM 요약 → **Notebook Library(DB)**
+- NotebookLM이 Sheets로 직접 출력하는 경우, **Sheet → DB ingest**로 SoR를 유지
 - 결과는 **DB에 저장 후** 필요 시 Insights Sheet로 동기화
 
 ### Opal
