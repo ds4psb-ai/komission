@@ -10,6 +10,7 @@ export default function O2OPage() {
     const [loading, setLoading] = useState(true);
     const [selectedLoc, setSelectedLoc] = useState<O2OLocation | null>(null);
     const [verifying, setVerifying] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const getTypeMeta = (type?: string) => {
         const normalized = type?.toLowerCase() || "";
@@ -30,11 +31,15 @@ export default function O2OPage() {
 
     async function fetchLocations() {
         try {
+            setError(null);
             const data = await api.listO2OLocations();
             setLocations(data);
             if (data.length > 0) setSelectedLoc(data[0]);
         } catch (err) {
             console.warn('O2O 캠페인 로드 실패', err);
+            setLocations([]);
+            setSelectedLoc(null);
+            setError(err instanceof Error ? err.message : "O2O 캠페인 로드 실패");
         } finally {
             setLoading(false);
         }
@@ -102,6 +107,26 @@ export default function O2OPage() {
                     </div>
                 ))}
             </div>
+
+            {!loading && !selectedLoc && (
+                <div className="absolute inset-0 z-30 flex items-center justify-center p-6">
+                    <div className="glass-panel max-w-lg w-full rounded-3xl p-8 border border-white/10 bg-black/70 text-center shadow-2xl">
+                        <div className="text-4xl mb-4">📭</div>
+                        <h2 className="text-2xl font-bold text-white mb-2">현재 활성 캠페인이 없습니다</h2>
+                        <p className="text-sm text-white/50 mb-4">
+                            O2O 캠페인 데이터가 비어 있거나 서버 응답이 없습니다.
+                        </p>
+                        {error && (
+                            <div className="text-xs text-red-300/80 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                                {error}
+                            </div>
+                        )}
+                        <div className="text-[11px] text-white/40 mt-4">
+                            `/api/v1/o2o/locations` 응답을 확인하거나 DB 시드를 적용해 주세요.
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Bottom Sheet / Card Overlay */}
             <div className="absolute bottom-0 left-0 right-0 z-40 p-6 md:p-12 flex justify-center pointer-events-none">

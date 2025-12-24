@@ -61,6 +61,28 @@ Opal에게 제공되어야 하는 핵심 데이터입니다.
 
 ---
 
+## 5. NotebookLM Integration (Idea Acquisition)
+
+NotebookLM을 통해 분석된 '2024 Short-form Trends'를 기반으로 자동 생성된 노드 템플릿입니다. Opal은 이 스키마를 참조하여 새로운 Remix Node를 제안할 수 있습니다.
+
+### 5.1 Viral Remix Node Schema
+> **Source**: NotebookLM Analysis (2025-02-13)
+> **Ref**: `docs/templates/generated/viral_remix_node.json`
+
+```json
+{
+  "title": "Viral Remix Node",
+  "properties": {
+    "Hook Strategy": "Rapid Question | Visual Interruption",
+    "Visual Composition": "Lo-Fi Aesthetic (Trend 2024)",
+    "Audio Trend": { "track_name": "string", "sync_points": [0.5, 3.2] },
+    "Estimated Virality Score": 0-100
+  }
+}
+```
+
+---
+
 ## 4. Execution Flow
 1. **Evidence Gathering**: `EvidenceNode`에서 데이터 추출
 2. **Analysis**: NotebookLM 리포트 참조

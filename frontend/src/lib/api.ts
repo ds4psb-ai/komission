@@ -302,7 +302,7 @@ class ApiClient {
 
     // O2O Locations
     async listO2OLocations() {
-        return this.safeRequest<O2OLocation[]>('/api/v1/o2o/locations', {}, []);
+        return this.request<O2OLocation[]>('/api/v1/o2o/locations');
     }
 
     async listO2OCampaigns() {
@@ -346,7 +346,7 @@ class ApiClient {
 
     // Pipelines (Canvas Persistence)
     async listPublicPipelines() {
-        return this.safeRequest<Pipeline[]>('/api/v1/pipelines/public', {}, []);
+        return this.request<Pipeline[]>('/api/v1/pipelines/public');
     }
 
     async listPipelines() {
