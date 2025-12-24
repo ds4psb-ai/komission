@@ -21,9 +21,9 @@
 2. **정규화**: 플랫폼/카테고리/시간대 표준화
 3. **중복 제거**: URL, 작성자, 업로드일 기준
 4. **우선순위 스코어링**: 성장률/조회수/최근성
-5. **Outlier 클러스터링(옵션)**: NotebookLM으로 유사 패턴 묶기/라벨링
+5. **NotebookLM 해석**: 요약/클러스터 → **Notebook Library(DB) 저장**
 6. **Parent 후보 등록**: 후보 리스트 확정
-7. **영상 해석/요약(옵션)**: 패턴 후보 라벨 생성
+7. **영상 해석/요약(보강)**: Pattern 후보 라벨 생성
 
 ### 주기
 - 1일 1회 (초기)
@@ -65,9 +65,10 @@ python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,se
 - Parent 승격 이후 `/api/v1/remix/{node_id}/analyze` 호출
 - 분석 결과는 Pattern 후보 라벨/요약으로 사용
 
-### Outlier 클러스터링 (옵션)
-- NotebookLM으로 유사 패턴을 묶고 라벨링하여 **큐레이션 속도**를 높입니다.
-- 최종 후보 확정은 **DB/규칙 기반 스코어링**으로 진행합니다.
+### Outlier 클러스터링 (기본)
+NotebookLM으로 유사 패턴을 묶고 라벨링하여 **큐레이션 속도**를 높입니다.
+결과는 반드시 **DB(Notebook Library)**에 저장된 후 활용합니다.
+최종 후보 확정은 **DB/규칙 기반 스코어링**으로 진행합니다.
 
 ### 수집 필드 권장(상세)
 | 필드 | 설명 |

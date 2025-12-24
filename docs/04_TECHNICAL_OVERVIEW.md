@@ -12,13 +12,17 @@
 - Automation: n8n or cron
 - Capsule: Opal/NotebookLM/Sheets 래핑 실행 노드
 
+**핵심 DB 테이블(확장)**
+- `notebook_library` (NotebookLM 요약/클러스터 저장)
+- `template_versions`, `template_feedback`, `template_policy` (템플릿 학습)
+
 ---
 
 ## 2) 핵심 데이터 흐름
 ```
-Outlier Source(수동/크롤링) → (NotebookLM Cluster, 옵션) → vdg_parents/variants
-  → vdg_pattern_trace + vdg_metric_daily
-  → vdg_evidence → Evidence Sheet → Decision Sheet → Capsule → Canvas UI
+Outlier Source(수동/크롤링) → NotebookLM 요약 → notebook_library(DB)
+  → remix_nodes(Parent/Variants) + metric_daily
+  → evidence_snapshots → Evidence Sheet → Decision Sheet → Capsule → Canvas UI
 ```
 
 ---
@@ -113,7 +117,7 @@ python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,se
 ## 7) 통합 원칙
 - **DB는 SoR**
 - **Sheets는 공유/운영 버스**
-- **NotebookLM/Opal은 옵션**
+- **NotebookLM 결과는 DB로 래핑**
 - **Pattern Library/Trace는 엔진**
 - **Capsule은 실행 레이어**
 - **Canvas는 템플릿 UI**

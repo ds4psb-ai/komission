@@ -10,7 +10,8 @@
 | --- | --- | --- | --- |
 | 수집 | 수동 입력/크롤링 | Outlier URL | `outlier_items` |
 | 동기화 | 수동 실행 | DB Outliers | `VDG_Outlier_Raw` |
-| 후보 선정 | 규칙/수동 | Outlier Raw | `VDG_Parent_Candidates` |
+| 해석 | NotebookLM | Outlier Raw | `notebook_library` |
+| 후보 선정 | 규칙/수동 | Outlier Raw + Notebook Library | `VDG_Parent_Candidates` |
 | 승격 | Curator 승인 | 후보 | `remix_nodes`(Parent) |
 | 분석 | 선택 실행 | Parent | 분석 요약 |
 | Evidence | 주간/수동 | Progress | `VDG_Evidence` |
@@ -22,8 +23,9 @@
 ## 2) 최소 운영 루프 (MVP)
 1. Outlier 수집 (수동 입력)
 2. DB → Sheet 동기화
-3. Evidence Runner 실행
-4. Decision 검토 후 템플릿 적용
+3. NotebookLM 해석 → Notebook Library 저장
+4. Evidence Runner 실행
+5. Decision 검토 후 템플릿 적용
 
 ### 실행 커맨드
 ```bash
@@ -53,6 +55,6 @@ python backend/scripts/run_real_evidence_loop.py
 ---
 
 ## 4) NotebookLM/Opal 사용 원칙
-- NotebookLM: 클러스터/요약 **보조**
+- NotebookLM: 해석/클러스터 결과를 **DB에 저장**
 - Opal: Decision 생성 **보조**
 - SoR는 DB, Sheet는 **운영 버스**

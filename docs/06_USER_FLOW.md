@@ -18,18 +18,20 @@
    - DB 저장(`outlier_items`)
 2. **Sheet 동기화**
    - `sync_outliers_to_sheet.py`로 `VDG_Outlier_Raw` 반영
-3. **Parent 후보 선정**
+3. **NotebookLM 해석**
+   - 요약/클러스터 생성 → `notebook_library` 저장
+4. **Parent 후보 선정**
    - 후보 기준(조회수/성장률/카테고리)
    - `VDG_Parent_Candidates` 상태 업데이트
-4. **Parent 승격**
+5. **Parent 승격**
    - `POST /api/v1/outliers/items/{item_id}/promote`
    - `remix_nodes` 생성 (layer=MASTER)
-5. **분석/요약(옵션)**
+6. **분석/요약(옵션)**
    - `POST /api/v1/remix/{node_id}/analyze`
    - NotebookLM/Opal 요약 반영
-6. **Evidence/Decision**
+7. **Evidence/Decision**
    - Evidence Sheet → Decision Sheet 생성
-7. **Capsule/Template 배포**
+8. **Capsule/Template 배포**
    - Canvas 템플릿에 적용
 
 ---
@@ -55,7 +57,15 @@
 
 ---
 
-## 5) 데이터 산출물 (핵심)
+## 5) Role Switch 규칙 (Creator ↔ Business)
+- 상단 스위치로 역할 전환 (페이지 분리 없음)
+- **세션 컨텍스트 유지**: node_id/parent_id/phase는 유지
+- Creator: Shoot 중심 CTA만 강조
+- Business: Evidence/Decision/O2O 관리가 전면
+
+---
+
+## 6) 데이터 산출물 (핵심)
 - OutlierItem → 후보
 - RemixNode(MASTER) → Parent
 - EvidenceSnapshot → 증거 요약

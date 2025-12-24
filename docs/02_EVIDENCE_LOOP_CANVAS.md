@@ -9,7 +9,7 @@
 - **Evidence Loop가 엔진**
 - **Debate는 옵션** (조건부 실행)
 - **DB=SoR, Sheets=버스**
-- NotebookLM/Opal은 **가속 옵션**
+- NotebookLM/Opal은 **가속 레이어**이며 결과는 **DB로 래핑**
 - Capsule/Template은 **실행 레이어**
 
 ---
@@ -18,11 +18,11 @@
 ```
 Outlier: 수동 입력/외부 소스 크롤링
   ↓
-Outlier Cluster (NotebookLM, 옵션)
+NotebookLM 해석 → Notebook Library(DB)
   ↓
 Parent 후보 선정
   ↓
-영상 해석/요약(옵션) → Pattern 후보 라벨
+Pattern 후보 라벨 (Notebook Library 기반)
   ↓
 Depth1/Depth2 실험
   ↓
@@ -193,7 +193,7 @@ DB에서 수집한 Outlier는 `sync_outliers_to_sheet.py`로 동기화합니다.
 | shipment_tracking | string | X | 배송 추적 번호 |
 
 ### 3.9 Insights Sheet (NotebookLM 출력)
-**목적**: NotebookLM Data Tables 결과 저장
+**목적**: NotebookLM 결과를 **DB에 저장한 후** 공유용으로 동기화
 
 | 컬럼 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
@@ -205,12 +205,12 @@ DB에서 수집한 Outlier는 `sync_outliers_to_sheet.py`로 동기화합니다.
 
 ---
 
-## 4) NotebookLM/Opal 활용 (옵션)
+## 4) NotebookLM/Opal 활용 (기본)
 
 ### NotebookLM (Data Tables)
-- Outlier Raw → 클러스터링/패턴 라벨(옵션)
-- Evidence Sheet → Data Tables → Insights Sheet
-- 사람에게 설명 가능한 표/요약을 자동 생성
+- Outlier Raw → 해석/라벨 → **Notebook Library(DB)**
+- Evidence Sheet → NotebookLM 요약 → **Notebook Library(DB)**
+- 결과는 **DB에 저장 후** 필요 시 Insights Sheet로 동기화
 
 ### Opal
 - Evidence/Insights Sheet 입력 → Decision Sheet 생성
@@ -251,6 +251,7 @@ Capsule은 Opal/NotebookLM/Sheets를 감싼 **보안형 실행 노드**입니다
 **Input**
 - parent_id, evidence_snapshot, pattern_lift_summary
 - insights_summary (NotebookLM 요약)
+- library_entry_id (Notebook Library 참조)
 - constraints (budget/time/brand guardrails)
 
 **Output**
@@ -259,6 +260,11 @@ Capsule은 Opal/NotebookLM/Sheets를 감싼 **보안형 실행 노드**입니다
 - audit_log_id
 
 > 내부 체인은 서버에서만 실행되며, UI에는 입력/출력만 노출합니다.
+
+### 6.2 Guide Node 표시 규칙
+- Capsule Output이 있으면 **Guide Node**가 자동 생성됨
+- Guide Node는 **숏폼 브리프(훅/샷/오디오/템포)**만 노출
+- 긴 설명/토론 로그는 **접힘 상태**로 유지
 
 ---
 

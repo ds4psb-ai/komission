@@ -13,6 +13,9 @@ python backend/scripts/run_real_evidence_loop.py
 ```
 
 Other utilities:
+- `run_crawler.py` — crawler → DB ingest (SoR)
 - `ingest_outlier_csv.py` — import external outlier CSV into `VDG_Outlier_Raw`
 - `ingest_progress_csv.py` — import progress CSV into `VDG_Progress`
 - `setup_sheets.py` — create initial `VDG_*` sheets
+- `create_sheets_user_quota.py` — user-auth sheet creation (Drive quota bypass)
+- `auto_setup_full.sh` — auth + sheets + sync + evidence loop (local bootstrap)

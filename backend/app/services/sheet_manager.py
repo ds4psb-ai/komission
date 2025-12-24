@@ -28,6 +28,7 @@ class SheetManager:
                 'https://www.googleapis.com/auth/drive',
                 'https://www.googleapis.com/auth/spreadsheets'
             ]
+            self.folder_id = os.environ.get("KOMISSION_FOLDER_ID")
             
             if credentials:
                 self.creds = credentials
@@ -79,12 +80,14 @@ class SheetManager:
                 'name': title,
                 'mimeType': 'application/vnd.google-apps.spreadsheet'
             }
-            if folder_id:
-                file_metadata['parents'] = [folder_id]
+            target_folder_id = folder_id or self.folder_id
+            if target_folder_id:
+                file_metadata['parents'] = [target_folder_id]
 
             file = self.drive_service.files().create(
                 body=file_metadata,
-                fields='id'
+                fields='id',
+                supportsAllDrives=True
             ).execute()
             
             sheet_id = file.get('id')
@@ -172,11 +175,15 @@ class SheetManager:
         self._validate_sheet_title(title)
         try:
             query = f"name = '{title}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false"
+            if self.folder_id:
+                query = f"{query} and '{self.folder_id}' in parents"
             results = self.drive_service.files().list(
                 q=query,
                 spaces='drive',
                 fields='files(id, name)',
-                pageSize=1
+                pageSize=1,
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True
             ).execute()
             files = results.get('files', [])
             if not files:
@@ -223,6 +230,7 @@ class SheetManager:
                 fileId=sheet_id,
                 body=user_permission,
                 fields='id',
+                supportsAllDrives=True
             ).execute()
             logger.info(f"Shared sheet {sheet_id} with {email_address} as {role}")
         except HttpError as error:

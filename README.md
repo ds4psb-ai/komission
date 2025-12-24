@@ -7,7 +7,7 @@ Outlier 수집 → Parent 승격 → Depth 실험 → Evidence/Decision → Caps
 
 ## System Snapshot
 - **DB is SoR**, Sheets are the ops/share bus
-- NotebookLM/Opal are **optional accelerators**
+- NotebookLM/Opal are **accelerators**; outputs are **DB‑wrapped**
 - Canvas shows only **inputs/outputs** (capsule chain stays hidden)
 
 ## Canonical Docs
@@ -23,6 +23,11 @@ All up-to-date docs live under `docs/`. Start here:
 - `docs/07_PIPELINE_PLAYBOOK.md`
 - `docs/08_CANVAS_NODE_CONTRACTS.md`
 - `docs/09_OPERATIONS_RUNBOOK.md`
+- `docs/10_UI_UX_STRATEGY.md`
+- `docs/11_VIRLO_BENCHMARK.md`
+- `docs/12_KOMISSION_STUDIO_SPEC.md`
+- `docs/13_PERIODIC_CRAWLING_SPEC.md`
+- `docs/14_NOTEBOOK_LIBRARY_NODE_SPEC.md`
 
 ## Quick Start (Local)
 ```bash

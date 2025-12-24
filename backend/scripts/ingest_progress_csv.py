@@ -97,7 +97,7 @@ def main():
     parser.add_argument("--status", default="tracking", help="Default status (tracking)")
     args = parser.parse_args()
 
-    load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+    load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
     share_email = os.environ.get("KOMISSION_SHARE_EMAIL")
     folder_id = os.environ.get("KOMISSION_FOLDER_ID")
 

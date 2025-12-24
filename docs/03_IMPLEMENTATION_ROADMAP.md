@@ -11,8 +11,9 @@
 - 소스 확정: 외부 구독 사이트 목록 + 크롤링 정책
 - Drive 폴더 구조 확정: Evidence/Decision/Experiment/O2O
 - 카테고리/패턴 택소노미 고정 (beauty/meme/etc + hook/scene/audio/subtitle/pacing)
-- NotebookLM/Opal 사용 범위 확정 (옵션)
+- NotebookLM/Opal 사용 범위 확정 (기본 사용, DB 래핑)
 - Capsule IO 계약 정의 (입력/출력/로그)
+ - Notebook Library 테이블 설계 확정 (요약/클러스터/라벨)
 
 **완료 기준**
 - `.env`에 Drive/Sheet 설정 완료
@@ -27,9 +28,10 @@
 1. Outlier 수동 입력 API 정리 (링크 기반)
 2. 중복 제거 규칙 확정 (URL hash)
 3. DB → Sheet 동기화 스크립트 연결
-4. 후보 리스트(Parent Candidates) 자동 생성 로직
-5. Parent 승격 → RemixNode 생성
-6. 분석 호출(`/remix/{node_id}/analyze`) 경로 확정
+4. NotebookLM 요약 생성 → **Notebook Library(DB)** 적재
+5. 후보 리스트(Parent Candidates) 자동 생성 로직
+6. Parent 승격 → RemixNode 생성
+7. 분석 호출(`/remix/{node_id}/analyze`) 경로 확정
 
 **완료 기준**
 - Outlier 20개 이상 적재
@@ -46,7 +48,7 @@
 2. Evidence 스냅샷 생성 로직 정리
 3. Evidence Sheet 업로드 확인
 4. Opal Decision 생성 (또는 규칙 기반 대체)
-5. NotebookLM Insights Sheet(옵션)
+5. NotebookLM Insights → **DB 래핑 후 Sheet 동기화**
 
 **완료 기준**
 - Evidence/Decision Sheet 1건 이상 생성
@@ -62,6 +64,7 @@
 2. Canvas 템플릿 A/B 연결
 3. 핵심 CTA(촬영/신청) 위치 고정
 4. O2O 타입 게이팅(즉시/방문/배송)
+5. 템플릿 커스터마이징 로그 수집 시작
 
 **완료 기준**
 - Canvas에서 Evidence/Decision 표시
@@ -76,6 +79,7 @@
 1. Parent 2개 선정 (beauty/meme)
 2. Depth1 실험 실행 + 14일 추적
 3. Decision 반영 후 Depth2 시작
+4. RL-lite 정책 업데이트 (템플릿 기본값 개선)
 4. KPI 리포트 생성
 
 **완료 기준**

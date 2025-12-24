@@ -15,7 +15,7 @@ Komission은 **Outlier → Parent → 변주 → Pattern Lift → Evidence → �
 - **Evidence Loop 우선 완성**: 토론보다 실험/데이터가 먼저
 - **Debate는 옵션**: 설명 레이어로만 사용 (필요할 때만)
 - **DB가 SoR, Sheets는 버스**: 운영/공유는 Sheets, 기록은 DB
-- **NotebookLM/Opal은 가속 장치**: 클러스터/요약/설명 레이어로만 사용
+- **NotebookLM/Opal은 가속 장치**: 해석 결과는 **DB로 래핑** 후 사용
 - **Pattern Library/Trace는 엔진**: 바이럴 공식은 DB/규칙 기반으로 증명
 - **Capsule/Template 실행 레이어**: 내부 체인은 감추고 입력/출력 계약만 공개
 
@@ -40,7 +40,7 @@ Evidence Table, Progress, Decision Summary를 매주 갱신합니다.
 ---
 
 ## 4) 운영 플로우 (최소형)
-관리자 수동 수집 → Outlier 후보 → (NotebookLM 클러스터, 옵션)
+관리자 수동 수집 → NotebookLM 해석 → Notebook Library(DB)
 → Parent 승격 → 변주/실험 → Evidence/Decision → Capsule 템플릿 실행
 
 ---
@@ -49,6 +49,13 @@ Evidence Table, Progress, Decision Summary를 매주 갱신합니다.
 - **Curator/Admin**: 수동 링크 입력 → Parent 승격 → 분석/요약 → Evidence/Decision 생성
 - **Creator**: Outlier 탐색 → Shoot 실행 → 제출 → 성과 트래킹
 - **O2O**: 즉시/방문/배송 타입에 따라 신청/촬영 흐름 게이팅
+
+---
+
+## 5.1) Legacy 대비 차별점
+- **장문 가이드 → 숏폼 브리프**: 텍스트 대신 훅/샷/템포 중심
+- **페이지 분리 → Role Switch**: Creator/Business 전환에도 컨텍스트 유지
+- **포인트 중심 → Evidence 중심**: 패턴/근거 데이터가 KPI
 
 ---
 
@@ -68,4 +75,4 @@ Evidence Table, Progress, Decision Summary를 매주 갱신합니다.
 
 ## 8) 결론
 **최선은 토론이 아니라 Evidence Loop**입니다.
-NotebookLM/Opal은 루프 속도를 올리는 **가속 옵션**이고, 핵심은 데이터/실험 루프입니다.
+NotebookLM/Opal은 루프 속도를 올리는 **가속 레이어**이고, 핵심은 데이터/실험 루프입니다.

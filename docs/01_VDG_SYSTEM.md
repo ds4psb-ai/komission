@@ -14,8 +14,8 @@ VDG는 **Parent(원본) → Depth1(1차 변주) → Depth2(최적화 변주)**�
 - 따라서 **Pattern Library/Trace**를 기록해야 진짜 공식이 증명됩니다.
 
 **입력 흐름(전제)**
-- 관리자 수동/크롤링 아웃라이어 → Parent 후보 → Depth 실험
-- NotebookLM 클러스터는 **라벨/요약 보조**이며 SoR은 DB입니다.
+- 관리자 수동/크롤링 아웃라이어 → NotebookLM 해석 → **Notebook Library(DB)** → Parent 후보 → Depth 실험
+- NotebookLM 결과는 **DB에 저장**되며 SoR은 DB입니다.
 
 ---
 

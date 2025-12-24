@@ -54,6 +54,20 @@ class OutlierItemCreate(BaseModel):
     growth_rate: Optional[str] = None
 
 
+class OutlierCrawlItem(BaseModel):
+    source_name: str
+    external_id: str
+    video_url: str
+    platform: str
+    category: str
+    title: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    view_count: int = 0
+    like_count: Optional[int] = None
+    share_count: Optional[int] = None
+    growth_rate: Optional[str] = None
+
+
 class OutlierItemManualCreate(BaseModel):
     video_url: str
     platform: str
