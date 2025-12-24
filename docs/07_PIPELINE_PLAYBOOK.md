@@ -38,6 +38,11 @@ python backend/scripts/run_selector.py
 python backend/scripts/run_real_evidence_loop.py
 ```
 
+### One-shot (Provider → Candidates)
+```bash
+python backend/scripts/run_provider_pipeline.py --config backend/provider_sources.json
+```
+
 ---
 
 ## 3) 단계별 체크리스트
