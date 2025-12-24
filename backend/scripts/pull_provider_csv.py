@@ -12,7 +12,7 @@ import json
 import os
 import sys
 import tempfile
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -33,6 +33,17 @@ def load_sources(config_path: str) -> List[Dict[str, Any]]:
         raise FileNotFoundError(f"Config not found: {config_path}")
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def resolve_local_path(source: Dict[str, Any]) -> Optional[str]:
+    local_path = source.get("local_path") or source.get("path")
+    if not local_path:
+        return None
+    if local_path.startswith("file://"):
+        local_path = local_path.replace("file://", "", 1)
+    if not os.path.isabs(local_path):
+        local_path = os.path.join(os.path.dirname(BASE_DIR), local_path)
+    return os.path.abspath(local_path)
 
 
 async def download_csv(url: str, headers: Dict[str, str]) -> str:
@@ -60,12 +71,17 @@ async def main_async(args: argparse.Namespace) -> None:
 
     for source in sources:
         name = source.get("name", "provider")
+        local_path = resolve_local_path(source)
         url = source.get("url")
-        if not url:
+
+        if not url and not local_path:
             continue
 
-        headers = build_headers(source)
-        csv_path = await download_csv(url, headers)
+        if local_path:
+            csv_path = local_path
+        else:
+            headers = build_headers(source)
+            csv_path = await download_csv(url, headers)
 
         ingest_args = argparse.Namespace(
             csv=csv_path,

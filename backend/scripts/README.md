@@ -22,6 +22,9 @@ Other utilities:
 - `pull_provider_csv.py` — provider CSV fetch → DB ingest
 - `run_provider_pipeline.py` — pull → sync → select (one-shot)
 - `ingest_outlier_csv.py` — import external outlier CSV into `VDG_Outlier_Raw`
+
+Provider config:
+- `backend/provider_sources.json` (local template, supports `local_path` for offline tests)
 - `ingest_progress_csv.py` — import progress CSV into `VDG_Progress`
 - `setup_sheets.py` — create initial `VDG_*` sheets
 - `create_sheets_user_quota.py` — user-auth sheet creation (Drive quota bypass)
