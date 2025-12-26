@@ -314,3 +314,220 @@ async def verify_location(
         "distance": int(distance),
         "message": f"Successfully verified at {location.place_name}!"
     }
+
+
+# ==================
+# Admin Endpoints
+# ==================
+
+class CreateCampaignRequest(BaseModel):
+    campaign_type: str  # instant, shipment, visit
+    campaign_title: str
+    brand: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    reward_points: int = 0
+    reward_product: Optional[str] = None
+    fulfillment_steps: Optional[List[str]] = None
+    active_days: int = 30  # Days from now
+    max_participants: Optional[int] = None
+
+
+class UpdateApplicationStatusRequest(BaseModel):
+    status: str  # selected, shipped, delivered, completed, rejected
+    tracking_number: Optional[str] = None
+
+
+class ApplicationDetailResponse(BaseModel):
+    id: str
+    campaign_id: str
+    campaign_title: str
+    campaign_type: str
+    user_id: str
+    user_email: str
+    user_name: Optional[str]
+    status: str
+    shipment_tracking: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+def require_admin(user: User) -> None:
+    """Helper to check admin role"""
+    if user.role not in ("admin", "brand"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
+@router.get("/admin/applications", response_model=List[ApplicationDetailResponse])
+async def list_all_applications(
+    status_filter: Optional[str] = None,
+    campaign_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """[Admin] List all campaign applications with optional filters"""
+    require_admin(current_user)
+    
+    query = select(O2OApplication, O2OCampaign, User).join(
+        O2OCampaign, O2OApplication.campaign_id == O2OCampaign.id
+    ).join(
+        User, O2OApplication.user_id == User.id
+    )
+    
+    if status_filter:
+        query = query.where(O2OApplication.status == status_filter)
+    if campaign_id:
+        query = query.where(O2OCampaign.campaign_id == campaign_id)
+    
+    query = query.order_by(O2OApplication.created_at.desc())
+    result = await db.execute(query)
+    
+    applications: List[ApplicationDetailResponse] = []
+    for app, campaign, user in result.all():
+        applications.append(
+            ApplicationDetailResponse(
+                id=str(app.id),
+                campaign_id=str(campaign.id),
+                campaign_title=campaign.campaign_title,
+                campaign_type=campaign.campaign_type,
+                user_id=str(user.id),
+                user_email=user.email,
+                user_name=user.name,
+                status=app.status.value if hasattr(app.status, 'value') else app.status,
+                shipment_tracking=app.shipment_tracking,
+                created_at=app.created_at,
+                updated_at=app.updated_at,
+            )
+        )
+    
+    return applications
+
+
+@router.patch("/admin/applications/{application_id}")
+async def update_application_status(
+    application_id: str,
+    data: UpdateApplicationStatusRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """[Admin] Update application status (approve/ship/complete/reject)"""
+    require_admin(current_user)
+    
+    try:
+        app_uuid = uuid.UUID(application_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid application ID")
+    
+    application = await db.get(O2OApplication, app_uuid)
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Validate status transition
+    valid_statuses = {"selected", "shipped", "delivered", "completed", "rejected"}
+    if data.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+    
+    # Update status
+    application.status = O2OApplicationStatus(data.status)
+    if data.tracking_number:
+        application.shipment_tracking = data.tracking_number
+    
+    await db.commit()
+    
+    return {
+        "id": str(application.id),
+        "status": application.status.value if hasattr(application.status, 'value') else application.status,
+        "tracking_number": application.shipment_tracking,
+        "message": f"Application updated to {data.status}"
+    }
+
+
+@router.post("/admin/campaigns", response_model=O2OCampaignResponse)
+async def create_campaign(
+    data: CreateCampaignRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """[Admin] Create a new O2O campaign"""
+    require_admin(current_user)
+    
+    from datetime import timedelta
+    
+    now = datetime.utcnow()
+    campaign = O2OCampaign(
+        campaign_id=f"campaign_{now.strftime('%Y%m%d')}_{uuid.uuid4().hex[:8]}",
+        campaign_type=data.campaign_type,
+        campaign_title=data.campaign_title,
+        brand=data.brand,
+        category=data.category,
+        description=data.description,
+        reward_points=data.reward_points,
+        reward_product=data.reward_product,
+        fulfillment_steps={"steps": data.fulfillment_steps} if data.fulfillment_steps else None,
+        active_start=now,
+        active_end=now + timedelta(days=data.active_days),
+        max_participants=data.max_participants,
+    )
+    
+    db.add(campaign)
+    await db.flush()
+    
+    return O2OCampaignResponse(
+        id=str(campaign.id),
+        campaign_type=campaign.campaign_type,
+        campaign_title=campaign.campaign_title,
+        brand=campaign.brand,
+        category=campaign.category,
+        reward_points=campaign.reward_points,
+        reward_product=campaign.reward_product,
+        description=campaign.description,
+        fulfillment_steps=data.fulfillment_steps,
+        place_name=None,
+        address=None,
+        active_start=campaign.active_start,
+        active_end=campaign.active_end,
+        max_participants=campaign.max_participants,
+    )
+
+
+@router.get("/admin/campaigns/{campaign_id}/stats")
+async def get_campaign_stats(
+    campaign_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """[Admin] Get statistics for a campaign"""
+    require_admin(current_user)
+    
+    try:
+        campaign_uuid = uuid.UUID(campaign_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid campaign ID")
+    
+    campaign = await db.get(O2OCampaign, campaign_uuid)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Count applications by status
+    from sqlalchemy import func
+    stats_query = select(
+        O2OApplication.status,
+        func.count(O2OApplication.id).label("count")
+    ).where(
+        O2OApplication.campaign_id == campaign_uuid
+    ).group_by(O2OApplication.status)
+    
+    result = await db.execute(stats_query)
+    status_counts = {row.status.value if hasattr(row.status, 'value') else row.status: row.count for row in result.all()}
+    
+    total = sum(status_counts.values())
+    
+    return {
+        "campaign_id": str(campaign.id),
+        "campaign_title": campaign.campaign_title,
+        "total_applications": total,
+        "max_participants": campaign.max_participants,
+        "status_breakdown": status_counts,
+        "fill_rate": round(total / campaign.max_participants * 100, 1) if campaign.max_participants else None,
+    }
+

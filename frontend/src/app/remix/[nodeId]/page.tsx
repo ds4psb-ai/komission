@@ -42,6 +42,20 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
 
     const [isStarting, setIsStarting] = useState(false);
     const [showCelebration, setShowCelebration] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const media = window.matchMedia("(max-width: 768px)");
+        const update = () => setIsMobile(media.matches);
+        update();
+        if (media.addEventListener) {
+            media.addEventListener("change", update);
+            return () => media.removeEventListener("change", update);
+        }
+        media.addListener(update);
+        return () => media.removeListener(update);
+    }, []);
 
     const handleStartFilming = async () => {
         setIsStarting(true);
@@ -66,6 +80,10 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
     const handleCloseCelebration = () => {
         setShowCelebration(false);
     };
+
+    const canShoot = isMobile;
+    const startLabel = canShoot ? "촬영 가이드 시작" : "모바일에서만 촬영 가능";
+    const completeLabel = canShoot ? "촬영 완료" : "모바일에서 촬영 완료";
 
     return (
         <div className="space-y-6">
@@ -92,23 +110,24 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
                             <Button
                                 variant="primary"
                                 size="lg"
-                                onClick={handleCompleteFilming}
+                                onClick={canShoot ? handleCompleteFilming : undefined}
+                                disabled={!canShoot}
                                 leftIcon={<Upload className="w-6 h-6" />}
                                 className="text-lg px-8 py-5 bg-gradient-to-r from-emerald-500 to-cyan-500"
                             >
-                                촬영 완료
+                                {completeLabel}
                             </Button>
                         ) : (
                             <Button
                                 variant="primary"
                                 size="lg"
-                                onClick={handleStartFilming}
+                                onClick={canShoot ? handleStartFilming : undefined}
                                 isLoading={isStarting}
-                                disabled={isStarting}
+                                disabled={isStarting || !canShoot}
                                 leftIcon={<Clapperboard className="w-6 h-6" />}
                                 className="text-lg px-8 py-5"
                             >
-                                촬영 가이드 시작
+                                {startLabel}
                             </Button>
                         )}
                         <span className="text-xs text-white/40">

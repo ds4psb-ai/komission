@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useState, useRef, useEffect } from "react";
-import { Flame, Network, Puzzle, ShoppingBag, User, Wallet, LogOut } from 'lucide-react';
+import { Network, User, Wallet, LogOut, Radar, FlaskConical, Zap, BookOpen, Sparkles } from 'lucide-react';
 
 const navItems = [
-    { href: "/", label: "아웃라이어", icon: Flame },
+    { href: "/", label: "디스커버", icon: Sparkles },
     { href: "/canvas", label: "캔버스", icon: Network },
-    { href: "/pipelines", label: "템플릿", icon: Puzzle },
-    { href: "/o2o", label: "마켓", icon: ShoppingBag },
+    { href: "/boards", label: "실험보드", icon: FlaskConical },
+    { href: "/knowledge/hooks", label: "훅", icon: Zap },
+    { href: "/knowledge/guides", label: "가이드", icon: BookOpen },
     { href: "/my", label: "마이", icon: User },
 ];
 

@@ -34,9 +34,14 @@ class Settings(BaseSettings):
     NEO4J_PASSWORD: str = "kmeme_password"
 
     # AI Models
-    GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-3.0-pro"
+    GOOGLE_API_KEY: str = ""  # Gemini API key (used by analysis_pipeline, template_seeds)
+    GEMINI_API_KEY: str = ""  # Legacy alias
+    GEMINI_MODEL: str = "gemini-3-pro-preview"  # Works with video analysis
     CLAUDE_API_KEY: str = ""
+
+    # Crawler APIs
+    YOUTUBE_API_KEY: str = ""  # YouTube Data API v3
+    APIFY_API_TOKEN: str = ""  # For TikTok/Instagram crawling
 
     # Monitoring
     SENTRY_DSN: str = ""

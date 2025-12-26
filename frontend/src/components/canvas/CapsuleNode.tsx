@@ -23,6 +23,12 @@ export type CapsuleDefinition = {
     outputs: string[];
     params?: CapsuleParam[];
     status?: CapsuleStatus;
+    // Phase 3: Creator Persona (implicit signals)
+    persona_context?: {
+        style_vector?: Record<string, number>;
+        calibration_summary?: string;
+        signal_source?: 'behavior' | 'calibration' | 'hybrid';
+    };
 };
 
 interface CapsuleNodeData {

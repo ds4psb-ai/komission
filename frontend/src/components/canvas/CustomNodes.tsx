@@ -1,7 +1,28 @@
 import { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { RemixNode } from '@/lib/api';
+import { Eye, Zap, Star, Award, Diamond, BarChart, ExternalLink } from 'lucide-react';
 
+/**
+ * CrawlerOutlierItem interface for 3-platform crawler data
+ */
+export interface CrawlerOutlierItem {
+    id: string;
+    external_id: string;
+    video_url: string;
+    platform: 'tiktok' | 'youtube' | 'instagram';
+    category: string;
+    title: string;
+    thumbnail_url?: string;
+    view_count: number;
+    like_count?: number;
+    outlier_score: number;
+    outlier_tier: 'S' | 'A' | 'B' | 'C' | null;
+    creator_avg_views: number;
+    engagement_rate: number;
+    crawled_at: string;
+    status: 'pending' | 'selected' | 'rejected' | 'promoted';
+}
 interface NodeWrapperProps {
     children: React.ReactNode;
     title: string;
@@ -381,5 +402,222 @@ export const NotebookNode = memo(({ data }: { data: NotebookNodeData }) => {
             </div>
             <Handle type="source" position={Position.Right} className="!bg-sky-500 !w-3 !h-3 !border-2 !border-black" />
         </NodeWrapper>
+    );
+});
+
+// Tier configuration for CrawlerOutlierNode
+const CRAWLER_TIER_CONFIG = {
+    S: { label: 'S', icon: Award, colorClass: 'text-amber-400', bgClass: 'bg-amber-500/20', borderClass: 'border-amber-500/40' },
+    A: { label: 'A', icon: Star, colorClass: 'text-purple-400', bgClass: 'bg-purple-500/20', borderClass: 'border-purple-500/40' },
+    B: { label: 'B', icon: Diamond, colorClass: 'text-blue-400', bgClass: 'bg-blue-500/20', borderClass: 'border-blue-500/40' },
+    C: { label: 'C', icon: BarChart, colorClass: 'text-zinc-400', bgClass: 'bg-zinc-500/20', borderClass: 'border-zinc-500/40' },
+};
+
+const CRAWLER_PLATFORM_CONFIG = {
+    tiktok: { label: 'TikTok', icon: '🎵', gradient: 'from-pink-600/30 to-cyan-600/20' },
+    youtube: { label: 'Shorts', icon: '▶️', gradient: 'from-red-600/30 to-gray-600/20' },
+    instagram: { label: 'Reels', icon: '📷', gradient: 'from-purple-600/30 to-orange-600/20' },
+};
+
+// Format large numbers (e.g., 1500000 -> 1.5M)
+function formatViewCount(num: number): string {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+}
+
+interface CrawlerOutlierNodeData {
+    outlier: CrawlerOutlierItem;
+    onPromote?: (item: CrawlerOutlierItem) => void;
+}
+
+export const CrawlerOutlierNode = memo(({ data }: { data: CrawlerOutlierNodeData }) => {
+    const { outlier, onPromote } = data;
+    const tierConfig = outlier.outlier_tier ? CRAWLER_TIER_CONFIG[outlier.outlier_tier] : null;
+    const platformConfig = CRAWLER_PLATFORM_CONFIG[outlier.platform];
+    const TierIcon = tierConfig?.icon || BarChart;
+
+    const multiplier = outlier.creator_avg_views > 0
+        ? Math.round(outlier.view_count / outlier.creator_avg_views)
+        : 0;
+
+    const isPromoted = outlier.status === 'promoted';
+
+    return (
+        <NodeWrapper
+            title={`${platformConfig.icon} ${tierConfig?.label || ''}-Tier Outlier`}
+            colorClass={tierConfig?.borderClass || 'border-white/20'}
+            status={isPromoted ? 'done' : 'idle'}
+        >
+            <div className="space-y-3">
+                {/* Thumbnail with Platform Badge */}
+                <div className={`relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br ${platformConfig.gradient}`}>
+                    {outlier.thumbnail_url ? (
+                        <img
+                            src={outlier.thumbnail_url}
+                            alt={outlier.title}
+                            className="w-full h-full object-cover"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-4xl opacity-50">
+                            {platformConfig.icon}
+                        </div>
+                    )}
+                    {/* Tier Badge Overlay */}
+                    {tierConfig && (
+                        <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full ${tierConfig.bgClass} border ${tierConfig.borderClass} flex items-center gap-1`}>
+                            <TierIcon className={`w-3 h-3 ${tierConfig.colorClass}`} />
+                            <span className={`text-[10px] font-black ${tierConfig.colorClass}`}>{tierConfig.label}</span>
+                        </div>
+                    )}
+                    {/* Views Badge */}
+                    <div className="absolute top-2 right-2 px-2 py-0.5 bg-black/60 backdrop-blur rounded text-[10px] font-mono flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        {formatViewCount(outlier.view_count)}
+                    </div>
+                </div>
+
+                {/* Title */}
+                <div className="text-sm font-bold text-white leading-tight line-clamp-2">
+                    {outlier.title || 'Untitled'}
+                </div>
+
+                {/* Stats Row */}
+                <div className="flex items-center gap-3 text-xs text-white/60">
+                    {multiplier > 0 && (
+                        <span className={`flex items-center gap-1 font-mono font-bold ${tierConfig?.colorClass || 'text-white/60'}`}>
+                            <Zap className="w-3 h-3" />
+                            {multiplier}x
+                        </span>
+                    )}
+                    <span className="text-white/40">•</span>
+                    <span>{(outlier.engagement_rate * 100).toFixed(1)}% Eng</span>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-2 border-t border-white/10">
+                    <a
+                        href={outlier.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-white/70 hover:text-white transition-all"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <ExternalLink className="w-3 h-3" />
+                        View
+                    </a>
+                    {!isPromoted && onPromote && (
+                        <button
+                            onClick={() => onPromote(outlier)}
+                            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg font-bold text-[10px] transition-all ${tierConfig?.bgClass || 'bg-violet-500/20'} ${tierConfig?.borderClass || 'border-violet-500/40'} border ${tierConfig?.colorClass || 'text-violet-300'} hover:brightness-125`}
+                        >
+                            <Star className="w-3 h-3" />
+                            Promote
+                        </button>
+                    )}
+                    {isPromoted && (
+                        <div className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-[10px] text-emerald-400 font-bold">
+                            ✓ Promoted
+                        </div>
+                    )}
+                </div>
+            </div>
+            <Handle type="source" position={Position.Right} className="!bg-violet-500 !w-3 !h-3 !border-2 !border-black" />
+        </NodeWrapper>
+    );
+});
+
+
+/**
+ * Template Seed Node - Opal-generated template seeds
+ * Based on 15_FINAL_ARCHITECTURE.md
+ */
+interface TemplateSeedData {
+    seed_id: string;
+    template_type: 'capsule' | 'guide' | 'edit';
+    hook?: string;
+    shotlist?: string[];
+    audio?: string;
+    timing?: string[];
+    parent_id?: string;
+    cluster_id?: string;
+}
+
+interface TemplateSeedNodeData {
+    seed: TemplateSeedData;
+    onApply?: (seed: TemplateSeedData) => void;
+}
+
+const TEMPLATE_TYPE_CONFIG = {
+    capsule: { label: 'Capsule', icon: '💊', colorClass: 'text-emerald-400', bgClass: 'bg-emerald-500/20' },
+    guide: { label: 'Guide', icon: '📋', colorClass: 'text-blue-400', bgClass: 'bg-blue-500/20' },
+    edit: { label: 'Edit', icon: '✂️', colorClass: 'text-orange-400', bgClass: 'bg-orange-500/20' },
+};
+
+export const TemplateSeedNode = memo(({ data }: { data: TemplateSeedNodeData }) => {
+    const { seed, onApply } = data;
+    const typeConfig = TEMPLATE_TYPE_CONFIG[seed.template_type] || TEMPLATE_TYPE_CONFIG.capsule;
+
+    return (
+        <div className="w-[280px] p-4 rounded-xl bg-black/80 backdrop-blur border-2 border-dashed border-emerald-500/50">
+            {/* Header with Seed Badge */}
+            <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${typeConfig.bgClass} ${typeConfig.colorClass}`}>
+                        {typeConfig.icon} Seed
+                    </span>
+                    <span className={`text-xs font-medium ${typeConfig.colorClass}`}>{typeConfig.label}</span>
+                </div>
+                <span className="text-[9px] text-white/30 font-mono">{seed.seed_id?.slice(0, 12)}...</span>
+            </div>
+
+            {/* Hook */}
+            {seed.hook && (
+                <div className="mb-3">
+                    <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Hook</div>
+                    <div className="text-sm text-white/90 leading-snug">{seed.hook}</div>
+                </div>
+            )}
+
+            {/* Shotlist Preview */}
+            {seed.shotlist && seed.shotlist.length > 0 && (
+                <div className="mb-3">
+                    <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Shots ({seed.shotlist.length})</div>
+                    <div className="space-y-1">
+                        {seed.shotlist.slice(0, 3).map((shot, i) => (
+                            <div key={i} className="text-[11px] text-white/60 truncate flex items-center gap-1">
+                                <span className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[9px]">{i + 1}</span>
+                                {shot}
+                            </div>
+                        ))}
+                        {seed.shotlist.length > 3 && (
+                            <div className="text-[10px] text-white/40">+{seed.shotlist.length - 3} more...</div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Timing */}
+            {seed.timing && seed.timing.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                    {seed.timing.slice(0, 5).map((t, i) => (
+                        <span key={i} className="px-1.5 py-0.5 bg-white/5 rounded text-[9px] text-white/50 font-mono">{t}</span>
+                    ))}
+                </div>
+            )}
+
+            {/* Apply Button */}
+            {onApply && (
+                <button
+                    onClick={() => onApply(seed)}
+                    className="w-full py-2 mt-2 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-bold hover:bg-emerald-500/30 transition-all"
+                >
+                    ✨ Apply Seed
+                </button>
+            )}
+
+            <Handle type="target" position={Position.Left} className="!bg-emerald-500 !w-3 !h-3 !border-2 !border-black" />
+            <Handle type="source" position={Position.Right} className="!bg-emerald-500 !w-3 !h-3 !border-2 !border-black" />
+        </div>
     );
 });

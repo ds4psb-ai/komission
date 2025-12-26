@@ -54,6 +54,24 @@ def normalize_summary(value: Any) -> Dict[str, Any]:
     return {"summary": str(value)}
 
 
+def parse_int(value: Any) -> Optional[int]:
+    if value is None or value == "":
+        return None
+    try:
+        return int(float(value))
+    except (ValueError, TypeError):
+        return None
+
+
+def parse_float(value: Any) -> Optional[float]:
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+
+
 async def entry_exists(
     db: AsyncSession,
     source_url: str,
@@ -96,6 +114,10 @@ async def main_async(args: argparse.Namespace) -> None:
             summary = normalize_summary(record.get("summary") or record.get("notes"))
             cluster_id = record.get("cluster_id") or args.cluster_id
             parent_node_id = parse_uuid(record.get("parent_node_id") or args.parent_node_id)
+            temporal_phase = record.get("temporal_phase")
+            variant_age_days = parse_int(record.get("variant_age_days"))
+            novelty_decay_score = parse_float(record.get("novelty_decay_score"))
+            burstiness_index = parse_float(record.get("burstiness_index"))
 
             if await entry_exists(db, source_url, parent_node_id):
                 continue
@@ -107,6 +129,10 @@ async def main_async(args: argparse.Namespace) -> None:
                 summary=summary,
                 cluster_id=cluster_id,
                 parent_node_id=parent_node_id,
+                temporal_phase=temporal_phase,
+                variant_age_days=variant_age_days,
+                novelty_decay_score=novelty_decay_score,
+                burstiness_index=burstiness_index,
             )
             db.add(entry)
             inserted += 1

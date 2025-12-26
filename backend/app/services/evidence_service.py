@@ -296,8 +296,13 @@ class EvidenceService:
         except:
             return 0.0
     
-    def _assess_risk(self, stats: Dict) -> str:
-        """리스크 평가 (샘플 수 + 성공률 기반)"""
+    def _assess_risk(self, stats: Dict, novelty_decay_score: float = 1.0) -> str:
+        """
+        리스크 평가 (샘플 수 + 성공률 + novelty_decay 기반)
+        
+        novelty_decay_score: 0.2 ~ 1.0 (낮을수록 패턴이 오래됨)
+        - 오래된 패턴(낮은 decay)은 리스크 상향
+        """
         sample_count = stats.get("sample_count", 0)
         success_rate = stats.get("success_rate", 0)
         
@@ -305,6 +310,14 @@ class EvidenceService:
             return "high"  # 샘플 부족
         if success_rate < 0.3:
             return "high"  # 성공률 낮음
+        
+        # Novelty decay 리스크 조정 (Temporal Variation Theory)
+        if novelty_decay_score < 0.5:
+            # 패턴이 오래됨 - 창의성 필요
+            if success_rate < 0.7:
+                return "high"
+            return "medium"
+        
         if success_rate < 0.6:
             return "medium"
         return "low"

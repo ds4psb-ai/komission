@@ -15,7 +15,9 @@ Komission은 **Outlier → Parent → 변주 → Pattern Lift → Evidence → �
 - **Evidence Loop 우선 완성**: 토론보다 실험/데이터가 먼저
 - **Debate는 옵션**: 설명 레이어로만 사용 (필요할 때만)
 - **DB가 SoR, Sheets는 버스**: 운영/공유는 Sheets, 기록은 DB
-- **NotebookLM/Opal은 가속 장치**: 해석 결과는 **DB로 래핑** 후 사용
+- **영상 해석은 코드 기반**: 스키마/클러스터는 파이프라인이 생성
+- **NotebookLM/Opal은 가속 장치**: 요약/RAG/설명 레이어로만 사용, 결과는 **DB로 래핑**
+- **Opal은 템플릿 시드 생성기**: 노드 템플릿 초안을 빠르게 만든다
 - **Pattern Library/Trace는 엔진**: 바이럴 공식은 DB/규칙 기반으로 증명
 - **Capsule/Template 실행 레이어**: 내부 체인은 감추고 입력/출력 계약만 공개
 
@@ -40,8 +42,8 @@ Evidence Table, Progress, Decision Summary를 매주 갱신합니다.
 ---
 
 ## 4) 운영 플로우 (최소형)
-관리자 수동 수집 → NotebookLM 해석 → Notebook Library(DB)
-→ Parent 승격 → 변주/실험 → Evidence/Decision → Capsule 템플릿 실행
+관리자 수동 수집 → 영상 해석(코드) → 유사도 클러스터링 → Notebook Library(DB, 요약/RAG)
+→ Parent 승격 → 변주/실험 → Evidence/Decision → Opal 템플릿 시드 → Capsule 템플릿 실행
 
 ---
 

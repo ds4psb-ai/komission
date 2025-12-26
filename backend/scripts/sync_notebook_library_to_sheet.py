@@ -27,7 +27,21 @@ from app.models import NotebookLibraryEntry
 from app.services.sheet_manager import SheetManager
 
 SHEET_INSIGHTS = "VDG_Insights"
-INSIGHTS_HEADERS = ["parent_id", "summary", "key_patterns", "risks", "created_at"]
+INSIGHTS_HEADERS = [
+    "parent_id",
+    "summary",
+    "key_patterns",
+    "risks",
+    "created_at",
+    "cluster_id",
+    "platform",
+    "category",
+    "temporal_phase",
+    "variant_age_days",
+    "novelty_decay_score",
+    "burstiness_index",
+    "source_url",
+]
 
 
 def ensure_sheet(manager: SheetManager, folder_id: Optional[str], share_email: Optional[str]) -> str:
@@ -37,10 +51,10 @@ def ensure_sheet(manager: SheetManager, folder_id: Optional[str], share_email: O
         manager.write_header(sheet_id, INSIGHTS_HEADERS)
     else:
         result = manager.sheets_service.spreadsheets().values().get(
-            spreadsheetId=sheet_id, range="Sheet1!A1:E1"
+            spreadsheetId=sheet_id, range="Sheet1!A1:Z1"
         ).execute()
         rows = result.get("values", [])
-        if not rows:
+        if not rows or rows[0] != INSIGHTS_HEADERS:
             manager.write_header(sheet_id, INSIGHTS_HEADERS)
 
     if sheet_id and share_email:
@@ -122,6 +136,14 @@ async def main_async(args: argparse.Namespace) -> None:
             extract_key_patterns(entry),
             extract_risks(entry),
             entry.created_at.isoformat(),
+            entry.cluster_id or "",
+            entry.platform or "",
+            entry.category or "",
+            entry.temporal_phase or "",
+            str(entry.variant_age_days) if entry.variant_age_days is not None else "",
+            str(entry.novelty_decay_score) if entry.novelty_decay_score is not None else "",
+            str(entry.burstiness_index) if entry.burstiness_index is not None else "",
+            entry.source_url or "",
         ])
         existing_summaries.add(summary_text)
 

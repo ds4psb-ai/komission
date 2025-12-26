@@ -9,6 +9,7 @@
 ## 1. Executive Summary
 
 이 문서는 YouTube, TikTok, Instagram 3개 플랫폼에서 숏폼 아웃라이어 콘텐츠를 주기적으로 수집하고, 각 플랫폼의 주요 업데이트를 모니터링하기 위한 상세 기술 사양을 정의합니다.
+영상 해석은 **Gemini 3.0 Pro 기반 코드 파이프라인**으로 스키마를 생성하고, NotebookLM은 선택적으로 요약/라벨을 보조합니다.
 
 ```mermaid
 graph LR
@@ -19,7 +20,7 @@ graph LR
     B --> F[(outlier_items DB)]
     C --> F
     D --> F
-    F --> I[NotebookLM 해석]
+    F --> I[영상 해석(코드) + 클러스터링]
     I --> J[(notebook_library DB)]
     E --> G[(VDG_Platform_Updates)]
     J --> H[Evidence Loop]
@@ -151,7 +152,7 @@ def classify_tier(score):
 ---
 
 ### 4.3 Notebook Library (DB 래핑)
-NotebookLM 해석 결과는 반드시 DB에 저장합니다.
+영상 해석/클러스터링 결과를 DB에 저장합니다. NotebookLM 요약은 선택적으로 래핑합니다.
 
 | Column | Type | Description |
 | --- | --- | --- |
@@ -334,6 +335,9 @@ class TikTokOutlierCrawler:
         videos = response.json().get('data', {}).get('videos', [])
         views = [v.get('view_count', 0) for v in videos]
         return sum(views) / len(views) if views else 0
+
+    # TikTok 댓글 (베스트 코멘트) 추출은 comment/list 캡처 방식 사용
+    # bdturing 차단 시 refresh_tiktok_session.py로 세션 갱신 후 재시도
 
     # Fallback: Web Scraping (if API unavailable)
     def scrape_trending_page(self):

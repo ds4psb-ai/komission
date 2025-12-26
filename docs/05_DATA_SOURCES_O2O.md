@@ -21,9 +21,10 @@
 2. **정규화**: 플랫폼/카테고리/시간대 표준화
 3. **중복 제거**: URL, 작성자, 업로드일 기준
 4. **우선순위 스코어링**: 성장률/조회수/최근성
-5. **NotebookLM 해석**: 요약/클러스터 → **Notebook Library(DB) 저장**
+5. **영상 해석(코드)**: 구조/패턴 스키마 → **Notebook Library(DB) 저장**
 6. **Parent 후보 등록**: 후보 리스트 확정
-7. **영상 해석/요약(보강)**: Pattern 후보 라벨 생성
+7. **요약/설명(보강, 선택)**: NotebookLM 요약으로 Pattern 라벨 보조
+8. **Opal 템플릿 시드(선택)**: Node/Template 시드 생성 → DB 래핑
 
 ### 주기
 - 1일 1회 (초기)
@@ -73,10 +74,11 @@ python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,se
 
 ### 영상 해석 단계 (옵션)
 - Parent 승격 이후 `/api/v1/remix/{node_id}/analyze` 호출
-- 분석 결과는 Pattern 후보 라벨/요약으로 사용
+- 분석 결과는 Pattern 후보 라벨/요약 보조로 사용 (Gemini 3.0 Pro 기반 코드 분석 우선)
 
 ### Outlier 클러스터링 (기본)
-NotebookLM으로 유사 패턴을 묶고 라벨링하여 **큐레이션 속도**를 높입니다.
+분석 스키마 기반 유사도 클러스터링으로 **패턴 묶음**을 만듭니다.
+NotebookLM은 **요약/라벨 보조**로만 사용합니다.
 결과는 반드시 **DB(Notebook Library)**에 저장된 후 활용합니다.
 최종 후보 확정은 **DB/규칙 기반 스코어링**으로 진행합니다.
 
@@ -108,7 +110,8 @@ python backend/scripts/ingest_progress_csv.py --csv /path/to/progress.csv
 
 `parent_id`가 없으면 `variant_id`에서 `parent_xxx` 패턴을 추출해 자동 매핑합니다.
 
-## 2) O2O 캠페인 타입
+## 2) O2O 캠페인 타입 (Phase 2+)
+> MVP는 **타입 게이팅(UI/표시)**까지만 제공하며, 모집/선정/배송/방문 운영은 Phase 2+에서 활성화됩니다.
 
 ### 즉시형 (instant)
 - 브랜드 가이드 기반 즉시 촬영
@@ -124,7 +127,7 @@ python backend/scripts/ingest_progress_csv.py --csv /path/to/progress.csv
 
 ---
 
-## 3) O2O 운영 데이터 흐름
+## 3) O2O 운영 데이터 흐름 (Phase 2+)
 ```
 캠페인 등록 → O2O Sheet 갱신 → Earn/Shoot UI 게이팅
 → 신청/상태 변화 → O2O Applications Sheet 반영

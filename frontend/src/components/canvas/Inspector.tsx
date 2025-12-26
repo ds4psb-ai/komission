@@ -3,6 +3,7 @@
 import React from 'react';
 import { Node } from '@xyflow/react';
 import type { CapsuleDefinition, CapsuleParam } from '@/components/canvas/CapsuleNode';
+import { VDGCard, VDGData } from '@/components/canvas/VDGCard';
 import { cn } from '@/lib/utils';
 import { Video, Brain, Clapperboard, Lock } from 'lucide-react';
 import { Badge } from "@/components/ui/Badge";
@@ -51,6 +52,9 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, onUpdateNodeDat
     const notebookSourceUrl = nodeType === 'notebook'
         ? String(nodeData.sourceUrl || '')
         : '';
+
+    // VDG Analysis data (from Gemini Pipeline)
+    const vdgData = nodeData.gemini_analysis as VDGData | undefined;
 
     const updateCapsuleParam = (param: CapsuleParam, value: string | number | boolean) => {
         if (!capsule || !onUpdateNodeData) return;
@@ -152,6 +156,17 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, onUpdateNodeDat
                                 </div>
                             )}
                         </div>
+                    </div>
+                )}
+
+                {/* VDG Analysis Card */}
+                {vdgData && (
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <span className="w-1 h-1 rounded-full bg-cyan-500"></span>
+                            VDG 분석
+                        </h4>
+                        <VDGCard vdg={vdgData} />
                     </div>
                 )}
 

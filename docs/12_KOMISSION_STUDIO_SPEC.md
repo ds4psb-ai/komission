@@ -17,7 +17,7 @@ This specification defines the "Best of Breed" features extracted from our deep-
 - **Visual Evidence Chain**: Users see *why* a decision was made by tracing the graph from `Evidence Node` → `Capsule Node` → `Decision Node`.
 - **Transparent Economy**: First-class credit visibility ensures users understand the cost of "intelligence" vs "generation".
 - **Context-Aware Processing**: The AI Processor is not a black box; it visibly consumes up-stream evidence.
-- **Notebook Library Integration**: NotebookLM 해석 결과는 **DB로 래핑**되어 노드로 소비된다.
+- **Notebook Library Integration**: 분석 스키마/클러스터는 **DB로 래핑**되어 노드로 소비된다. NotebookLM 요약은 선택적 보조.
 
 ---
 
@@ -35,20 +35,25 @@ We adopt a strictly typed node system to prevent "garbage graphs".
 2.  **Notebook Library (Context)**
     *   *Visual*: Rounded node, library icon.
     *   *Data*: `library_entry_id`, `cluster_id`.
-    *   *Behavior*: NotebookLM 요약 결과를 **DB에서 불러와** 컨텍스트로 공급.
+    *   *Behavior*: Notebook Library 요약/클러스터(NotebookLM 보조)를 **DB에서 불러와** 컨텍스트로 공급.
 
-3.  **Capsule Processor (Decision Engine)**
+3.  **Template Seed (Opal, Optional)**
+    *   *Visual*: Dotted outline, "Seed" badge.
+    *   *Data*: `seed_id`, `seed_json`, `prompt_version`.
+    *   *Behavior*: Opal이 만든 템플릿 시드를 캡슐/템플릿의 기본값으로 공급.
+
+4.  **Capsule Processor (Decision Engine)**
     *   *Visual*: Larger rectangular node with "Pulse" animation when active.
     *   *Data*: `execution_context` (upstream aggregation), `config` (user prompts).
     *   *Behavior*: The "Brain". Consumes Evidence + Notebook Library, produces Decision.
     *   *Note*: LLM 모델 선택은 캡슐 내부에서 관리한다.
 
-4.  **Brief/Draft (Output)**
+5.  **Brief/Draft (Output)**
     *   *Visual*: Document shape, previewable inline.
     *   *Data*: `markdown_body`, `media_assets`.
     *   *Behavior*: Actionable. Export to PDF, Sync to Notion.
 
-5.  **Template Node (Execution)**
+6.  **Template Node (Execution)**
     *   *Visual*: Check‑list panel.
     *   *Data*: `template_version_id`, `slots`.
     *   *Behavior*: 창작자/PD/작가의 커스텀 실행 단계.

@@ -5,12 +5,9 @@
 
 ---
 
-## 1) 핵심 원칙
-- **Evidence Loop가 엔진**
-- **Debate는 옵션** (조건부 실행)
-- **DB=SoR, Sheets=버스**
-- NotebookLM/Opal은 **가속 레이어**이며 결과는 **DB로 래핑**
-- Capsule/Template은 **실행 레이어**
+## 1) 핵심 원칙 (참조)
+- 기본 원칙: `docs/00_DOCS_INDEX.md`, `docs/15_FINAL_ARCHITECTURE.md`
+- 이 문서는 **Evidence Loop 운영/Sheets 계약**만 상세화한다.
 
 ---
 
@@ -18,7 +15,7 @@
 ```
 Outlier: 수동 입력/외부 소스 크롤링
   ↓
-NotebookLM 해석 → Notebook Library(DB)
+영상 해석(코드) → 유사도 클러스터링 → Notebook Library(DB, 요약/RAG)
   ↓
 Parent 후보 선정
   ↓
@@ -32,7 +29,9 @@ Evidence Snapshot 생성
   ↓
 Decision Summary 생성
   ↓
-Creator 실행 + O2O know-how 연결
+Opal 템플릿 시드 생성(선택)
+  ↓
+Creator 실행 + O2O know-how 연결 (Phase 2+ 운영)
   ↓
 성과 반영 → 다음 Parent
 ```
@@ -161,7 +160,7 @@ DB에서 수집한 Outlier는 `sync_outliers_to_sheet.py`로 동기화합니다.
 | parent_id | uuid | X | Parent ID (자동 매핑용) |
 | variant_name | string | X | Variant 이름 |
 
-### 3.7 O2O Campaigns Sheet
+### 3.7 O2O Campaigns Sheet (Phase 2+)
 **목적**: 캠페인 운영/게이팅 기준
 
 | 컬럼 | 타입 | 필수 | 설명 |
@@ -179,7 +178,7 @@ DB에서 수집한 Outlier는 `sync_outliers_to_sheet.py`로 동기화합니다.
 | start_date | date | O | 시작일 |
 | end_date | date | O | 종료일 |
 
-### 3.8 O2O Applications Sheet
+### 3.8 O2O Applications Sheet (Phase 2+)
 **목적**: 신청/배송/완료 상태 관리
 
 | 컬럼 | 타입 | 필수 | 설명 |
@@ -192,8 +191,8 @@ DB에서 수집한 Outlier는 `sync_outliers_to_sheet.py`로 동기화합니다.
 | updated_at | datetime | O | 변경 시각 |
 | shipment_tracking | string | X | 배송 추적 번호 |
 
-### 3.9 Insights Sheet (NotebookLM 출력)
-**목적**: NotebookLM 결과를 **DB에 저장한 후** 공유용으로 동기화
+### 3.9 Insights Sheet (Notebook Library 출력)
+**목적**: Notebook Library 요약/클러스터 결과를 **DB에 저장한 후** 공유용으로 동기화
 
 | 컬럼 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
@@ -203,19 +202,40 @@ DB에서 수집한 Outlier는 `sync_outliers_to_sheet.py`로 동기화합니다.
 | risks | text | X | 리스크 |
 | created_at | datetime | O | 생성 시각 |
 
+### 3.10 Template Seeds Sheet (Opal 출력, 선택)
+**목적**: Opal이 생성한 템플릿/노드 시드를 **DB에 저장한 후** 공유용으로 동기화
+
+| 컬럼 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| seed_id | uuid | O | 시드 ID |
+| parent_id | uuid | O | Parent ID |
+| cluster_id | string | X | 참고 클러스터 |
+| template_type | enum | O | capsule / guide / edit |
+| prompt_version | string | X | Opal 입력 프롬프트 버전 |
+| seed_json | text | O | 템플릿 시드 JSON |
+| created_at | datetime | O | 생성 시각 |
+
 ---
 
-## 4) NotebookLM/Opal 활용 (기본)
+## 4) 분석/NotebookLM/Opal 활용 (기본)
 
-### NotebookLM (Data Tables)
-- Outlier Raw → 해석/라벨 → **Notebook Library(DB)**
-- Evidence Sheet → NotebookLM 요약 → **Notebook Library(DB)**
-- NotebookLM이 Sheets로 직접 출력하는 경우, **Sheet → DB ingest**로 SoR를 유지
+### Programmatic Analysis + Clustering (Primary)
+- Outlier Raw → **영상 해석(코드)** → 구조/패턴 스키마 생성
+- 스키마 기반 **유사도 클러스터링** → Notebook Library(DB) 저장
+
+### NotebookLM (Optional Summary/RAG)
+- Notebook Library 클러스터 → 요약/라벨/근거 설명 보조
+- NotebookLM은 **정적 소스 스냅샷**을 사용하므로 클러스터 분할 전략 적용
+- NotebookLM 입력은 **Source Pack(Sheets/Docx)**으로 고정해 일관성 유지
+- NotebookLM이 Sheets로 직접 출력하는 경우, **Sheet → DB ingest**로 SoR 유지
 - 결과는 **DB에 저장 후** 필요 시 Insights Sheet로 동기화
 
 ### Opal
 - Evidence/Insights Sheet 입력 → Decision Sheet 생성
 - 실험 계획과 리스크 요약을 자동 생산
+### Opal (Template Seeds)
+- Notebook Library/Decision 기반으로 **템플릿 시드** 생성
+- 결과는 Template Seeds Sheet → DB로 래핑
 
 > 없으면 n8n/백엔드에서 동일 로직으로 대체 가능
 
@@ -251,7 +271,7 @@ Capsule은 Opal/NotebookLM/Sheets를 감싼 **보안형 실행 노드**입니다
 ### 6.1 Capsule Input/Output 계약
 **Input**
 - parent_id, evidence_snapshot, pattern_lift_summary
-- insights_summary (NotebookLM 요약)
+- insights_summary (Notebook Library 요약/클러스터)
 - library_entry_id (Notebook Library 참조)
 - constraints (budget/time/brand guardrails)
 

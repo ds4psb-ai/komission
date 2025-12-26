@@ -45,7 +45,7 @@
 ### 공통 방향
 - 탐색 UI가 아닌 **Evidence 기반 실행 브리프**로 연결
 - Role Switch(Creator/Business)로 컨텍스트 이동 최소화
-- NotebookLM 결과는 **DB로 래핑** 후 사용
+- Notebook Library는 **DB로 래핑** 후 사용 (NotebookLM 요약은 선택)
 
 ### 매핑 제안
 | Virlo 기능 | Komission 대응 | 차별화 포인트 |
@@ -62,10 +62,16 @@
 ---
 
 ## 3) 우선 적용 계획 (Phased)
-### Phase A: Discover + Outlier 강화
-- Niches/Trends/Recently Added 섹션 추가
-- 플랫폼 토글 + Fresh Content 필터
-- “Promote to Parent” CTA 고정
+### Phase A: Discover + Outlier 강화 (✅ Implemented 2025-12-25)
+- [x] Niches/Trends/Recently Added 섹션 추가 → `/outliers` page
+- [x] 플랫폼 토글 + Fresh Content 필터 → `CrawlerOutlierSelector`
+- [x] "Promote to Parent" CTA 고정 → `CrawlerOutlierCard` + `CrawlerOutlierNode`
+
+**구현 파일:**
+- `frontend/src/app/outliers/page.tsx`
+- `frontend/src/components/CrawlerOutlierCard.tsx`
+- `frontend/src/components/canvas/CrawlerOutlierNode` (in CustomNodes.tsx)
+- `frontend/src/components/canvas/CrawlerOutlierSelector.tsx`
 
 ### Phase B: Orbit/Collections 개념 도입
 - Orbit Search → Genealogy/Pattern Search로 변환

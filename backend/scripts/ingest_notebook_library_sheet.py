@@ -37,6 +37,24 @@ def parse_uuid(value: Optional[str]) -> Optional[uuid.UUID]:
         return None
 
 
+def parse_int(value: str) -> Optional[int]:
+    if value == "":
+        return None
+    try:
+        return int(float(value))
+    except (ValueError, TypeError):
+        return None
+
+
+def parse_float(value: str) -> Optional[float]:
+    if value == "":
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+
+
 def normalize_summary(summary: str, key_patterns: str, risks: str) -> Dict[str, object]:
     payload: Dict[str, object] = {"summary": summary}
     if key_patterns:
@@ -100,17 +118,27 @@ async def main_async(args: argparse.Namespace) -> None:
                 f"parent://{parent_id_raw}" if parent_id_raw else f"sheet://{args.sheet}/{inserted + 1}"
             )
             cluster_id = get("cluster_id") or key_patterns or None
+            platform = get("platform") or args.platform
+            category = get("category") or args.category
+            temporal_phase = get("temporal_phase") or None
+            variant_age_days = parse_int(get("variant_age_days"))
+            novelty_decay_score = parse_float(get("novelty_decay_score"))
+            burstiness_index = parse_float(get("burstiness_index"))
 
             if await entry_exists(db, source_url):
                 continue
 
             entry = NotebookLibraryEntry(
                 source_url=source_url,
-                platform=args.platform,
-                category=args.category,
+                platform=platform,
+                category=category,
                 summary=normalize_summary(summary, key_patterns, risks),
                 cluster_id=cluster_id,
                 parent_node_id=parent_node_id,
+                temporal_phase=temporal_phase,
+                variant_age_days=variant_age_days,
+                novelty_decay_score=novelty_decay_score,
+                burstiness_index=burstiness_index,
             )
             db.add(entry)
             inserted += 1

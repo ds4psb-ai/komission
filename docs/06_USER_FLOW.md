@@ -18,8 +18,9 @@
    - DB 저장(`outlier_items`)
 2. **Sheet 동기화**
    - `sync_outliers_to_sheet.py`로 `VDG_Outlier_Raw` 반영
-3. **NotebookLM 해석**
-   - 요약/클러스터 생성 → `notebook_library` 저장
+3. **영상 해석(코드) + 클러스터링**
+   - 구조/패턴 스키마 생성 → `notebook_library` 저장
+   - NotebookLM 요약은 선택적 보조
 4. **Parent 후보 선정**
    - 후보 기준(조회수/성장률/카테고리)
    - `VDG_Parent_Candidates` 상태 업데이트
@@ -28,19 +29,25 @@
    - `remix_nodes` 생성 (layer=MASTER)
 6. **분석/요약(옵션)**
    - `POST /api/v1/remix/{node_id}/analyze`
-   - NotebookLM/Opal 요약 반영
+   - Notebook Library/Opal 요약 반영
 7. **Evidence/Decision**
    - Evidence Sheet → Decision Sheet 생성
-8. **Capsule/Template 배포**
+8. **Opal 템플릿 시드(선택)**
+   - Notebook Library + Decision 기반 시드 생성
+9. **Capsule/Template 배포**
    - Canvas 템플릿에 적용
 
 ---
 
 ## 3) Creator 흐름
+0. **Taste Calibration (선택, 1분)**
+   - “둘 중 더 하고 싶은 영상” 5~8회 선택
+   - 자기선택 없이 선호 벡터 추정
 1. **Outlier 탐색**
    - Parent/Outlier 목록에서 선택
 2. **Shoot 실행**
    - Capsule 요약 + 변수 슬롯(5%)만 노출
+   - `persona_context_json`이 있으면 개인화된 가이드 적용
 3. **제출/검수**
    - 제출 후 상태 추적(Tracking)
 4. **성과 확인**
@@ -48,7 +55,9 @@
 
 ---
 
-## 4) O2O 타입별 흐름
+## 4) O2O 타입별 흐름 (Phase 2+)
+> MVP는 타입 게이팅/표시까지만 제공하며, 모집/선정/배송/방문 운영은 Phase 2+에서 활성화됩니다.
+
 - **즉시형**: 신청 → 촬영 → 제출 → 승인
 - **방문형**: 신청 → 위치 인증 → 촬영 → 제출
 - **배송형**: 신청 → 선정 → 배송 → 촬영 → 제출

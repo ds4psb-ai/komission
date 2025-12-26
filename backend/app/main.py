@@ -95,9 +95,8 @@ app.add_middleware(
 app.include_router(api_router)
 app.include_router(pipeline_router, prefix="/api/v1/pipelines", tags=["Pipelines"])
 
-# Register Evidence Loop routes (Phase 4)
-from app.routers.outliers import router as outliers_router
-app.include_router(outliers_router, prefix="/api/v1", tags=["Evidence Loop"])
+# Note: Outliers router is already included via api_router in __init__.py
+# Removed duplicate registration to avoid duplicated endpoints
 
 # Register WebSocket routes (Expert Recommendation: Real-time Metrics)
 from app.routers.websocket import router as websocket_router

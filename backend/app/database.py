@@ -28,6 +28,9 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
+# Backward-compatible alias (older modules expect async_session_maker)
+async_session_maker = AsyncSessionLocal
+
 
 class Base(DeclarativeBase):
     """Base class for all models"""

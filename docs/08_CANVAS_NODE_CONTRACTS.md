@@ -6,11 +6,13 @@
 ---
 
 ## 1) 노드 타입
-- **Outlier Node**: 원본 링크/기초 메타
+- **Outlier Node**: 원본 링크/기초 메타 (RemixNode 기반)
+- **CrawlerOutlier Node**: 3-플랫폼 크롤러 수집 아웃라이어 (신규, `CrawlerOutlierItem` 기반)
 - **Parent Node**: 승격된 RemixNode (MASTER)
-- **Notebook Library Node**: NotebookLM 해석 결과(DB 래핑)
+- **Notebook Library Node**: 분석 스키마/클러스터 + NotebookLM 요약(DB 래핑)
 - **Evidence Node**: Evidence Sheet 요약
 - **Decision Node**: Decision Sheet 요약
+- **Template Seed Node (Opal)**: 템플릿 시드/초안 (선택)
 - **Capsule Node**: 내부 체인 실행(숨김)
 - **O2O Node**: 캠페인 타입/게이팅 규칙
 
@@ -20,9 +22,10 @@
 **Input**
 - parent_id
 - evidence_snapshot (요약 JSON)
-- insights_summary (NotebookLM 요약, DB 래핑)
+- insights_summary (Notebook Library 요약/클러스터, DB 래핑)
 - library_entry_id (Notebook Library 참조)
 - constraints (budget/time/brand)
+- persona_context (optional, implicit signals 기반)
 
 **Output**
 - decision_json (GO/STOP/PIVOT + next_experiment)

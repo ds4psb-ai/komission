@@ -1,12 +1,41 @@
 [
   {
-    "name": "provider-template",
-    "local_path": "backend/data/sample_outliers.csv",
-    "platform": "tiktok",
-    "category": "beauty",
-    "headers": {
-      "User-Agent": "KomissionBot/1.0"
+    "id": "youtube_shorts_trending",
+    "platform": "youtube",
+    "type": "api",
+    "endpoint": "https://www.googleapis.com/youtube/v3/videos",
+    "params": {
+      "chart": "mostPopular",
+      "videoCategoryId": "24",
+      "regionCode": "KR",
+      "part": "snippet,statistics,contentDetails"
     },
-    "cookie": ""
+    "crawler_class": "YouTubeCrawler"
+  },
+  {
+    "id": "tiktok_trending_apify",
+    "platform": "tiktok",
+    "type": "apify",
+    "actor_id": "clockworks/tiktok-trending-videos",
+    "params": {
+      "country": "kr",
+      "maxItems": 50
+    },
+    "crawler_class": "TikTokCrawler"
+  },
+  {
+    "id": "instagram_reels_apify",
+    "platform": "instagram",
+    "type": "apify",
+    "actor_id": "apify/instagram-reel-scraper",
+    "params": {
+      "resultsLimit": 50,
+      "searchType": "hashtag",
+      "search": [
+        "viral",
+        "trending"
+      ]
+    },
+    "crawler_class": "InstagramCrawler"
   }
 ]

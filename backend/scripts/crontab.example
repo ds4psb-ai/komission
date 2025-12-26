@@ -1,0 +1,60 @@
+# Komission Crawler Crontab Configuration
+# Based on 13_PERIODIC_CRAWLING_SPEC.md (L177-194)
+#
+# Usage:
+#   1. Edit this file to match your environment
+#   2. Install with: crontab -e (and paste contents)
+#   Or: crontab crontab.example
+#
+# Prerequisites:
+#   - Python virtual environment at /path/to/komission/backend/venv
+#   - Environment variables loaded from .env
+#   - Database and Redis accessible
+#
+# Note: All times are in server timezone. Adjust for KST if needed.
+# KST = UTC+9
+
+# ============================================================
+# OUTLIER CRAWLERS
+# ============================================================
+
+# YouTube Outliers - Every 6 hours (00:00, 06:00, 12:00, 18:00 KST)
+0 15,21,3,9 * * * cd /path/to/komission/backend && source venv/bin/activate && python scripts/run_scheduled_crawl.py --platform youtube --limit 50
+
+# TikTok Outliers - Every 4 hours (more frequent due to faster content cycle)
+0 15,19,23,3,7,11 * * * cd /path/to/komission/backend && source venv/bin/activate && python scripts/run_scheduled_crawl.py --platform tiktok --limit 50
+
+# Instagram Outliers - Every 12 hours (06:00, 18:00 KST)
+0 21,9 * * * cd /path/to/komission/backend && source venv/bin/activate && python scripts/run_scheduled_crawl.py --platform instagram --limit 30
+
+# Virlo Outliers - Daily at 10 AM KST (scraper, more resource intensive)
+0 1 * * * cd /path/to/komission/backend && source venv/bin/activate && python scripts/run_scheduled_crawl.py --platform virlo --limit 100
+
+# ============================================================
+# PLATFORM UPDATES
+# ============================================================
+
+# Platform Updates - Daily at 9 AM KST (YouTube Blog RSS, etc.)
+0 0 * * * cd /path/to/komission/backend && source venv/bin/activate && python scripts/run_scheduled_crawl.py --type updates --limit 10
+
+# ============================================================
+# SHEET SYNC
+# ============================================================
+
+# Sheet Sync - Every 2 hours (sync DB to Google Sheets)
+0 */2 * * * cd /path/to/komission/backend && source venv/bin/activate && python scripts/run_sheet_sync.py
+
+# ============================================================
+# MAINTENANCE
+# ============================================================
+
+# TikTok comment session refresh (headful, manual)
+# 0 0 * * 1 cd /path/to/komission/backend && source venv/bin/activate && python scripts/refresh_tiktok_session.py
+
+# Health check logging - Every 30 minutes
+*/30 * * * * curl -s http://localhost:8000/api/v1/crawlers/health >> /var/log/komission/crawler_health.log 2>&1
+
+# ============================================================
+# EXAMPLE: Run all crawlers at once (not recommended for production)
+# ============================================================
+# 0 6 * * * cd /path/to/komission/backend && source venv/bin/activate && python scripts/run_scheduled_crawl.py --platform all --limit 100

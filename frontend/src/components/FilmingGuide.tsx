@@ -16,6 +16,8 @@ interface FilmingGuideProps {
  * 
  * CTO Decision: NO real-time AR pose detection (causes mobile overheating)
  * Instead: Simple transparent video overlay + beat timer + audio sync slider
+ * 
+ * ⚠️ Mobile Only: 촬영 기능은 모바일 웹에서만 활성화됩니다.
  */
 export function FilmingGuide({
     isOpen,
@@ -33,6 +35,7 @@ export function FilmingGuide({
     const [syncOffset, setSyncOffset] = useState(0);  // -0.5s to +0.5s
     const [showSyncUI, setShowSyncUI] = useState(false);
     const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+    const [isMobile, setIsMobile] = useState(true); // Default true to avoid flash
 
     // Refs
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -43,6 +46,20 @@ export function FilmingGuide({
 
     // Beat interval in ms
     const beatInterval = (60 / bpm) * 1000;
+
+    // Mobile detection
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const media = window.matchMedia("(max-width: 768px)");
+        const update = () => setIsMobile(media.matches);
+        update();
+        if (media.addEventListener) {
+            media.addEventListener("change", update);
+            return () => media.removeEventListener("change", update);
+        }
+        media.addListener(update);
+        return () => media.removeListener(update);
+    }, []);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -64,8 +81,10 @@ export function FilmingGuide({
         }
     }, [isOpen, onClose]);
 
-    // Start camera preview
+    // Start camera preview (mobile only)
     const startCamera = useCallback(async () => {
+        if (!isMobile) return; // Skip on desktop
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
@@ -84,13 +103,13 @@ export function FilmingGuide({
             console.error('Camera access denied:', error);
             alert('카메라 접근이 거부되었습니다. 권한을 확인해주세요.');
         }
-    }, []);
+    }, [isMobile]);
 
     // Initialize camera when opened
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && isMobile) {
             startCamera();
-        } else {
+        } else if (!isOpen) {
             // Cleanup when closed
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach(track => track.stop());
@@ -102,7 +121,7 @@ export function FilmingGuide({
             setRecordedBlob(null);
             setShowSyncUI(false);
         }
-    }, [isOpen, startCamera]);
+    }, [isOpen, isMobile, startCamera]);
 
     // Recording timer
     useEffect(() => {
@@ -194,6 +213,26 @@ export function FilmingGuide({
     }, [recordedBlob, syncOffset, onRecordingComplete, onClose]);
 
     if (!isOpen) return null;
+
+    // 🖥️ Desktop Blocker - 촬영은 모바일 전용
+    if (!isMobile) {
+        return (
+            <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6">
+                <div className="text-6xl mb-6">📱</div>
+                <h2 className="text-2xl font-bold text-white mb-2">모바일에서만 촬영 가능</h2>
+                <p className="text-white/50 text-center mb-8 max-w-sm">
+                    촬영 기능은 모바일 웹에서만 사용할 수 있습니다.<br />
+                    스마트폰에서 이 페이지를 열어주세요.
+                </p>
+                <button
+                    onClick={onClose}
+                    className="px-8 py-3 bg-white/10 border border-white/20 rounded-xl text-white font-bold hover:bg-white/20 transition-colors"
+                >
+                    닫기
+                </button>
+            </div>
+        );
+    }
 
     // Progress percentage
     const progress = Math.min((recordingTime / duration) * 100, 100);

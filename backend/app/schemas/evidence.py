@@ -66,6 +66,11 @@ class OutlierCrawlItem(BaseModel):
     like_count: Optional[int] = None
     share_count: Optional[int] = None
     growth_rate: Optional[str] = None
+    # Extended metrics
+    outlier_score: Optional[float] = None
+    outlier_tier: Optional[str] = None
+    creator_avg_views: Optional[int] = None
+    engagement_rate: Optional[float] = None
 
 
 class OutlierItemManualCreate(BaseModel):

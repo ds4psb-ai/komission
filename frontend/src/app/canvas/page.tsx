@@ -16,9 +16,11 @@ import {
 import '@xyflow/react/dist/style.css';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { SourceNode, ProcessNode, OutputNode, NotebookNode } from '@/components/canvas/CustomNodes';
+import { SourceNode, ProcessNode, OutputNode, NotebookNode, CrawlerOutlierNode, TemplateSeedNode } from '@/components/canvas/CustomNodes';
+import type { CrawlerOutlierItem } from '@/components/canvas/CustomNodes';
 import { EvidenceNode, DecisionNode } from '@/components/canvas/EvidenceNodes';
 import { CapsuleNode, type CapsuleDefinition } from '@/components/canvas/CapsuleNode';
+import { CrawlerOutlierSelector } from '@/components/canvas/CrawlerOutlierSelector';
 import { Inspector } from '@/components/canvas/Inspector';
 import { StoryboardPreview } from '@/components/canvas/StoryboardPreview';
 import { AppHeader } from '@/components/AppHeader';
@@ -26,7 +28,7 @@ import { api, Pipeline } from '@/lib/api';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useAuth } from '@/lib/auth';
 import { OutlierSelector } from '@/components/canvas/OutlierSelector';
-import { Video, Lock, Dna, Brain, BarChart3, Scale, Clapperboard, MapPin, Zap, FileText, Globe } from 'lucide-react';
+import { Video, Lock, Dna, Brain, BarChart3, Scale, Clapperboard, MapPin, Zap, FileText, Globe, Radar } from 'lucide-react';
 
 // Custom Node Types
 const nodeTypes = {
@@ -37,6 +39,8 @@ const nodeTypes = {
     decision: DecisionNode,
     capsule: CapsuleNode,
     notebook: NotebookNode,
+    crawlerOutlier: CrawlerOutlierNode,
+    templateSeed: TemplateSeedNode,
 };
 
 // Initial Data (Empty canvas)
@@ -89,6 +93,7 @@ function CanvasFlow() {
     const [showLoadModal, setShowLoadModal] = useState(false);
     const [savedPipelines, setSavedPipelines] = useState<Pipeline[]>([]);
     const [showOutlierSelector, setShowOutlierSelector] = useState(false);
+    const [showCrawlerOutlierSelector, setShowCrawlerOutlierSelector] = useState(false);
 
     // Loading states
     const [isSaving, setIsSaving] = useState(false);
@@ -100,6 +105,10 @@ function CanvasFlow() {
 
     // Storyboard Preview state
     const [showStoryboard, setShowStoryboard] = useState(false);
+
+    // Canvas Mode: Simple (guide-focused) / Pro (detailed control)
+    // FR-006: 모드 분리 - Simple은 가이드 중심, Pro는 상세 제어
+    const [canvasMode, setCanvasMode] = useState<'simple' | 'pro'>('simple');
 
     const selectedNode = selectedNodeId
         ? nodes.find((node) => node.id === selectedNodeId) || null
@@ -289,10 +298,14 @@ function CanvasFlow() {
             if (e.key === 'Escape' && showOutlierSelector) {
                 setShowOutlierSelector(false);
             }
+            // ESC to close Crawler Outlier selector
+            if (e.key === 'Escape' && showCrawlerOutlierSelector) {
+                setShowCrawlerOutlierSelector(false);
+            }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [onUndo, onRedo, showLoadModal, showOutlierSelector]);
+    }, [onUndo, onRedo, showLoadModal, showOutlierSelector, showCrawlerOutlierSelector]);
 
     // API Handlers passed to nodes
     const handleSourceSubmit = useCallback(async (url: string, title: string) => {
@@ -444,7 +457,7 @@ function CanvasFlow() {
 
         const newNode: Node = {
             id: generateNodeId(),
-            type: type === 'outlier' ? 'source' : type, // Outliers use SourceNode visualization but with different data
+            type: type === 'outlier' ? 'source' : type === 'crawlerOutlier' ? 'crawlerOutlier' : type,
             position: finalPosition,
             data: {
                 ...(type === 'source' && { onSubmit: handleSourceSubmit }), // Normal URL input
@@ -513,6 +526,13 @@ function CanvasFlow() {
                         }, 2000);
                     }
                 }),
+                ...(type === 'crawlerOutlier' && {
+                    outlier: data?.outlier,
+                    onPromote: (item: CrawlerOutlierItem) => {
+                        // TODO: API call to promote outlier to parent
+                        showToast(`🚀 "${item.title}" 프로모션 준비 중...`, 'info');
+                    },
+                }),
             },
         };
 
@@ -521,6 +541,10 @@ function CanvasFlow() {
         if (type === 'outlier') {
             setCreatedNodeId(data.id || data.node_id); // Auto-set active node context
             showToast(`선택된 노드: ${data.title}`, 'success');
+        }
+
+        if (type === 'crawlerOutlier') {
+            showToast(`🎯 Crawler Outlier 추가됨: ${data?.outlier?.title}`, 'success');
         }
     }, [setNodes, handleSourceSubmit, handleAnalyze, handleExport, createdNodeId, nodes, edges, takeSnapshot, showToast]);
 
@@ -555,6 +579,12 @@ function CanvasFlow() {
     const handleOutlierSelect = (node: any) => {
         addNode('outlier', undefined, node); // Add to center/offset
         setShowOutlierSelector(false);
+    };
+
+    // Handler for crawler outlier selection
+    const handleCrawlerOutlierSelect = (item: CrawlerOutlierItem) => {
+        addNode('crawlerOutlier', undefined, { outlier: item });
+        setShowCrawlerOutlierSelector(false);
     };
 
     // Modal backdrop click handler
@@ -630,6 +660,31 @@ function CanvasFlow() {
                         {pipelineTitle && (
                             <p className="text-xs text-emerald-400 mt-2 truncate border border-emerald-500/30 rounded px-2 py-1 bg-emerald-500/10">📝 {pipelineTitle}</p>
                         )}
+
+                        {/* Mode Toggle - Simple/Pro */}
+                        <div className="mt-4 flex items-center gap-2 p-2 bg-white/5 rounded-lg border border-white/10">
+                            <button
+                                onClick={() => setCanvasMode('simple')}
+                                className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${canvasMode === 'simple'
+                                        ? 'bg-emerald-500 text-white'
+                                        : 'text-white/60 hover:text-white hover:bg-white/10'
+                                    }`}
+                            >
+                                🎯 Simple
+                            </button>
+                            <button
+                                onClick={() => setCanvasMode('pro')}
+                                className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${canvasMode === 'pro'
+                                        ? 'bg-violet-500 text-white'
+                                        : 'text-white/60 hover:text-white hover:bg-white/10'
+                                    }`}
+                            >
+                                ⚙️ Pro
+                            </button>
+                        </div>
+                        <p className="text-[10px] text-white/40 mt-2">
+                            {canvasMode === 'simple' ? '가이드 중심 모드 - 핵심 노드만 표시' : 'Pro 모드 - 모든 노드 및 상세 제어'}
+                        </p>
                     </div>
 
                     <div className="space-y-6">
@@ -665,6 +720,19 @@ function CanvasFlow() {
                                 <div>
                                     <span className="text-sm font-bold text-white">아웃라이어 노드</span>
                                     <div className="text-[10px] text-violet-300">바이럴 히트에서 시작</div>
+                                </div>
+                            </div>
+
+                            {/* Crawler Outlier Node - from 3-platform crawlers */}
+                            <div
+                                className="p-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl cursor-pointer hover:border-amber-500/50 transition-all mb-2 flex items-center gap-3"
+                                onClick={() => setShowCrawlerOutlierSelector(true)}
+                                draggable={false}
+                            >
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center text-amber-400"><Radar className="w-4 h-4" /></div>
+                                <div>
+                                    <span className="text-sm font-bold text-white">Crawler Outlier</span>
+                                    <div className="text-[10px] text-amber-300">3-플랫폼 자동 수집</div>
                                 </div>
                             </div>
                         </div>
@@ -922,6 +990,15 @@ function CanvasFlow() {
                 <OutlierSelector
                     onSelect={handleOutlierSelect}
                     onClose={() => setShowOutlierSelector(false)}
+                />
+            )}
+
+            {/* Crawler Outlier Selector Modal */}
+            {showCrawlerOutlierSelector && (
+                <CrawlerOutlierSelector
+                    isOpen={showCrawlerOutlierSelector}
+                    onSelect={handleCrawlerOutlierSelect}
+                    onClose={() => setShowCrawlerOutlierSelector(false)}
                 />
             )}
 

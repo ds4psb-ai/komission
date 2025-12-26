@@ -13,15 +13,20 @@ python backend/scripts/run_real_evidence_loop.py
 ```
 
 Other utilities:
+- `run_platform_crawlers.py` — YouTube/TikTok/Instagram → DB ingest (auto)
 - `run_crawler.py` — crawler → DB ingest (SoR)
 - `run_selector.py` — DB outliers → Parent Candidates (Sheet)
 - `ingest_notebook_library.py` — NotebookLM JSON/JSONL → notebook_library (DB)
 - `ingest_notebook_library_sheet.py` — NotebookLM Sheet → notebook_library (DB)
 - `sync_notebook_library_to_sheet.py` — notebook_library → VDG_Insights
+- `build_notebook_source_pack.py` — NotebookLM Source Pack (Sheet) 생성
+- `refresh_tiktok_session.py` — TikTok comment/list session refresh (headful)
 - `ingest_outlier_csv_db.py` — provider CSV → DB outliers (SoR)
 - `pull_provider_csv.py` — provider CSV fetch → DB ingest
 - `run_provider_pipeline.py` — pull → sync → select (one-shot)
 - `ingest_outlier_csv.py` — import external outlier CSV into `VDG_Outlier_Raw`
+- `run_tiktok_vdg_flow.py` — end-to-end TikTok comment → VDG → DB validation
+- `backfill_temporal_fields.py` — backfill temporal_phase/decay/burstiness for existing entries
 
 Provider config:
 - `backend/provider_sources.json` (local template, supports `local_path` for offline tests)

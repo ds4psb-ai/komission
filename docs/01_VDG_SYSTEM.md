@@ -13,9 +13,16 @@ VDG는 **Parent(원본) → Depth1(1차 변주) → Depth2(최적화 변주)**�
 - 바이럴은 “모자이크 패턴(훅/씬/자막/오디오 반복)”이 계보에서 재등장합니다.
 - 따라서 **Pattern Library/Trace**를 기록해야 진짜 공식이 증명됩니다.
 
+
+**시간축 기반 변주 원리** → [17_TEMPORAL_VARIATION_THEORY.md](17_TEMPORAL_VARIATION_THEORY.md)
+- 시간 경과에 따라 오마쥬 비율 감소 (100% → 95% → 90%...)
+- **불변**: 핵심 바이럴 로직(Hook, Pacing, Payoff) 100% 유지
+- **가변**: 소재, 인물, 반전, 중간 킥 등 창의성 추가
+
 **입력 흐름(전제)**
-- 관리자 수동/크롤링 아웃라이어 → NotebookLM 해석 → **Notebook Library(DB)** → Parent 후보 → Depth 실험
-- NotebookLM 결과는 **DB에 저장**되며 SoR은 DB입니다.
+- 관리자 수동/크롤링 아웃라이어 → 영상 해석(코드) → 유사도 클러스터링 → **Notebook Library(DB, 요약/RAG)** → Parent 후보 → Depth 실험
+- NotebookLM은 **요약/라벨 보조 레이어**이며 결과는 **DB에 저장**되고 SoR은 DB입니다.
+ - NotebookLM 노트북 폴더는 클러스터를 보기 좋게 정리하는 **지식 레이어**입니다.
 
 ---
 
@@ -167,13 +174,34 @@ MVP 기준으로 mutation_profile의 타입을 Pattern 유형으로 매핑합니
 
 ---
 
-## 5) 플랫폼 우선순위
+## 5) Sequence Similarity (Microbeat 기반)
+VDG v3.2의 `microbeats`/`sentiment_arc` 필드를 활용해 **구간 순서 유사도**를 계산합니다.
+
+**목적**
+- “같은 재료지만 순서가 다른 영상”을 잘못 묶는 오류 방지
+- Depth 변주가 **시간 구조를 보존했는지** 판단
+
+**권장 방식 (clustering.py 구현 기준)**
+- **Microbeat Sequence**: edit distance → **30%**
+- **Hook 유형/길이**: attention technique + duration 비교 → **25%**
+- **시각 패턴**: 첫 3개 샷 visual pattern 매칭 → **20%**
+- **오디오 패턴**: trending 여부 + pattern 매칭 → **15%**
+- **타이밍 프로필**: 총 길이 차이 비교 → **10%**
+
+**저장 필드 (권장)**
+- `vdg_variants.structure_elements.microbeat_sequence`
+- `vdg_pattern_trace.weight` (sequence 반영)
+- `vdg_pattern_lift`는 sequence 유사도 기반으로 보정
+
+---
+
+## 6) 플랫폼 우선순위
 - **1순위**: TikTok / Instagram (가장 쉬운 수집 경로)
 - **3순위**: YouTube Shorts (보조)
 
 ---
 
-## 6) Evidence 생성 주기
+## 7) Evidence 생성 주기
 - 매일: Metric Daily 갱신
 - 주 1회: Evidence Snapshot 생성
 - Depth 종료(14일) 시: Winner 확정

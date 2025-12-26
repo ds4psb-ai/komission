@@ -37,6 +37,10 @@ async def create_entry(
         summary=payload.summary,
         cluster_id=payload.cluster_id,
         parent_node_id=parent_id,
+        temporal_phase=payload.temporal_phase,
+        variant_age_days=payload.variant_age_days,
+        novelty_decay_score=payload.novelty_decay_score,
+        burstiness_index=payload.burstiness_index,
     )
     db.add(entry)
     await db.commit()

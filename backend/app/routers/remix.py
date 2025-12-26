@@ -937,3 +937,149 @@ async def get_vdg_summary(
         "period": period,
         **summary
     }
+
+
+# --- VDG Export for NotebookLM ---
+
+@router.get("/{node_id}/vdg-export")
+async def export_vdg_for_notebooklm(
+    node_id: str,
+    format: str = Query(default="markdown", regex="^(markdown|json)$"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    [NotebookLM] VDG 분석 결과를 NotebookLM Source Pack 형식으로 Export
+    
+    - markdown: NotebookLM에 직접 업로드 가능한 Markdown 형식
+    - json: 구조화된 JSON 형식
+    
+    Returns:
+        markdown: text/markdown Content-Type 응답
+        json: application/json 응답
+    """
+    # 1. Get node and VDG data
+    result = await db.execute(
+        select(RemixNode).where(RemixNode.node_id == node_id)
+    )
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+    
+    vdg = node.gemini_analysis
+    if not vdg:
+        raise HTTPException(status_code=404, detail="No VDG analysis found for this node")
+    
+    # 2. Extract VDG components (support both v2 and v3 schemas)
+    title = vdg.get("title") or node.title or "Untitled Video"
+    summary = vdg.get("summary", "")
+    
+    # Hook Genome (v3: hook_genome, v2: global_context)
+    hook = vdg.get("hook_genome", {})
+    if not hook:
+        gc = vdg.get("global_context", {})
+        hook = {
+            "pattern": gc.get("hook_pattern", "unknown"),
+            "strength": gc.get("hook_strength_score", 0),
+            "hook_summary": gc.get("viral_hook_summary", "")
+        }
+    
+    # Intent Layer (v3)
+    intent = vdg.get("intent_layer", {})
+    dopamine = intent.get("dopamine_radar", {})
+    irony = intent.get("irony_analysis", {})
+    
+    # Capsule Brief (v3)
+    capsule = vdg.get("capsule_brief", {})
+    constraints = capsule.get("constraints", {})
+    
+    # 3. Format output
+    if format == "json":
+        return {
+            "node_id": node_id,
+            "title": title,
+            "summary": summary,
+            "hook_genome": hook,
+            "dopamine_radar": dopamine,
+            "irony_analysis": irony,
+            "production_constraints": constraints,
+            "export_format": "notebooklm_source_pack",
+            "exported_at": datetime.utcnow().isoformat()
+        }
+    
+    # Markdown format
+    md_lines = [
+        f"# Video Analysis: {title}",
+        "",
+        f"> {summary}" if summary else "",
+        "",
+        "## Hook Genome",
+        f"- **Pattern**: {hook.get('pattern', 'N/A')}",
+        f"- **Delivery**: {hook.get('delivery', 'N/A')}",
+        f"- **Strength**: {hook.get('strength', 0):.0%}",
+        "",
+        f"### Hook Summary",
+        hook.get('hook_summary', 'No summary available'),
+        "",
+    ]
+    
+    # Dopamine Radar
+    if dopamine:
+        md_lines.extend([
+            "## Dopamine Radar",
+            "",
+            "| Axis | Score |",
+            "|------|-------|",
+            f"| 👁️ Visual | {dopamine.get('visual_spectacle', 0)}/10 |",
+            f"| 🎵 Audio | {dopamine.get('audio_stimulation', 0)}/10 |",
+            f"| 📖 Story | {dopamine.get('narrative_intrigue', 0)}/10 |",
+            f"| ❤️ Emotion | {dopamine.get('emotional_resonance', 0)}/10 |",
+            f"| 😂 Comedy | {dopamine.get('comedy_shock', 0)}/10 |",
+            "",
+        ])
+    
+    # Irony Gap
+    if irony and irony.get("gap_type", "none") != "none":
+        md_lines.extend([
+            "## Irony Gap Analysis",
+            f"**Gap Type**: {irony.get('gap_type', 'N/A')}",
+            "",
+            f"**Setup** (What viewer expects):",
+            f"> {irony.get('setup', 'N/A')}",
+            "",
+            f"**Twist** (What actually happens):",
+            f"> {irony.get('twist', 'N/A')}",
+            "",
+        ])
+    
+    # Production Constraints
+    if constraints:
+        props = constraints.get("props", [])
+        locations = constraints.get("locations", [])
+        
+        md_lines.extend([
+            "## Production Constraints",
+            f"- **Difficulty**: {constraints.get('difficulty', 'N/A')}",
+            f"- **Min Actors**: {constraints.get('min_actors', 1)}",
+            f"- **Props**: {', '.join(props) if props else 'None'}",
+            f"- **Locations**: {', '.join(locations) if locations else 'Any'}",
+            "",
+            "### Primary Challenge",
+            constraints.get("primary_challenge", "No specific challenge noted"),
+            "",
+        ])
+    
+    # Footer
+    md_lines.extend([
+        "---",
+        f"*Exported from Komission VDG v3.0 | {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC*"
+    ])
+    
+    markdown_content = "\n".join(md_lines)
+    
+    from fastapi.responses import Response
+    return Response(
+        content=markdown_content,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f"attachment; filename=vdg_{node_id}.md"}
+    )
+

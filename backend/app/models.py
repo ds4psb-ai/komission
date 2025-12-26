@@ -3,7 +3,7 @@ SQLAlchemy Models for Komission FACTORY v5.2
 """
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import String, Integer, Text, Boolean, DateTime, ForeignKey, JSON, Enum as SQLEnum
+from sqlalchemy import String, Integer, Text, Boolean, DateTime, ForeignKey, JSON, Enum as SQLEnum, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 import uuid
@@ -466,11 +466,30 @@ class OutlierItem(Base):
     share_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     growth_rate: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # "+350%"
     
+    # Extended Metrics (for Outlier Detection)
+    outlier_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    outlier_tier: Mapped[Optional[str]] = mapped_column(String(1), nullable=True)  # S/A/B/C
+    creator_avg_views: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    engagement_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
     # 선별 상태
     status: Mapped[str] = mapped_column(SQLEnum(OutlierItemStatus), default=OutlierItemStatus.PENDING)
     promoted_to_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True
     )  # Parent로 승격된 경우
+    
+    # VDG Analysis Gate (Admin 승인 후에만 분석)
+    analysis_status: Mapped[str] = mapped_column(
+        String(20), default="pending"  # pending | approved | analyzing | completed | skipped
+    )
+    approved_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    
+    # Best Comments (바이럴 인간 지표)
+    best_comments: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    # [{"text": "...", "likes": 1000, "lang": "ko", "translation_en": "..."}, ...]
     
     crawled_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -478,6 +497,7 @@ class OutlierItem(Base):
     # Relationships
     source: Mapped["OutlierSource"] = relationship("OutlierSource", back_populates="items")
     promoted_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode", foreign_keys=[promoted_to_node_id])
+    approver: Mapped[Optional["User"]] = relationship("User", foreign_keys=[approved_by])
 
 
 class MetricDaily(Base):
@@ -552,6 +572,7 @@ class EvidenceSnapshot(Base):
 class NotebookLibraryEntry(Base):
     """
     NotebookLM 요약 결과를 DB에 래핑한 라이브러리 엔트리
+    + 코드 기반 분석 스키마 (15_FINAL_ARCHITECTURE.md 기반)
     """
     __tablename__ = "notebook_library"
 
@@ -564,6 +585,360 @@ class NotebookLibraryEntry(Base):
     parent_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True
     )
+    
+    # NEW: 코드 기반 분석 스키마 (Gemini 3.0 Pro Structured Output)
+    analysis_schema: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    schema_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # "v1.0"
+
+    # Temporal variation signals (17_TEMPORAL_VARIATION_THEORY.md)
+    temporal_phase: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, index=True)
+    variant_age_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    novelty_decay_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    burstiness_index: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     parent_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode")
+
+
+# ==================
+# PATTERN CLUSTERING (15_FINAL_ARCHITECTURE.md)
+# ==================
+
+class PatternCluster(Base):
+    """
+    유사도 클러스터
+    Parent-Kids 변주 패턴을 데이터화, 뎁스 구조를 축적
+    """
+    __tablename__ = "pattern_clusters"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    cluster_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)  # "Hook-2s-TextPunch"
+    cluster_name: Mapped[str] = mapped_column(String(255))
+    pattern_type: Mapped[str] = mapped_column(String(50))  # "visual" | "audio" | "semantic"
+    
+    # 통계
+    member_count: Mapped[int] = mapped_column(Integer, default=0)
+    avg_outlier_score: Mapped[Optional[float]] = mapped_column(nullable=True)
+    representative_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True
+    )
+    
+    # 메타데이터
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    representative_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode")
+
+
+# ==================
+# OPAL TEMPLATE SEEDS (15_FINAL_ARCHITECTURE.md)
+# ==================
+
+class TemplateSeed(Base):
+    """
+    Opal 템플릿 시드
+    초기 템플릿/노드 설계 시드 저장
+    """
+    __tablename__ = "template_seeds"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    seed_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    
+    # 연관 노드/클러스터
+    parent_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True
+    )
+    cluster_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    
+    # 템플릿 정보
+    template_type: Mapped[str] = mapped_column(String(50))  # "capsule" | "guide" | "edit"
+    prompt_version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    seed_json: Mapped[dict] = mapped_column(JSONB)  # 템플릿 시드 JSON
+    
+    # 메타데이터
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    parent_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode")
+
+
+# ==================
+# PHASE 3: CREATOR PERSONA (암묵 신호 기반)
+# Based on 04_TECHNICAL_OVERVIEW.md & 16_PDR.md
+# ==================
+
+class BehaviorEventType(str, enum.Enum):
+    """행동 이벤트 유형"""
+    TEMPLATE_OPEN = "template_open"
+    SLOT_CHANGE = "slot_change"
+    RUN_START = "run_start"
+    RUN_COMPLETE = "run_complete"
+    REWATCH = "rewatch"
+    ABANDON = "abandon"
+    EXPORT = "export"
+    QUEST_APPLY = "quest_apply"
+    CALIBRATION_CHOICE = "calibration_choice"
+
+
+class CreatorBehaviorEvent(Base):
+    """
+    크리에이터 행동 이벤트 로그
+    암묵 신호 기반 페르소나 추론용
+    """
+    __tablename__ = "creator_behavior_events"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    creator_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    event_type: Mapped[str] = mapped_column(SQLEnum(BehaviorEventType))
+    
+    # 관련 엔티티 (optional)
+    node_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    template_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    
+    # 이벤트 상세 데이터
+    payload_json: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    
+    # 메타데이터
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class CreatorStyleFingerprint(Base):
+    """
+    크리에이터 스타일 지문
+    행동/콘텐츠 신호 기반 자동 생성
+    """
+    __tablename__ = "creator_style_fingerprints"
+    
+    creator_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    
+    # 스타일 벡터 (톤/페이스/훅/자막밀도/샷구성 등)
+    style_vector: Mapped[dict] = mapped_column(JSONB)
+    
+    # 최근 30일 행동/성과 요약
+    signal_summary: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    
+    # 메타데이터
+    version: Mapped[str] = mapped_column(String(20), default="v1.0")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CalibrationChoice(str, enum.Enum):
+    """Taste Calibration 선택"""
+    A = "A"
+    B = "B"
+
+
+class CreatorCalibrationChoice(Base):
+    """
+    Taste Calibration 선택 기록
+    1분 페어 선택으로 선호 벡터 보정
+    """
+    __tablename__ = "creator_calibration_choices"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    creator_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    
+    # 페어 정보
+    pair_id: Mapped[str] = mapped_column(String(100))
+    option_a_id: Mapped[str] = mapped_column(String(100))
+    option_b_id: Mapped[str] = mapped_column(String(100))
+    
+    # 선택
+    selected: Mapped[str] = mapped_column(SQLEnum(CalibrationChoice))
+    
+    # 메타데이터
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# ==================
+# TEMPLATE VERSIONING & RL-LITE (15_FINAL_ARCHITECTURE.md)
+# ==================
+
+class TemplateVersion(Base):
+    """
+    템플릿 버전 관리
+    템플릿 변경 이력을 추적하여 RL-lite 학습 기반 마련
+    """
+    __tablename__ = "template_versions"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # 연관 노드/시드
+    parent_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True
+    )
+    seed_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("template_seeds.id"), nullable=True
+    )
+    
+    # 버전 정보
+    version: Mapped[str] = mapped_column(String(20))  # v1.0, v1.1, etc.
+    template_json: Mapped[dict] = mapped_column(JSONB)  # 템플릿 스냅샷
+    
+    # 변경 사유
+    change_type: Mapped[str] = mapped_column(String(50))  # "manual", "feedback_driven", "rl_update"
+    change_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # 성과 연결
+    performance_snapshot: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    
+    # 메타데이터
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    parent_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode")
+    seed: Mapped[Optional["TemplateSeed"]] = relationship("TemplateSeed")
+
+
+class FeedbackType(str, enum.Enum):
+    """피드백 유형"""
+    TOO_HARD = "too_hard"
+    TOO_EASY = "too_easy"
+    UNCLEAR = "unclear"
+    GREAT = "great"
+    NEEDS_EXAMPLE = "needs_example"
+    WRONG_TIMING = "wrong_timing"
+    OTHER = "other"
+
+
+class TemplateFeedback(Base):
+    """
+    템플릿 사용자 피드백
+    Creator 피드백을 수집하여 RL-lite 정책 업데이트에 활용
+    """
+    __tablename__ = "template_feedback"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # 연관 엔티티
+    template_version_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("template_versions.id"), nullable=True
+    )
+    node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True
+    )
+    creator_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    
+    # 피드백 내용
+    feedback_type: Mapped[str] = mapped_column(SQLEnum(FeedbackType))
+    rating: Mapped[int] = mapped_column(Integer)  # 1-5 stars
+    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # 컨텍스트
+    completion_status: Mapped[str] = mapped_column(String(50))  # "completed", "abandoned", "partial"
+    time_spent_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    # 메타데이터
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    template_version: Mapped[Optional["TemplateVersion"]] = relationship("TemplateVersion")
+    node: Mapped[Optional["RemixNode"]] = relationship("RemixNode")
+
+
+# ==================
+# EVIDENCE BOARDS (Virlo Phase B - Collections Alternative)
+# ==================
+
+class EvidenceBoardStatus(str, enum.Enum):
+    """Evidence Board status"""
+    DRAFT = "draft"
+    ACTIVE = "active"
+    CONCLUDED = "concluded"
+
+
+class EvidenceBoard(Base):
+    """
+    Evidence Board - Experiment grouping with KPI tracking
+    Replaces Virlo's Collections concept with Evidence-first approach
+    """
+    __tablename__ = "evidence_boards"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # Board info
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Owner
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
+    
+    # KPI and Conclusion
+    kpi_target: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # "ROAS > 2.0", "CTR > 5%"
+    conclusion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # "Variant A wins by 35%"
+    winner_item_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    
+    # Status
+    status: Mapped[str] = mapped_column(SQLEnum(EvidenceBoardStatus), default=EvidenceBoardStatus.DRAFT)
+    
+    # Metadata
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    concluded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    
+    # Relationships
+    owner: Mapped["User"] = relationship("User", backref="evidence_boards")
+    items: Mapped[List["EvidenceBoardItem"]] = relationship("EvidenceBoardItem", back_populates="board", cascade="all, delete-orphan")
+
+
+class EvidenceBoardItem(Base):
+    """
+    Items in an Evidence Board
+    Can reference OutlierItems or RemixNodes
+    """
+    __tablename__ = "evidence_board_items"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # Parent board
+    board_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("evidence_boards.id"), index=True)
+    
+    # Referenced item (one of these should be set)
+    outlier_item_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("outlier_items.id"), nullable=True
+    )
+    remix_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True
+    )
+    
+    # Notes
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Metadata
+    added_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    board: Mapped["EvidenceBoard"] = relationship("EvidenceBoard", back_populates="items")
+    outlier_item: Mapped[Optional["OutlierItem"]] = relationship("OutlierItem")
+    remix_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode")
+
+
+# ==================
+# NOTEBOOK SOURCE PACK (17_NOTEBOOKLM_LIBRARY_STRATEGY.md)
+# ==================
+
+class NotebookSourcePack(Base):
+    """
+    NotebookLM Source Pack 기록
+    클러스터별 생성된 Source Pack을 추적하여 NotebookLM 입력 일관성 보장
+    """
+    __tablename__ = "notebook_source_packs"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    cluster_id: Mapped[str] = mapped_column(String(100), index=True)
+    
+    # Pack 타입 및 파일 정보
+    pack_type: Mapped[str] = mapped_column(String(50))  # "sheet" | "docx"
+    drive_file_id: Mapped[str] = mapped_column(String(100))  # Google Drive file ID
+    drive_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Full URL for convenience
+    
+    # 버전 관리
+    source_version: Mapped[str] = mapped_column(String(50), default="v1.0")  # Pack 생성 시 스키마 버전
+    entry_count: Mapped[int] = mapped_column(Integer, default=0)  # 포함된 엔트리 수
+    
+    # 메타데이터
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

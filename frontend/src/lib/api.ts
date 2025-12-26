@@ -11,7 +11,7 @@ interface ApiErrorPayload {
     message?: string;
 }
 
-class ApiClient {
+export class ApiClient {
     private token: string | null = null;
 
     setToken(token: string) {
@@ -371,6 +371,7 @@ class ApiClient {
         });
     }
 
+
     // Royalty System
     async getMyRoyalty() {
         return this.request<RoyaltySummary>('/api/v1/royalty/my');
@@ -429,6 +430,35 @@ class ApiClient {
         return this.request<GamificationLeaderboardEntry[]>(`/api/v1/gamification/leaderboard?limit=${limit}`);
     }
 
+    // --- Phase 3: Taste Calibration ---
+    async getCalibrationPairs(): Promise<CalibrationPairResponse> {
+        return this.request<CalibrationPairResponse>('/api/v1/calibration/pairs');
+    }
+
+    async submitCalibrationChoice(
+        pairId: string,
+        selectedOptionId: string,
+        selection: 'A' | 'B'
+    ): Promise<CalibrationSubmitResponse> {
+        // Authenticated user ID is extracted from token in backend, 
+        // but for now we might need to pass it if the backend expects it in payload.
+        // Assuming backend extracts from token, but payload requires creator_id.
+        // Let's get user from getMe() or local storage if needed. 
+        // For simplicity, we'll fetch me first or rely on token.
+        // Re-reading backend schema: CalibrationSubmitRequest requires creator_id.
+
+        const user = await this.getMe();
+        return this.request<CalibrationSubmitResponse>('/api/v1/calibration/choice', {
+            method: 'POST',
+            body: JSON.stringify({
+                creator_id: user.id,
+                pair_id: pairId,
+                selected_option_id: selectedOptionId,
+                selection: selection
+            })
+        });
+    }
+
     // --- Evidence Loop (Phase 4) ---
     async getEvidenceTable(nodeId: string, period = "4w", format: "json" | "csv" = "json") {
         if (format === "csv") {
@@ -456,6 +486,129 @@ class ApiClient {
     // Health
     async health() {
         return this.request<{ status: string; version: string }>('/health');
+    }
+
+    // ==================
+    // EVIDENCE BOARDS (Phase B)
+    // ==================
+    async listBoards(): Promise<EvidenceBoard[]> {
+        return this.request<EvidenceBoard[]>('/api/v1/boards');
+    }
+
+    async createBoard(data: CreateBoardInput): Promise<EvidenceBoard> {
+        return this.request<EvidenceBoard>('/api/v1/boards', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async getBoard(boardId: string): Promise<EvidenceBoardDetail> {
+        return this.request<EvidenceBoardDetail>(`/api/v1/boards/${boardId}`);
+    }
+
+    async addBoardItem(boardId: string, data: AddBoardItemInput): Promise<BoardItem> {
+        return this.request<BoardItem>(`/api/v1/boards/${boardId}/items`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async setBoardConclusion(boardId: string, data: SetConclusionInput): Promise<EvidenceBoard> {
+        return this.request<EvidenceBoard>(`/api/v1/boards/${boardId}/conclusion`, {
+            method: 'PATCH',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async removeBoardItem(boardId: string, itemId: string): Promise<void> {
+        return this.request<void>(`/api/v1/boards/${boardId}/items/${itemId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    // ==================
+    // KNOWLEDGE CENTER (Phase C)
+    // ==================
+    async getHookLibrary(options?: { pattern_type?: string; min_samples?: number; limit?: number }): Promise<HookLibraryResponse> {
+        const params = new URLSearchParams();
+        if (options?.pattern_type) params.set('pattern_type', options.pattern_type);
+        if (options?.min_samples) params.set('min_samples', options.min_samples.toString());
+        if (options?.limit) params.set('limit', options.limit.toString());
+        const query = params.toString();
+        return this.request<HookLibraryResponse>(`/api/v1/knowledge/hooks${query ? '?' + query : ''}`);
+    }
+
+    async getHookDetail(patternCode: string): Promise<HookDetailResponse> {
+        return this.request<HookDetailResponse>(`/api/v1/knowledge/hooks/${patternCode}`);
+    }
+
+    async getEvidenceGuides(options?: { category?: string; platform?: string; min_confidence?: number }): Promise<EvidenceGuideResponse> {
+        const params = new URLSearchParams();
+        if (options?.category) params.set('category', options.category);
+        if (options?.platform) params.set('platform', options.platform);
+        if (options?.min_confidence) params.set('min_confidence', options.min_confidence.toString());
+        const query = params.toString();
+        return this.request<EvidenceGuideResponse>(`/api/v1/knowledge/guides${query ? '?' + query : ''}`);
+    }
+
+    async getEvidenceGuideDetail(snapshotId: string): Promise<EvidenceGuideDetail> {
+        return this.request<EvidenceGuideDetail>(`/api/v1/knowledge/guides/${snapshotId}`);
+    }
+
+    // ==================
+    // CRAWLERS (Automation API)
+    // ==================
+    async runCrawler(data: RunCrawlerInput): Promise<CrawlerJobResponse> {
+        return this.request<CrawlerJobResponse>('/api/v1/crawlers/run', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async getCrawlerJob(jobId: string): Promise<CrawlerJobStatus> {
+        return this.request<CrawlerJobStatus>(`/api/v1/crawlers/jobs/${jobId}`);
+    }
+
+    async getCrawlerStatus(): Promise<CrawlerStatusResponse> {
+        return this.request<CrawlerStatusResponse>('/api/v1/crawlers/status');
+    }
+
+    async getCrawlerHealth(): Promise<CrawlerHealthResponse> {
+        return this.request<CrawlerHealthResponse>('/api/v1/crawlers/health');
+    }
+
+    // ==================
+    // OUTLIERS (VDG Analysis Gate)
+    // ==================
+    async listOutliers(options?: {
+        category?: string;
+        platform?: string;
+        tier?: string;
+        freshness?: string;
+        sortBy?: string;
+        limit?: number;
+    }): Promise<OutlierListResponse> {
+        const params = new URLSearchParams();
+        if (options?.category) params.set('category', options.category);
+        if (options?.platform) params.set('platform', options.platform);
+        if (options?.tier) params.set('tier', options.tier);
+        if (options?.freshness) params.set('freshness', options.freshness);
+        if (options?.sortBy) params.set('sort_by', options.sortBy);
+        if (options?.limit) params.set('limit', options.limit.toString());
+        const query = params.toString();
+        return this.request<OutlierListResponse>(`/api/v1/outliers${query ? '?' + query : ''}`);
+    }
+
+    async promoteOutlier(itemId: string): Promise<PromoteOutlierResponse> {
+        return this.request<PromoteOutlierResponse>(`/api/v1/outliers/items/${itemId}/promote`, {
+            method: 'POST',
+        });
+    }
+
+    async approveVDGAnalysis(itemId: string): Promise<ApproveVDGResponse> {
+        return this.request<ApproveVDGResponse>(`/api/v1/outliers/items/${itemId}/approve`, {
+            method: 'POST',
+        });
     }
 }
 
@@ -799,25 +952,275 @@ export interface DailyMission {
     description: string;
     points: number;
     completed: boolean;
-    completed_at: string | null;
+    reward_claimed: boolean;
 }
 
 export interface MissionCompleteResponse {
     status: string;
-    mission_type?: string;
-    points_earned: number;
-    total_k_points?: number;
+    points_awarded: number;
+    total_points: number;
+    message: string;
 }
 
 export interface GamificationLeaderboardEntry {
     rank: number;
     user_id: string;
-    user_name: string | null;
+    user_name: string;
     profile_image: string | null;
-    total_royalty: number;
-    streak_days: number;
+    total_points: number;
+    total_royalty: number; // Alias for compatibility
     badge_count: number;
+    current_streak: number;
+    streak_days?: number; // Alias for backward compatibility
+}
+
+// Calibration Types
+export interface CalibrationOption {
+    id: string;
+    label: string;
+    description: string;
+    icon?: string;
+}
+
+export interface CalibrationPair {
+    pair_id: string;
+    question: string;
+    option_a: CalibrationOption;
+    option_b: CalibrationOption;
+}
+
+export interface CalibrationPairResponse {
+    session_id: string;
+    pairs: CalibrationPair[];
+}
+
+export interface CalibrationSubmitResponse {
+    status: string;
+    saved_choice_id: string;
+}
+
+// ==================
+// EVIDENCE BOARDS TYPES
+// ==================
+export interface EvidenceBoard {
+    id: string;
+    title: string;
+    description: string | null;
+    owner_id: string;
+    kpi_target: string | null;
+    conclusion: string | null;
+    winner_item_id: string | null;
+    status: 'DRAFT' | 'ACTIVE' | 'CONCLUDED';
+    created_at: string;
+    updated_at: string;
+    concluded_at: string | null;
+}
+
+export interface BoardItem {
+    id: string;
+    board_id: string;
+    outlier_item_id: string | null;
+    remix_node_id: string | null;
+    notes: string | null;
+    added_at: string;
+    item_data?: {
+        title?: string;
+        platform?: string;
+        source_url?: string;
+    };
+}
+
+export interface EvidenceBoardDetail extends EvidenceBoard {
+    items: BoardItem[];
+    item_count: number;
+}
+
+export interface CreateBoardInput {
+    title: string;
+    description?: string;
+    kpi_target?: string;
+}
+
+export interface AddBoardItemInput {
+    outlier_item_id?: string;
+    remix_node_id?: string;
+    notes?: string;
+}
+
+export interface SetConclusionInput {
+    conclusion: string;
+    winner_item_id?: string;
+}
+
+// ==================
+// KNOWLEDGE CENTER TYPES
+// ==================
+export interface HookPattern {
+    pattern_code: string;
+    pattern_type: string;
+    confidence_score: number;
+    sample_count: number;
+    avg_retention: number | null;
+    description: string | null;
+}
+
+export interface HookLibraryResponse {
+    total_patterns: number;
+    top_hooks: HookPattern[];
+    categories: string[];
+    last_updated: string;
+}
+
+export interface HookDetailResponse {
+    pattern_code: string;
+    pattern_type: string;
+    confidence_score: number;
+    sample_count: number;
+    avg_absolute_error: number | null;
+    description: string | null;
+    usage_tips: string[];
+    examples: { source_url: string; category: string }[];
+}
+
+export interface EvidenceGuide {
+    id: string;
+    parent_title: string;
+    platform: string;
+    category: string;
+    top_mutation_type: string | null;
+    top_mutation_pattern: string | null;
+    success_rate: string | null;
+    recommendation: string;
+    sample_count: number;
+    confidence: number;
+}
+
+export interface EvidenceGuideResponse {
+    total_guides: number;
+    guides: EvidenceGuide[];
+}
+
+export interface EvidenceGuideDetail {
+    id: string;
+    parent_node: {
+        id: string;
+        node_id: string;
+        title: string;
+        platform: string | null;
+        source_video_url: string | null;
+    };
+    snapshot_date: string;
+    period: string;
+    depth1_summary: Record<string, unknown> | null;
+    depth2_summary: Record<string, unknown> | null;
+    top_mutation: {
+        type: string | null;
+        pattern: string | null;
+        rate: string | null;
+    };
+    sample_count: number;
+    confidence: number;
+    recommendation: string;
+    execution_steps: string[];
+}
+
+// ==================
+// CRAWLER TYPES
+// ==================
+export interface RunCrawlerInput {
+    platforms: string[];
+    limit?: number;
+    category?: string;
+    region?: string;
+}
+
+export interface CrawlerJobResponse {
+    job_id: string;
+    status: string;
+    platforms: string[];
+    created_at: string;
+}
+
+export interface CrawlerJobStatus {
+    job_id: string;
+    status: 'running' | 'completed' | 'failed';
+    platforms: string[];
+    results: Record<string, { collected?: number; inserted?: number; error?: string }>;
+    created_at: string;
+    completed_at: string | null;
+}
+
+export interface CrawlerStatusResponse {
+    platforms: {
+        youtube: { count: number; last_crawl: string | null };
+        tiktok: { count: number; last_crawl: string | null };
+        instagram: { count: number; last_crawl: string | null };
+    };
+    running_jobs: number;
+}
+
+export interface CrawlerHealthResponse {
+    status: string;
+    platforms: Record<string, {
+        status: string;
+        last_crawl: string | null;
+        item_count: number;
+        is_stale: boolean;
+    }>;
+    running_jobs: number;
+    quotas?: Record<string, { used: number; limit: number; remaining: number }>;
+}
+
+// ==================
+// OUTLIER TYPES (VDG Analysis Gate)
+// ==================
+export interface OutlierItem {
+    id: string;
+    external_id: string;
+    video_url: string;
+    platform: string;
+    category: string;
+    title: string | null;
+    thumbnail_url: string | null;
+    view_count: number;
+    like_count: number;
+    share_count: number;
+    outlier_score: number;
+    outlier_tier: string;
+    creator_avg_views: number;
+    engagement_rate: number;
+    crawled_at: string | null;
+    status: 'pending' | 'selected' | 'rejected' | 'promoted';
+    // VDG Analysis Gate
+    analysis_status: 'pending' | 'approved' | 'analyzing' | 'completed' | 'skipped';
+    promoted_to_node_id: string | null;
+    best_comments_count: number;
+}
+
+export interface OutlierListResponse {
+    total: number;
+    items: OutlierItem[];
+}
+
+export interface PromoteOutlierResponse {
+    promoted: boolean;
+    item_id: string;
+    node_id: string;
+    remix_id: string;
+    analysis_status: string;
+    message: string;
+}
+
+export interface ApproveVDGResponse {
+    approved: boolean;
+    item_id: string;
+    node_id: string;
+    analysis_status: string;
+    approved_by: string;
+    message: string;
 }
 
 // Singleton instance
 export const api = new ApiClient();
+
+

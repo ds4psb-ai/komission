@@ -12,7 +12,7 @@ Opal에게 제공되어야 하는 핵심 데이터입니다.
 - **Current Depth**: `{depth}` (1 or 2)
 - **Top Variation**: `{best_variant_name}` (Views: `{views}`, Retention: `{retention}`)
 - **Insight**:
-  > NotebookLM Insights Sheet의 `summary` 및 `key_patterns` 참조 (클러스터/패턴 라벨 포함)
+  > Notebook Library Insights Sheet의 `summary` 및 `key_patterns` 참조 (클러스터/패턴 라벨 포함)
 
 ### 1.2 Pattern Lift (옵션)
 - **Pattern Lift Summary**: `{pattern_lift_summary}`
@@ -83,9 +83,28 @@ Opal 결과는 Capsule 노드의 출력으로 저장됩니다.
 
 ---
 
-## 5. Execution Flow
+## 5. Template Seed (Optional)
+Opal은 Decision 외에도 **Template Seed**를 생성할 수 있습니다.
+
+**출력 형식 (JSON)**:
+```json
+{
+  "template_type": "capsule|guide|edit",
+  "seed_title": "Hook-2s-TextPunch",
+  "seed_params": {
+    "hook": "...",
+    "shotlist": ["...", "..."],
+    "audio": "...",
+    "timing": ["1.2s", "0.8s", "1.5s"]
+  }
+}
+```
+
+---
+
+## 6. Execution Flow
 1. **Evidence Gathering**: `EvidenceNode`에서 데이터 추출
-2. **Analysis**: NotebookLM 리포트 참조
+2. **Analysis**: Notebook Library 요약/클러스터 리포트 참조
 3. **Drafting**: 위 프롬프트로 Opal 호출 (API or Manual)
 4. **Review**: `Decision Sheet`에 Draft 상태로 저장 → 인간 승인
 5. **Action**: 승인 시 `Experiment Sheet`에 Row 추가 및 크리에이터 배정

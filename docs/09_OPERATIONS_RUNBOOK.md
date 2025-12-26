@@ -8,16 +8,20 @@
 ## 1) 일간 체크리스트
 - Outlier 링크 수집(수동 입력 or CSV)
 - `sync_outliers_to_sheet.py` 실행
+- 영상 해석(코드) 파이프라인 실행 확인
 - 후보 상태 확인 (new → candidate)
 - Parent 승격 1건 이상 처리
+- TikTok 댓글 수집 실패 시 `refresh_tiktok_session.py` 실행
 
 ---
 
 ## 2) 주간 체크리스트
 - Evidence Runner 실행 (1회 이상)
 - Decision Sheet 생성 확인
+- Opal 템플릿 시드 생성 여부 확인(선택)
 - 상위 패턴/리스크 요약 업데이트
 - O2O 캠페인 타입 게이팅 점검
+- TikTok 세션 갱신(필요 시)
 
 ---
 

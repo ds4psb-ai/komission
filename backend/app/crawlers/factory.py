@@ -1,6 +1,9 @@
 from typing import Dict, Type
 from app.crawlers.base import BaseCrawler
 from app.crawlers.mock import MockCrawler
+from app.crawlers.youtube import YouTubeCrawler
+from app.crawlers.tiktok import TikTokCrawler
+from app.crawlers.instagram import InstagramCrawler
 
 class CrawlerFactory:
     """
@@ -9,8 +12,9 @@ class CrawlerFactory:
     
     _registry: Dict[str, Type[BaseCrawler]] = {
         "mock": MockCrawler,
-        # "tiktok": TikTokCrawler, # Future
-        # "instagram": InstagramCrawler, # Future
+        "youtube": YouTubeCrawler,
+        "tiktok": TikTokCrawler,
+        "instagram": InstagramCrawler,
     }
 
     @classmethod
