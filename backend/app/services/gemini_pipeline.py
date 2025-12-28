@@ -363,7 +363,12 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
 
             def _looks_like_schema_error(message: str) -> bool:
                 msg = message.lower()
-                return "schema" in msg or "response_json_schema" in msg
+                return (
+                    "schema" in msg
+                    or "response_json_schema" in msg
+                    or "invalid_argument" in msg
+                    or "invalid argument" in msg
+                )
 
             def _generate(model_name: str, use_schema: bool):
                 logger.warning(f"📦 Generate with model={model_name} inline=True schema={use_schema}")
