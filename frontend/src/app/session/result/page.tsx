@@ -24,6 +24,26 @@ const MOCK_COMMENTS: BestComment[] = [
     { text: '끝까지 보니까 이해됨', likes: 987, lang: 'ko', tag: 'payoff' },
 ];
 
+const CATEGORY_LABELS: Record<string, string> = {
+    beauty: '뷰티',
+    food: '푸드',
+    fashion: '패션',
+    tech: '테크',
+    lifestyle: '라이프',
+    entertainment: '엔터',
+    meme: '밈',
+    trending: '트렌딩',
+};
+
+const PLATFORM_LABELS: Record<string, string> = {
+    tiktok: '틱톡',
+    youtube: '유튜브 쇼츠',
+    instagram: '인스타 릴스',
+};
+
+const formatCategoryLabel = (value: string) => CATEGORY_LABELS[value] || value;
+const formatPlatformLabel = (value: string) => PLATFORM_LABELS[value] || value;
+
 export default function SessionResultPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -50,7 +70,7 @@ export default function SessionResultPage() {
                 setIsLoading(true);
                 try {
                     const res = await fetch(`/api/v1/for-you/${patternId}`);
-                    if (!res.ok) throw new Error('Pattern not found');
+                    if (!res.ok) throw new Error('패턴을 찾을 수 없습니다');
 
                     const data = await res.json();
 
@@ -58,11 +78,11 @@ export default function SessionResultPage() {
                     const mappedPattern = {
                         pattern_id: data.id,
                         cluster_id: data.cluster_id || data.category,
-                        pattern_summary: data.title || `${data.platform} ${data.category} Pattern`,
+                        pattern_summary: data.title || `${formatPlatformLabel(data.platform)} ${formatCategoryLabel(data.category)} 패턴`,
                         signature: {
-                            hook: data.tier === 'S' ? 'Strong Hook' : 'Standard',
-                            timing: data.evidence.growth_rate || 'N/A',
-                            audio: data.platform === 'tiktok' ? 'Trending' : 'Original',
+                            hook: data.tier === 'S' ? '강한 훅' : '일반 훅',
+                            timing: data.evidence.growth_rate || '정보 없음',
+                            audio: data.platform === 'tiktok' ? '틱톡 트렌딩 사운드' : '플랫폼 기본 사운드',
                         },
                         fit_score: (data.outlier_score || 0) / 1000,
                         evidence_strength: data.evidence.best_comments.length,
@@ -114,19 +134,19 @@ export default function SessionResultPage() {
                 details: [
                     '선택한 Outlier 데이터 포함',
                     'NotebookLM 포맷으로 변환',
-                    `Target: ${patternId.slice(0, 8)}...`
+                    `대상: ${patternId.slice(0, 8)}...`
                 ]
             });
 
             if (!consented) return;
 
-            console.log('Generating Source Pack...');
+            console.log('소스팩 생성 중...');
             await new Promise(resolve => setTimeout(resolve, 2000));
 
-            console.log('Source Pack Generated');
-            alert('Source Pack이 생성되었습니다! (NotebookLM에서 확인 가능)');
+            console.log('소스팩 생성 완료');
+            alert('소스팩이 생성되었습니다! (NotebookLM에서 확인 가능)');
         } catch (err) {
-            console.error('Source Pack generation failed:', err);
+            console.error('소스팩 생성 실패:', err);
             alert('생성 중 오류가 발생했습니다.');
         }
     };
@@ -160,7 +180,7 @@ export default function SessionResultPage() {
                     </button>
                     <div className="flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-violet-400" />
-                        <h1 className="text-lg font-bold">Recommended Pattern</h1>
+                        <h1 className="text-lg font-bold">추천 패턴</h1>
                     </div>
                 </div>
             </header>
@@ -171,10 +191,10 @@ export default function SessionResultPage() {
                     <div className="flex items-center gap-2 text-xs text-white/40 animate-fadeIn">
                         <span className="px-2 py-1 rounded-full bg-white/5">
                             {state.input_context.platform === 'tiktok' ? '🎵' : state.input_context.platform === 'youtube' ? '▶️' : '📷'}
-                            {' '}{state.input_context.platform}
+                            {' '}{formatPlatformLabel(state.input_context.platform)}
                         </span>
                         <span className="px-2 py-1 rounded-full bg-white/5">
-                            {state.input_context.category}
+                            {formatCategoryLabel(state.input_context.category)}
                         </span>
                     </div>
                 )}
@@ -216,7 +236,7 @@ export default function SessionResultPage() {
                                 recurrence={pattern.recurrence ? {
                                     ancestor_cluster_id: pattern.recurrence.ancestor_cluster_id,
                                     recurrence_score: pattern.recurrence.recurrence_score,
-                                    historical_lift: '+127% avg', // TODO: Map from real data
+                                    historical_lift: '+127% 평균', // TODO: Map from real data
                                     origin_year: pattern.recurrence.origin_year || 2024,
                                 } : undefined}
                                 risk_tags={[]}
@@ -241,7 +261,7 @@ export default function SessionResultPage() {
                                     </span>
                                 </button>
                                 <p className="text-[10px] text-center text-white/30 mt-2">
-                                    Deep Analysis를 위해 소스 데이터를 NotebookLM으로 전송합니다.
+                                    심층 분석을 위해 소스 데이터를 NotebookLM으로 전송합니다.
                                 </p>
                             </div>
                         </PatternAnswerCard>
@@ -261,4 +281,3 @@ export default function SessionResultPage() {
         </div>
     );
 }
-

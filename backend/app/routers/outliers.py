@@ -1236,64 +1236,69 @@ async def _run_vdg_analysis_with_comments(
     
     try:
         async with async_session_maker() as db:
-            # 1. Update status to analyzing
+            # 1. Fetch item first
             item_result = await db.execute(
                 select(OutlierItem).where(OutlierItem.id == UUID(item_id))
             )
             item = item_result.scalar_one_or_none()
-            if item:
+            
+            # 2. Check if manual comments already exist - SKIP EXTRACTION
+            best_comments = []
+            if item and item.best_comments and len(item.best_comments) > 0:
+                best_comments = item.best_comments
+                print(f"✅ Using existing manual comments: {len(best_comments)} for {node_id}")
+                # Mark as analyzing now that we confirmed comments exist
                 item.analysis_status = "analyzing"
                 await db.commit()
-            
-            # 2. Extract best comments (YouTube/TikTok API) - REQUIRED GATE
-            best_comments = []
-            try:
-                from app.services.comment_extractor import extract_best_comments
-                best_comments = await extract_best_comments(video_url, platform, limit=5)
-                
-                if not best_comments:
-                    raise ValueError("No comments extracted - empty result")
-                
-                # Save best comments to OutlierItem
-                if item:
-                    item.best_comments = best_comments
-                    item.analysis_status = "comments_ready"
-                    await db.commit()
-                print(f"📝 Extracted {len(best_comments)} best comments for {node_id}")
-                
-            except Exception as e:
-                # TIER-BASED GATE: S/A tier → manual review, others → block
-                print(f"❌ Comment extraction failed: {e}")
-                
-                # Check if this is a high-value item (S/A tier)
-                is_high_value = False
-                if item:
-                    is_high_value = (
-                        item.outlier_tier in ['S', 'A'] or 
-                        (item.outlier_score is not None and item.outlier_score >= 100)
-                    )
-                    item.comments_missing_reason = str(e)[:200]
-                
-                if is_high_value:
-                    # S/A tier: Queue for manual review
-                    print(f"⚠️ High-value item (S/A tier) - queued for manual comment review")
+            else:
+                # 3. Extract best comments (YouTube/TikTok API) - REQUIRED GATE
+                try:
+                    from app.services.comment_extractor import extract_best_comments
+                    best_comments = await extract_best_comments(video_url, platform, limit=5)
+                    
+                    if not best_comments:
+                        raise ValueError("No comments extracted - empty result")
+                    
+                    # Save best comments to OutlierItem and mark as analyzing
                     if item:
-                        item.analysis_status = "comments_pending_review"
+                        item.best_comments = best_comments
+                        item.analysis_status = "analyzing"  # Set analyzing AFTER comments confirmed
                         await db.commit()
-                    raise HTTPException(
-                        status_code=202,
-                        detail=f"High-value item queued for manual comment review. Use PATCH /outliers/items/{item_id}/comments to add comments manually."
-                    )
-                else:
-                    # B/C tier or no tier: Block VDG
-                    print(f"🚫 Low-value item - blocking VDG analysis")
+                    print(f"📝 Extracted {len(best_comments)} best comments for {node_id}")
+                
+                except Exception as e:
+                    # TIER-BASED GATE: S/A tier → manual review, others → block
+                    print(f"❌ Comment extraction failed: {e}")
+                    
+                    # Check if this is a high-value item (S/A tier)
+                    is_high_value = False
                     if item:
-                        item.analysis_status = "comments_failed"
-                        await db.commit()
-                    raise HTTPException(
-                        status_code=503,
-                        detail=f"Comment extraction required before VDG analysis: {e}"
-                    )
+                        is_high_value = (
+                            item.outlier_tier in ['S', 'A'] or 
+                            (item.outlier_score is not None and item.outlier_score >= 100)
+                        )
+                        item.comments_missing_reason = str(e)[:200]
+                    
+                    if is_high_value:
+                        # S/A tier: Queue for manual review
+                        print(f"⚠️ High-value item (S/A tier) - queued for manual comment review")
+                        if item:
+                            item.analysis_status = "comments_pending_review"
+                            await db.commit()
+                        raise HTTPException(
+                            status_code=202,
+                            detail=f"High-value item queued for manual comment review. Use PATCH /outliers/items/{item_id}/comments to add comments manually."
+                        )
+                    else:
+                        # B/C tier or no tier: Block VDG
+                        print(f"🚫 Low-value item - blocking VDG analysis")
+                        if item:
+                            item.analysis_status = "comments_failed"
+                            await db.commit()
+                        raise HTTPException(
+                            status_code=503,
+                            detail=f"Comment extraction required before VDG analysis: {e}"
+                        )
             
             # 3. Run VDG analysis with comment context (only proceeds if comments exist)
             print(f"🚀 Starting VDG analysis for {node_id} with {len(best_comments)} comments...")
@@ -1451,7 +1456,9 @@ async def _run_vdg_analysis_with_comments(
                 )
                 item = item_result.scalar_one_or_none()
                 if item:
-                    item.analysis_status = "pending"  # Reset to pending for retry
+                    # Preserve important statuses (don't overwrite manual review status)
+                    if item.analysis_status not in ["comments_pending_review", "comments_failed"]:
+                        item.analysis_status = "pending"  # Reset to pending for retry
                     await db.commit()
         except:
             pass

@@ -59,6 +59,28 @@ interface ForYouApiResponse {
 const CATEGORIES = ['all', 'beauty', 'meme', 'food', 'fashion', 'trending'];
 const PLATFORMS = ['all', 'tiktok', 'youtube', 'instagram'];
 
+const CATEGORY_LABELS: Record<string, string> = {
+    all: '전체',
+    beauty: '뷰티',
+    meme: '밈',
+    food: '푸드',
+    fashion: '패션',
+    trending: '트렌딩',
+    tech: '테크',
+    lifestyle: '라이프',
+    entertainment: '엔터',
+};
+
+const PLATFORM_LABELS: Record<string, string> = {
+    all: '전체',
+    tiktok: '틱톡',
+    youtube: '유튜브 쇼츠',
+    instagram: '인스타 릴스',
+};
+
+const formatCategoryLabel = (value: string) => CATEGORY_LABELS[value] || value;
+const formatPlatformLabel = (value: string) => PLATFORM_LABELS[value] || value;
+
 export default function ForYouPage() {
     const router = useRouter();
 
@@ -114,11 +136,11 @@ export default function ForYouPage() {
     } => ({
         pattern_id: rec.id,
         cluster_id: rec.cluster_id || rec.category,
-        pattern_summary: rec.title || `${rec.platform} ${rec.category} 패턴`,
+        pattern_summary: rec.title || `${formatPlatformLabel(rec.platform)} ${formatCategoryLabel(rec.category)} 패턴`,
         signature: {
             hook: rec.tier === 'S' ? '강력한 오프닝' : '일반 오프닝',
-            timing: rec.evidence.growth_rate || 'N/A',
-            audio: rec.platform === 'tiktok' ? 'TikTok 트렌딩' : '플랫폼 기본',
+            timing: rec.evidence.growth_rate || '정보 없음',
+            audio: rec.platform === 'tiktok' ? '틱톡 트렌딩 사운드' : '플랫폼 기본 사운드',
         },
         fit_score: (rec.outlier_score || 100) / 1000,
         evidence_strength: rec.evidence.best_comments.length,
@@ -139,7 +161,7 @@ export default function ForYouPage() {
         recurrence_evidence: rec.recurrence?.recurrence_score ? {
             ancestor_cluster_id: rec.recurrence.ancestor_cluster_id || '',
             recurrence_score: rec.recurrence.recurrence_score,
-            historical_lift: rec.evidence.growth_rate || '+N/A',
+            historical_lift: rec.evidence.growth_rate || '정보 없음',
             origin_year: 2024,
         } : undefined,
         risk_tags: [],
@@ -215,7 +237,7 @@ export default function ForYouPage() {
                                                 : 'bg-white/10 text-white/60 hover:bg-white/20'
                                                 }`}
                                         >
-                                            {cat === 'all' ? '전체' : cat}
+                                            {formatCategoryLabel(cat)}
                                         </button>
                                     ))}
                                 </div>
@@ -234,7 +256,7 @@ export default function ForYouPage() {
                                                 : 'bg-white/10 text-white/60 hover:bg-white/20'
                                                 }`}
                                         >
-                                            {plat === 'all' ? '전체' : plat}
+                                            {formatPlatformLabel(plat)}
                                         </button>
                                     ))}
                                 </div>
@@ -291,7 +313,7 @@ export default function ForYouPage() {
                             {topPattern.thumbnail_url ? (
                                 <img
                                     src={topPattern.thumbnail_url}
-                                    alt={topPattern.title || 'Video thumbnail'}
+                                    alt={topPattern.title || '영상 썸네일'}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                 />
                             ) : (
@@ -309,11 +331,11 @@ export default function ForYouPage() {
                                 topPattern.tier === 'A' ? 'bg-purple-500/80 text-white' :
                                     'bg-blue-500/80 text-white'
                                 }`}>
-                                {topPattern.tier}-Tier
+                                {topPattern.tier}티어
                             </div>
                             {/* Platform Badge */}
                             <div className="absolute top-3 right-3 px-2 py-1 rounded bg-black/50 text-xs text-white/80 backdrop-blur-sm">
-                                {topPattern.platform}
+                                {formatPlatformLabel(topPattern.platform)}
                             </div>
                         </button>
 
@@ -344,14 +366,14 @@ export default function ForYouPage() {
                             <div className="h-8 w-px bg-white/10" />
                             <div className="text-center">
                                 <div className="text-lg font-bold text-green-400">
-                                    {topPattern.evidence.growth_rate || 'N/A'}
+                                    {topPattern.evidence.growth_rate || '정보 없음'}
                                 </div>
                                 <div className="text-xs text-white/40">성장률</div>
                             </div>
                             <div className="h-8 w-px bg-white/10" />
                             <div className="text-center">
                                 <div className="text-lg font-bold text-purple-400">
-                                    {topPattern.outlier_score?.toFixed(0) || 'N/A'}
+                                    {topPattern.outlier_score?.toFixed(0) || '정보 없음'}
                                 </div>
                                 <div className="text-xs text-white/40">점수</div>
                             </div>
@@ -415,10 +437,10 @@ export default function ForYouPage() {
                                         <span className="text-xs text-white/40">{pattern.platform}</span>
                                     </div>
                                     <p className="text-sm text-white/80 line-clamp-1">
-                                        {pattern.title || `${pattern.category} 패턴`}
+                                        {pattern.title || `${formatCategoryLabel(pattern.category)} 패턴`}
                                     </p>
                                     <p className="text-xs text-white/40 mt-0.5">
-                                        {(pattern.evidence.total_views / 1000000).toFixed(1)}M views • {pattern.evidence.growth_rate}
+                                        {(pattern.evidence.total_views / 1000000).toFixed(1)}M 조회 • {pattern.evidence.growth_rate || '정보 없음'}
                                     </p>
                                 </div>
 

@@ -61,6 +61,13 @@ export default function PatternAnswerCard({
         }
     };
 
+    const platformLabelMap: Record<typeof platform, string> = {
+        tiktok: '틱톡',
+        youtube: '유튜브 쇼츠',
+        instagram: '인스타 릴스',
+    };
+    const platformLabel = platformLabelMap[platform] || platform;
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -99,7 +106,7 @@ export default function PatternAnswerCard({
                                 bg-gradient-to-b from-[#1a1a1c] to-[#0A0A0C] border border-white/10
                             `}>
                                 <span className={`font-black text-lg bg-gradient-to-br ${getTierGradient()} bg-clip-text text-transparent`}>
-                                    {tier}-Tier
+                                    {tier}티어
                                 </span>
                                 {tier === 'S' && (
                                     <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
@@ -115,7 +122,7 @@ export default function PatternAnswerCard({
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
                             >
                                 <RotateCw className="w-3.5 h-3.5" />
-                                <span className="text-xs font-bold">Recurrence</span>
+                                <span className="text-xs font-bold">재등장</span>
                             </motion.div>
                         )}
                     </div>
@@ -125,7 +132,7 @@ export default function PatternAnswerCard({
                         <div className="text-xs font-mono text-white/40 mb-1 flex items-center gap-2">
                             <span>#{cluster_id}</span>
                             <span className="w-1 h-1 rounded-full bg-white/20" />
-                            <span className="capitalize">{platform}</span>
+                            <span>{platformLabel}</span>
                         </div>
                         <h2 className="text-2xl font-bold text-white leading-tight text-balance">
                             {pattern_summary}
@@ -136,21 +143,21 @@ export default function PatternAnswerCard({
                     <div className="grid grid-cols-1 gap-2.5">
                         <SignatureRow
                             icon={Zap}
-                            label="Hook"
+                            label="훅"
                             value={signature.hook}
                             color="text-yellow-300"
                             bg="bg-yellow-500/10"
                         />
                         <SignatureRow
                             icon={Timer}
-                            label="Timing"
+                            label="타이밍"
                             value={signature.timing}
                             color="text-cyan-300"
                             bg="bg-cyan-500/10"
                         />
                         <SignatureRow
                             icon={Music}
-                            label="Audio"
+                            label="오디오"
                             value={signature.audio}
                             color="text-pink-300"
                             bg="bg-pink-500/10"
@@ -162,17 +169,17 @@ export default function PatternAnswerCard({
                 <div className="px-6 py-4 border-t border-white/5 bg-white/[0.02] flex items-center justify-between">
                     <div className="flex items-center gap-6">
                         <div className="text-center">
-                            <div className="text-[10px] text-white/40 font-medium uppercase tracking-wider mb-0.5">Fit Score</div>
+                            <div className="text-[10px] text-white/40 font-medium uppercase tracking-wider mb-0.5">적합도</div>
                             <div className="text-lg font-bold text-white">
                                 {Math.round(fit_score * 100)}%
                             </div>
                         </div>
                         <div className="w-px h-8 bg-white/10" />
                         <div className="text-center">
-                            <div className="text-[10px] text-white/40 font-medium uppercase tracking-wider mb-0.5">Evidence</div>
+                            <div className="text-[10px] text-white/40 font-medium uppercase tracking-wider mb-0.5">증거</div>
                             <div className="text-lg font-bold text-white flex items-center gap-1">
                                 {evidence_strength}
-                                <span className="text-xs font-normal text-white/50">signals</span>
+                                <span className="text-xs font-normal text-white/50">건</span>
                             </div>
                         </div>
                     </div>
@@ -221,7 +228,7 @@ export default function PatternAnswerCard({
                         }}
                     >
                         <Camera className="w-5 h-5" />
-                        Shoot Pattern Guide
+                        촬영 가이드 시작
                     </motion.button>
                 </div>
             </div>

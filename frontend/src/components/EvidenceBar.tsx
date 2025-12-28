@@ -59,17 +59,17 @@ export interface EvidenceBarProps {
 
 // Tag styling config
 const TAG_CONFIG: Record<CommentTag, { label: string; color: string; icon: typeof MessageCircle }> = {
-    hook: { label: 'Hook', color: 'text-emerald-400 bg-emerald-500/20', icon: MessageCircle },
-    payoff: { label: 'Payoff', color: 'text-cyan-400 bg-cyan-500/20', icon: MessageCircle },
-    product_curiosity: { label: 'Product', color: 'text-amber-400 bg-amber-500/20', icon: MessageCircle },
-    confusion: { label: 'Confusion', color: 'text-orange-400 bg-orange-500/20', icon: AlertCircle },
-    controversy: { label: 'Controversy', color: 'text-red-400 bg-red-500/20', icon: AlertTriangle },
+    hook: { label: '훅', color: 'text-emerald-400 bg-emerald-500/20', icon: MessageCircle },
+    payoff: { label: '보상', color: 'text-cyan-400 bg-cyan-500/20', icon: MessageCircle },
+    product_curiosity: { label: '제품', color: 'text-amber-400 bg-amber-500/20', icon: MessageCircle },
+    confusion: { label: '혼란', color: 'text-orange-400 bg-orange-500/20', icon: AlertCircle },
+    controversy: { label: '논란', color: 'text-red-400 bg-red-500/20', icon: AlertTriangle },
 };
 
 const CONFIDENCE_CONFIG = {
-    strong: { label: 'Strong', color: 'text-emerald-400', icon: CheckCircle },
-    moderate: { label: 'Moderate', color: 'text-yellow-400', icon: Eye },
-    weak: { label: 'Weak', color: 'text-orange-400', icon: AlertCircle },
+    strong: { label: '높음', color: 'text-emerald-400', icon: CheckCircle },
+    moderate: { label: '보통', color: 'text-yellow-400', icon: Eye },
+    weak: { label: '낮음', color: 'text-orange-400', icon: AlertCircle },
 };
 
 function formatLikes(likes: number): string {
@@ -93,7 +93,7 @@ export function EvidenceBar({
             <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs text-white/60">
                     <MessageCircle className="w-3.5 h-3.5" />
-                    <span className="font-medium">Best Comments</span>
+                    <span className="font-medium">베스트 댓글</span>
                 </div>
 
                 <div className="space-y-1.5">
@@ -138,7 +138,7 @@ export function EvidenceBar({
                 <div className="px-3 py-2.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
                     <div className="flex items-center gap-2 text-xs">
                         <RefreshCw className="w-3.5 h-3.5 text-violet-400" />
-                        <span className="font-medium text-violet-300">Recurrence</span>
+                        <span className="font-medium text-violet-300">재등장</span>
                     </div>
                     <div className="mt-1 text-xs text-white/70">
                         {recurrence.origin_year} 패턴과 <span className="text-violet-400 font-bold">{Math.round(recurrence.recurrence_score * 100)}%</span> 유사
@@ -169,7 +169,7 @@ export function EvidenceBar({
                 <div className="flex items-center gap-1.5">
                     <ConfidenceIcon className={`w-3.5 h-3.5 ${confidenceConfig.color}`} />
                     <span className={`text-xs font-medium ${confidenceConfig.color}`}>
-                        {confidenceConfig.label} Evidence
+                        증거 신뢰도: {confidenceConfig.label}
                     </span>
                 </div>
                 <span className="text-[10px] text-white/40">
