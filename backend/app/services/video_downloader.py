@@ -152,8 +152,68 @@ class VideoDownloader:
     def _extract_tiktok_video_url(self, html: str) -> Optional[str]:
         """
         Extract direct video URL from TikTok HTML.
-        Prefers playAddr, falls back to downloadAddr.
+        Prefers JSON payloads, falls back to regex.
         """
+        import json
+
+        def pick_video_url(video_obj: Optional[dict]) -> Optional[str]:
+            if not isinstance(video_obj, dict):
+                return None
+            for key in ["playAddr", "downloadAddr", "playAddrByte", "downloadAddrByte"]:
+                value = video_obj.get(key)
+                if isinstance(value, str) and value.startswith("http"):
+                    return value
+            bitrate_info = video_obj.get("bitrateInfo") or []
+            if isinstance(bitrate_info, list):
+                for entry in bitrate_info:
+                    addr = entry.get("PlayAddr") or entry.get("playAddr") or {}
+                    if isinstance(addr, dict):
+                        urls = addr.get("UrlList") or addr.get("url_list") or addr.get("urlList") or []
+                        if isinstance(urls, list) and urls:
+                            if isinstance(urls[0], str) and urls[0].startswith("http"):
+                                return urls[0]
+            return None
+
+        # 1) UNIVERSAL_DATA JSON
+        universal_match = re.search(
+            r'<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>([\\s\\S]*?)</script>',
+            html,
+            re.IGNORECASE
+        )
+        if universal_match:
+            try:
+                data = json.loads(universal_match.group(1).strip())
+                item = (
+                    data.get("__DEFAULT_SCOPE__", {})
+                    .get("webapp.video-detail", {})
+                    .get("itemInfo", {})
+                    .get("itemStruct", {})
+                )
+                url = pick_video_url(item.get("video"))
+                if url:
+                    return url
+            except Exception:
+                pass
+
+        # 2) SIGI_STATE JSON
+        sigi_match = re.search(
+            r'<script id="SIGI_STATE"[^>]*>([\\s\\S]*?)</script>',
+            html,
+            re.IGNORECASE
+        )
+        if sigi_match:
+            try:
+                data = json.loads(sigi_match.group(1).strip())
+                item_module = data.get("ItemModule", {}) or {}
+                if item_module:
+                    item = next(iter(item_module.values()))
+                    url = pick_video_url(item.get("video"))
+                    if url:
+                        return url
+            except Exception:
+                pass
+
+        # 3) Fallback regex
         patterns = [
             r'"playAddr":"(.*?)"',
             r'"downloadAddr":"(.*?)"',
