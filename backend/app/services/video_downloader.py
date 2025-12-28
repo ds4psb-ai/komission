@@ -63,6 +63,14 @@ class VideoDownloader:
             )
         
         platform = self._get_platform(url)
+
+        # TikTok often fails with yt-dlp due to bot detection.
+        # Try direct extraction first, then fall back to yt-dlp.
+        if platform == "tiktok":
+            try:
+                return await self._download_tiktok_direct(url)
+            except Exception as e:
+                print(f"⚠️ Direct TikTok download failed, falling back to yt-dlp: {e}")
         
         # Configure yt-dlp options
         ydl_opts = {
@@ -95,6 +103,87 @@ class VideoDownloader:
         )
         
         return result
+
+    async def _download_tiktok_direct(self, url: str) -> Tuple[str, VideoMetadata]:
+        """
+        Download TikTok video directly by extracting playAddr/downloadAddr.
+        Uses Playwright (cookies) via TikTokMetadataExtractor for higher success rate.
+        """
+        from app.services.tiktok_metadata import TikTokMetadataExtractor
+        import httpx
+
+        extractor = TikTokMetadataExtractor()
+        html = await extractor._fetch_with_playwright(url)
+        if not html:
+            html = await extractor._fetch_with_httpx(url)
+        if not html:
+            raise RuntimeError("Failed to fetch TikTok HTML")
+
+        video_url = self._extract_tiktok_video_url(html)
+        if not video_url:
+            raise RuntimeError("Failed to extract TikTok video URL")
+
+        # Prepare output path
+        video_id = self._extract_tiktok_id(url) or "tiktok_video"
+        temp_path = os.path.join(self.output_dir, f"{video_id}.mp4")
+
+        async with httpx.AsyncClient(follow_redirects=True, timeout=60) as client:
+            async with client.stream("GET", video_url) as resp:
+                resp.raise_for_status()
+                with open(temp_path, "wb") as f:
+                    async for chunk in resp.aiter_bytes():
+                        f.write(chunk)
+
+        metadata = VideoMetadata(
+            id=video_id,
+            title=self._extract_og_title(html) or "TikTok Video",
+            duration=0,
+            view_count=0,
+            like_count=0,
+            uploader="unknown",
+            platform="tiktok",
+            description="",
+            thumbnail_url=self._extract_og_thumbnail(html),
+            audio_url=video_url,
+        )
+
+        return temp_path, metadata
+
+    def _extract_tiktok_video_url(self, html: str) -> Optional[str]:
+        """
+        Extract direct video URL from TikTok HTML.
+        Prefers playAddr, falls back to downloadAddr.
+        """
+        patterns = [
+            r'"playAddr":"(.*?)"',
+            r'"downloadAddr":"(.*?)"',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, html)
+            if not match:
+                continue
+            raw = match.group(1)
+            # Decode escaped sequences
+            try:
+                decoded = raw.encode("utf-8").decode("unicode_escape")
+            except Exception:
+                decoded = raw
+            decoded = decoded.replace("\\/", "/")
+            if decoded.startswith("http"):
+                return decoded
+        return None
+
+    def _extract_og_title(self, html: str) -> Optional[str]:
+        match = re.search(r'<meta property="og:title" content="([^"]+)"', html)
+        if match:
+            return match.group(1)
+        return None
+
+    def _extract_og_thumbnail(self, html: str) -> Optional[str]:
+        match = re.search(r'<meta property="og:image" content="([^"]+)"', html)
+        if match:
+            return match.group(1)
+        return None
     
     def _sync_download(self, url: str, ydl_opts: dict) -> Tuple[str, VideoMetadata]:
         """Synchronous download helper"""
@@ -139,6 +228,10 @@ class VideoDownloader:
         if match:
             return match.group(1)
         return None
+
+    def _extract_tiktok_id(self, url: str) -> Optional[str]:
+        match = re.search(r'/video/(\d+)', url)
+        return match.group(1) if match else None
 
     async def _fetch_youtube_metadata_api(self, video_id: str, api_key: str) -> Optional[VideoMetadata]:
         """Fetch metadata using YouTube Data API v3"""
