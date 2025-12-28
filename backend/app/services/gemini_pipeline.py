@@ -297,26 +297,27 @@ class GeminiPipeline:
         temp_path = None
         try:
             # 1. Download Video
-            logger.info(f"📥 Downloading video from {video_url}...")
+            logger.warning(f"📥 Downloading video from {video_url}...")
             temp_path, metadata = await video_downloader.download(video_url)
             
             # 2. Upload to Gemini
-            logger.info(f"⬆️ Uploading for {node_id}...")
+            logger.warning(f"⬆️ Uploading for {node_id}...")
             video_file = self.client.files.upload(file=temp_path)
             
             # Wait for processing
-            max_wait = 60
-            elapsed = 0
-            while elapsed < max_wait:
-                file_info = self.client.files.get(name=video_file.name)
-                if file_info.state.name == "ACTIVE":
-                    logger.info(f"✅ File ACTIVE: {video_file.name}")
-                    break
-                logger.info(f"⏳ Waiting... ({elapsed}s)")
-                time.sleep(2)
-                elapsed += 2
-            else:
-                raise Exception(f"File did not become ACTIVE within {max_wait}s")
+            def _wait_file_active(file_name: str, max_wait: int = 60) -> None:
+                elapsed = 0
+                while elapsed < max_wait:
+                    file_info = self.client.files.get(name=file_name)
+                    if file_info.state.name == "ACTIVE":
+                        logger.warning(f"✅ File ACTIVE: {file_name}")
+                        return
+                    logger.warning(f"⏳ Waiting... ({elapsed}s) file={file_name}")
+                    time.sleep(2)
+                    elapsed += 2
+                raise Exception(f"File did not become ACTIVE within {max_wait}s: {file_name}")
+
+            _wait_file_active(video_file.name)
 
             # 3. Build prompt with audience comments context
             enhanced_prompt = VDG_PROMPT
@@ -340,28 +341,50 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                 logger.info(f"📝 Including {len(audience_comments)} audience comments in analysis")
 
             # 4. Generate Analysis
-            logger.info(f"🧠 Analyzing {node_id} with {self.model} (VDG v3.0)...")
-            
-            try:
-                response = self.client.models.generate_content(
-                    model=self.model,
+            logger.warning(f"🧠 Analyzing {node_id} with {self.model} (VDG v3.0)...")
+
+            def _generate(model_name: str):
+                return self.client.models.generate_content(
+                    model=model_name,
                     contents=[video_file, enhanced_prompt],
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json"
                     )
                 )
+
+            def _looks_like_model_not_found(message: str) -> bool:
+                msg = message.lower()
+                return "model" in msg and "not found" in msg
+
+            retried_upload = False
+            retried_model = False
+
+            try:
+                response = _generate(self.model)
             except Exception as e:
-                # Some environments expect fully-qualified model names (models/...)
-                if "NOT_FOUND" in str(e) and not self.model.startswith("models/"):
-                    fallback_model = f"models/{self.model}"
-                    logger.warning(f"Model not found. Retrying with {fallback_model}")
-                    response = self.client.models.generate_content(
-                        model=fallback_model,
-                        contents=[video_file, enhanced_prompt],
-                        config=types.GenerateContentConfig(
-                            response_mime_type="application/json"
-                        )
-                    )
+                msg = str(e)
+                if "NOT_FOUND" in msg:
+                    file_ok = False
+                    try:
+                        file_info = self.client.files.get(name=video_file.name)
+                        file_ok = file_info.state.name == "ACTIVE"
+                        logger.warning(f"📎 File state on NOT_FOUND: {file_info.state.name} ({video_file.name})")
+                    except Exception as file_err:
+                        logger.warning(f"📎 File lookup failed on NOT_FOUND: {file_err}")
+
+                    if not file_ok and not retried_upload:
+                        retried_upload = True
+                        logger.warning("♻️ Re-uploading video file after NOT_FOUND...")
+                        video_file = self.client.files.upload(file=temp_path)
+                        _wait_file_active(video_file.name)
+                        response = _generate(self.model)
+                    elif not retried_model and not self.model.startswith("models/") and _looks_like_model_not_found(msg):
+                        retried_model = True
+                        fallback_model = f"models/{self.model}"
+                        logger.warning(f"Model not found. Retrying with {fallback_model}")
+                        response = _generate(fallback_model)
+                    else:
+                        raise
                 else:
                     raise
 
