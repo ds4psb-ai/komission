@@ -6,10 +6,17 @@ from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
 # Async Database URL
-DATABASE_URL = (
-    f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
-    f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
-)
+if settings.POSTGRES_HOST.startswith("/cloudsql/"):
+    # Cloud Run + Cloud SQL Unix socket
+    DATABASE_URL = (
+        f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
+        f"@/{settings.POSTGRES_DB}?host={settings.POSTGRES_HOST}"
+    )
+else:
+    DATABASE_URL = (
+        f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
+        f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+    )
 
 # Async Engine with connection pool
 engine = create_async_engine(
