@@ -9,12 +9,11 @@ PEGL v1.0: 스키마 검증 적용
 import os
 import json
 import logging
-import time
 from typing import Optional, Dict, Any, List
 from google import genai
 from google.genai import types
 from app.config import settings
-from app.schemas.vdg import VDG, Scene, Shot, Keyframe, CapsuleBrief, ShotlistItem
+from app.schemas.vdg import VDG
 from app.services.video_downloader import video_downloader
 from app.validators.schema_validator import validate_vdg_analysis_schema, SchemaValidationError
 
@@ -305,33 +304,31 @@ class GeminiPipeline:
             except Exception as e:
                 logger.warning(f"📦 Downloaded size unavailable: {e}")
             
-            # 2. Upload to Gemini
-            logger.warning(f"⬆️ Uploading for {node_id}...")
-            video_file = self.client.files.upload(file=temp_path)
+            # 2. Build inline video part (base64)
+            try:
+                with open(temp_path, "rb") as video_fp:
+                    video_bytes = video_fp.read()
+            except Exception as e:
+                raise Exception(f"Failed to read downloaded video: {e}") from e
 
-            # Wait for processing
-            def _wait_file_active(file_name: str, max_wait: int = 60) -> None:
-                elapsed = 0
-                while elapsed < max_wait:
-                    file_info = self.client.files.get(name=file_name)
-                    if file_info.state.name == "ACTIVE":
-                        logger.warning(f"✅ File ACTIVE: {file_name}")
-                        return
-                    logger.warning(f"⏳ Waiting... ({elapsed}s) file={file_name}")
-                    time.sleep(2)
-                    elapsed += 2
-                raise Exception(f"File did not become ACTIVE within {max_wait}s: {file_name}")
+            if not video_bytes:
+                raise Exception("Downloaded video is empty")
 
-            _wait_file_active(video_file.name)
+            size_mb = len(video_bytes) / (1024 * 1024)
+            if size_mb > 20:
+                logger.warning(
+                    f"⚠️ Inline video size is {size_mb:.2f} MB (>20MB). "
+                    "Gemini API may reject inline uploads."
+                )
+            logger.warning(f"📦 Inline video bytes: {len(video_bytes)}")
 
-            def _make_video_part(file_obj):
-                file_uri = getattr(file_obj, "uri", None)
-                logger.warning(f"📎 File uploaded name={file_obj.name} uri={file_uri}")
-                if file_uri:
-                    return types.Part.from_uri(file_uri=file_uri, mime_type="video/mp4")
-                return file_obj
-
-            video_part = _make_video_part(video_file)
+            video_part = types.Part(
+                inline_data=types.Blob(
+                    data=video_bytes,
+                    mime_type="video/mp4",
+                    display_name=f"{node_id}.mp4"
+                )
+            )
 
             # 3. Build prompt with audience comments context
             enhanced_prompt = VDG_PROMPT
@@ -357,62 +354,52 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
             # 4. Generate Analysis
             logger.warning(f"🧠 Analyzing {node_id} with {self.model} (VDG v3.0)...")
 
-            def _generate(model_name: str):
-                logger.warning(f"📦 Generate with model={model_name} file={video_file.name}")
+            def _build_config(use_schema: bool) -> types.GenerateContentConfig:
+                if use_schema:
+                    return types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_json_schema=VDG.model_json_schema()
+                    )
+                return types.GenerateContentConfig(response_mime_type="application/json")
+
+            def _looks_like_schema_error(message: str) -> bool:
+                msg = message.lower()
+                return "schema" in msg or "response_json_schema" in msg
+
+            def _generate(model_name: str, use_schema: bool):
+                logger.warning(f"📦 Generate with model={model_name} inline=True schema={use_schema}")
                 return self.client.models.generate_content(
                     model=model_name,
                     contents=[video_part, enhanced_prompt],
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json"
-                    )
+                    config=_build_config(use_schema)
                 )
 
-            def _looks_like_model_not_found(message: str) -> bool:
-                msg = message.lower()
-                return "model" in msg and "not found" in msg
-
-            retried_upload = False
+            use_schema = True
             last_err: Optional[Exception] = None
+            response = None
 
             models_to_try = [self.model]
             if not self.model.startswith("models/"):
                 models_to_try.append(f"models/{self.model}")
 
-            response = None
             for model_name in models_to_try:
                 try:
-                    response = _generate(model_name)
+                    response = _generate(model_name, use_schema)
                     break
                 except Exception as e:
-                    last_err = e
-                    msg = str(e)
-                    if "NOT_FOUND" in msg:
-                        file_ok = False
+                    if use_schema and _looks_like_schema_error(str(e)):
+                        logger.warning("⚠️ Response schema rejected, retrying without schema")
+                        use_schema = False
                         try:
-                            file_info = self.client.files.get(name=video_file.name)
-                            file_ok = file_info.state.name == "ACTIVE"
-                            logger.warning(f"📎 File state on NOT_FOUND: {file_info.state.name} ({video_file.name})")
-                        except Exception as file_err:
-                            logger.warning(f"📎 File lookup failed on NOT_FOUND: {file_err}")
-
-                        if not retried_upload:
-                            retried_upload = True
-                            logger.warning("♻️ Re-uploading video file after NOT_FOUND...")
-                            video_file = self.client.files.upload(file=temp_path)
-                            _wait_file_active(video_file.name)
-                            video_part = _make_video_part(video_file)
-                            try:
-                                response = _generate(model_name)
-                                break
-                            except Exception as retry_err:
-                                last_err = retry_err
-                                if "NOT_FOUND" in str(retry_err):
-                                    continue
-                                raise
-                        else:
+                            response = _generate(model_name, use_schema)
+                            break
+                        except Exception as retry_err:
+                            last_err = retry_err
+                            logger.warning(f"❌ Model retry failed: {retry_err}")
                             continue
-                    else:
-                        raise
+                    last_err = e
+                    logger.warning(f"❌ Model failed: {model_name} error={e}")
+                    continue
 
             if response is None and last_err is not None:
                 raise last_err
