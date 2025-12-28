@@ -79,9 +79,16 @@ class VideoDownloader:
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
-            # Cookies for authenticated content (optional)
-            # 'cookiefile': '/path/to/cookies.txt',
         }
+        
+        # Cookie support for authenticated content
+        cookie_file = os.getenv("YTDLP_COOKIE_FILE")
+        if cookie_file and os.path.exists(cookie_file):
+            ydl_opts['cookiefile'] = cookie_file
+        
+        cookies_from_browser = os.getenv("YTDLP_COOKIES_FROM_BROWSER")
+        if cookies_from_browser:
+            ydl_opts['cookiesfrombrowser'] = (cookies_from_browser,)
         
         # Platform-specific options
         if platform == 'tiktok':
