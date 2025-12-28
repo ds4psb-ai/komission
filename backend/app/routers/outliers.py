@@ -1244,8 +1244,18 @@ async def _run_vdg_analysis_with_comments(
             
             # 2. Check if manual comments already exist - SKIP EXTRACTION
             best_comments = []
-            if item and item.best_comments and len(item.best_comments) > 0:
-                best_comments = item.best_comments
+            existing_comments = item.best_comments if item else None
+            
+            # Handle asyncpg returning JSONB as string
+            if existing_comments and isinstance(existing_comments, str):
+                import json as json_module
+                try:
+                    existing_comments = json_module.loads(existing_comments)
+                except:
+                    existing_comments = None
+            
+            if existing_comments and isinstance(existing_comments, list) and len(existing_comments) > 0:
+                best_comments = existing_comments
                 print(f"✅ Using existing manual comments: {len(best_comments)} for {node_id}")
                 # Mark as analyzing now that we confirmed comments exist
                 item.analysis_status = "analyzing"
