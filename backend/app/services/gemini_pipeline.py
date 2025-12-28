@@ -299,11 +299,16 @@ class GeminiPipeline:
             # 1. Download Video
             logger.warning(f"📥 Downloading video from {video_url}...")
             temp_path, metadata = await video_downloader.download(video_url)
+            try:
+                size_mb = os.path.getsize(temp_path) / (1024 * 1024)
+                logger.warning(f"📦 Downloaded size: {size_mb:.2f} MB ({temp_path})")
+            except Exception as e:
+                logger.warning(f"📦 Downloaded size unavailable: {e}")
             
             # 2. Upload to Gemini
             logger.warning(f"⬆️ Uploading for {node_id}...")
             video_file = self.client.files.upload(file=temp_path)
-            
+
             # Wait for processing
             def _wait_file_active(file_name: str, max_wait: int = 60) -> None:
                 elapsed = 0
@@ -318,6 +323,15 @@ class GeminiPipeline:
                 raise Exception(f"File did not become ACTIVE within {max_wait}s: {file_name}")
 
             _wait_file_active(video_file.name)
+
+            def _make_video_part(file_obj):
+                file_uri = getattr(file_obj, "uri", None)
+                logger.warning(f"📎 File uploaded name={file_obj.name} uri={file_uri}")
+                if file_uri:
+                    return types.Part.from_uri(file_uri, mime_type="video/mp4")
+                return file_obj
+
+            video_part = _make_video_part(video_file)
 
             # 3. Build prompt with audience comments context
             enhanced_prompt = VDG_PROMPT
@@ -347,7 +361,7 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                 logger.warning(f"📦 Generate with model={model_name} file={video_file.name}")
                 return self.client.models.generate_content(
                     model=model_name,
-                    contents=[video_file, enhanced_prompt],
+                    contents=[video_part, enhanced_prompt],
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json"
                     )
@@ -359,6 +373,7 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
 
             retried_upload = False
             retried_model = False
+            retried_alt_model = False
 
             try:
                 response = _generate(self.model)
@@ -378,6 +393,7 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                         logger.warning("♻️ Re-uploading video file after NOT_FOUND...")
                         video_file = self.client.files.upload(file=temp_path)
                         _wait_file_active(video_file.name)
+                        video_part = _make_video_part(video_file)
                         response = _generate(self.model)
                     elif not retried_model and not self.model.startswith("models/") and (file_ok or _looks_like_model_not_found(msg)):
                         retried_model = True
@@ -392,9 +408,20 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                                 logger.warning("♻️ Re-uploading video file after model retry NOT_FOUND...")
                                 video_file = self.client.files.upload(file=temp_path)
                                 _wait_file_active(video_file.name)
+                                video_part = _make_video_part(video_file)
                                 response = _generate(fallback_model)
+                            elif "NOT_FOUND" in retry_msg and not retried_alt_model:
+                                retried_alt_model = True
+                                alt_model = "models/gemini-2.0-flash"
+                                logger.warning(f"Model fallback to {alt_model}")
+                                response = _generate(alt_model)
                             else:
                                 raise
+                    elif not retried_alt_model:
+                        retried_alt_model = True
+                        alt_model = "models/gemini-2.0-flash"
+                        logger.warning(f"Model fallback to {alt_model}")
+                        response = _generate(alt_model)
                     else:
                         raise
                 else:
