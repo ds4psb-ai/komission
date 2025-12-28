@@ -342,13 +342,28 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
             # 4. Generate Analysis
             logger.info(f"🧠 Analyzing {node_id} with {self.model} (VDG v3.0)...")
             
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=[video_file, enhanced_prompt],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model,
+                    contents=[video_file, enhanced_prompt],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
                 )
-            )
+            except Exception as e:
+                # Some environments expect fully-qualified model names (models/...)
+                if "NOT_FOUND" in str(e) and not self.model.startswith("models/"):
+                    fallback_model = f"models/{self.model}"
+                    logger.warning(f"Model not found. Retrying with {fallback_model}")
+                    response = self.client.models.generate_content(
+                        model=fallback_model,
+                        contents=[video_file, enhanced_prompt],
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json"
+                        )
+                    )
+                else:
+                    raise
 
 
             # 4. Parse Response
