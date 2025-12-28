@@ -16,19 +16,19 @@ import {
 import '@xyflow/react/dist/style.css';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { SourceNode, ProcessNode, OutputNode, NotebookNode, CrawlerOutlierNode, TemplateSeedNode } from '@/components/canvas/CustomNodes';
-import type { CrawlerOutlierItem } from '@/components/canvas/CustomNodes';
+import { SourceNode, ProcessNode, OutputNode, NotebookNode, TemplateSeedNode, CrawlerOutlierNode, GuideNode } from '@/components/canvas/CustomNodes';
 import { EvidenceNode, DecisionNode } from '@/components/canvas/EvidenceNodes';
 import { CapsuleNode, type CapsuleDefinition } from '@/components/canvas/CapsuleNode';
-import { CrawlerOutlierSelector } from '@/components/canvas/CrawlerOutlierSelector';
 import { Inspector } from '@/components/canvas/Inspector';
 import { StoryboardPreview } from '@/components/canvas/StoryboardPreview';
+import { PatternGuidePanel } from '@/components/canvas/PatternGuidePanel';
 import { AppHeader } from '@/components/AppHeader';
+import { SessionHUD } from '@/components/canvas/SessionHUD';
 import { api, Pipeline } from '@/lib/api';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useAuth } from '@/lib/auth';
-import { OutlierSelector } from '@/components/canvas/OutlierSelector';
-import { Video, Lock, Dna, Brain, BarChart3, Scale, Clapperboard, MapPin, Zap, FileText, Globe, Radar } from 'lucide-react';
+import { OutlierSelector, type OutlierItem } from '@/components/canvas/OutlierSelector';
+import { Video, Lock, Dna, Brain, BarChart3, Scale, Clapperboard, MapPin, FileText } from 'lucide-react';
 
 // Custom Node Types
 const nodeTypes = {
@@ -39,8 +39,9 @@ const nodeTypes = {
     decision: DecisionNode,
     capsule: CapsuleNode,
     notebook: NotebookNode,
-    crawlerOutlier: CrawlerOutlierNode,
     templateSeed: TemplateSeedNode,
+    crawlerOutlier: CrawlerOutlierNode,
+    guide: GuideNode,
 };
 
 // Initial Data (Empty canvas)
@@ -76,6 +77,7 @@ function CanvasFlow() {
     const searchParams = useSearchParams();
     const templateId = searchParams.get('templateId');
     const sourceUrl = searchParams.get('sourceUrl');  // AI Onboarding: auto-setup from URL
+    const patternId = searchParams.get('pattern');    // P0: Pattern Library injection
 
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -93,7 +95,6 @@ function CanvasFlow() {
     const [showLoadModal, setShowLoadModal] = useState(false);
     const [savedPipelines, setSavedPipelines] = useState<Pipeline[]>([]);
     const [showOutlierSelector, setShowOutlierSelector] = useState(false);
-    const [showCrawlerOutlierSelector, setShowCrawlerOutlierSelector] = useState(false);
 
     // Loading states
     const [isSaving, setIsSaving] = useState(false);
@@ -109,6 +110,9 @@ function CanvasFlow() {
     // Canvas Mode: Simple (guide-focused) / Pro (detailed control)
     // FR-006: 모드 분리 - Simple은 가이드 중심, Pro는 상세 제어
     const [canvasMode, setCanvasMode] = useState<'simple' | 'pro'>('simple');
+
+    // P0: Pattern Library injection state
+    const [showPatternGuide, setShowPatternGuide] = useState(!!patternId);
 
     const selectedNode = selectedNodeId
         ? nodes.find((node) => node.id === selectedNodeId) || null
@@ -298,14 +302,10 @@ function CanvasFlow() {
             if (e.key === 'Escape' && showOutlierSelector) {
                 setShowOutlierSelector(false);
             }
-            // ESC to close Crawler Outlier selector
-            if (e.key === 'Escape' && showCrawlerOutlierSelector) {
-                setShowCrawlerOutlierSelector(false);
-            }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [onUndo, onRedo, showLoadModal, showOutlierSelector, showCrawlerOutlierSelector]);
+    }, [onUndo, onRedo, showLoadModal, showOutlierSelector]);
 
     // API Handlers passed to nodes
     const handleSourceSubmit = useCallback(async (url: string, title: string) => {
@@ -456,7 +456,7 @@ function CanvasFlow() {
         const finalPosition = position || { x: 300 + nodes.length * 50, y: 150 + nodes.length * 50 };
 
         const newNode: Node = {
-            id: generateNodeId(),
+            id: data?.forceId || generateNodeId(),
             type: type === 'outlier' ? 'source' : type === 'crawlerOutlier' ? 'crawlerOutlier' : type,
             position: finalPosition,
             data: {
@@ -475,6 +475,26 @@ function CanvasFlow() {
                 }),
                 ...(type === 'capsule' && {
                     capsule: createCapsuleDefinition(),
+                    onComplete: (guideData: any) => {
+                        const guideId = generateNodeId();
+                        const guidePos = { x: finalPosition.x + 400, y: finalPosition.y };
+                        addNode('guide', guidePos, { ...guideData, forceId: guideId });
+
+                        // Connect Capsule -> Guide
+                        setTimeout(() => {
+                            setEdges((eds) => addEdge({
+                                id: `e_${newNode.id}-${guideId}`,
+                                source: newNode.id,
+                                target: guideId,
+                                animated: true,
+                                style: { stroke: '#06b6d4', strokeWidth: 2 }
+                            } as any, eds));
+                            showToast('✨ Guide Node가 자동 생성되었습니다.', 'success');
+                        }, 100);
+                    }
+                }),
+                ...(type === 'guide' && {
+                    ...data
                 }),
                 ...(type === 'notebook' && {
                     summary: data?.summary || '훅/씬/오디오 패턴 요약을 여기에 표시합니다.',
@@ -483,7 +503,7 @@ function CanvasFlow() {
                 }),
                 ...(type === 'decision' && {
                     status: 'pending' as const,
-                    onGenerateDecision: () => {
+                    onGenerateDecision: async () => {
                         // Step 1: Set to generating state
                         setNodes(nds => nds.map(n => {
                             if (n.id === newNode.id) {
@@ -495,8 +515,52 @@ function CanvasFlow() {
                             return n;
                         }));
 
-                        // Step 2: Simulate Opal generating decision
-                        setTimeout(() => {
+                        // Step 2: Call Opal API via template-seeds/generate
+                        try {
+                            const response = await api.generateTemplateSeed({
+                                parent_id: createdNodeId || undefined,
+                                template_type: 'guide',
+                            });
+
+                            if (response.success && response.seed) {
+                                setNodes(nds => nds.map(n => {
+                                    if (n.id === newNode.id) {
+                                        return {
+                                            ...n,
+                                            data: {
+                                                ...n.data,
+                                                status: 'decided',
+                                                decision: {
+                                                    conclusion: `${response.seed?.seed_params?.hook || 'AI 생성'} 기반 실험 제안`,
+                                                    rationale: [
+                                                        "Top performing hook pattern identified",
+                                                        "Aligned with retention metrics (+15%)",
+                                                        "Category benchmark surpassed in initial tests"
+                                                    ],
+                                                    experiment: {
+                                                        id: response.seed?.seed_id || `exp_${Date.now()}`,
+                                                        target_metric: "CTR",
+                                                        variants: [
+                                                            { name: "Control", mutation: "Original (변경 없음)" },
+                                                            { name: "Test A", mutation: response.seed?.seed_params?.shotlist?.[0] || "AI 제안" },
+                                                            { name: "Test B", mutation: response.seed?.seed_params?.shotlist?.[1] || "AI 변형" }
+                                                        ]
+                                                    },
+                                                    confidence: 0.85,
+                                                    seed: response.seed
+                                                }
+                                            }
+                                        };
+                                    }
+                                    return n;
+                                }));
+                                showToast('✅ Opal: 실험 계획 생성 완료!', 'success');
+                            } else {
+                                throw new Error(response.error || 'Generation failed');
+                            }
+                        } catch (error) {
+                            console.error('Opal generation failed:', error);
+                            // Fallback to mock data on error
                             setNodes(nds => nds.map(n => {
                                 if (n.id === newNode.id) {
                                     return {
@@ -505,33 +569,30 @@ function CanvasFlow() {
                                             ...n.data,
                                             status: 'decided',
                                             decision: {
-                                                rationale: "ZOOM_FACE 패턴이 +127% 성과로 Depth 1에서 압도적. Hook 초반 3초 적용 시 CTR 상승 예상. FAST_CUT은 -12%로 리스크.",
+                                                conclusion: "API 오류로 기본 실험 계획을 표시합니다.",
+                                                rationale: [
+                                                    "Service temporarily unavailable",
+                                                    "Fallback to safe-mode experiment templates",
+                                                    "Manual review recommended"
+                                                ],
                                                 experiment: {
                                                     id: `exp_${Date.now()}`,
                                                     target_metric: "CTR",
                                                     variants: [
                                                         { name: "Control", mutation: "Original (변경 없음)" },
-                                                        { name: "Test A", mutation: "ZOOM_FACE (Hook 0-3초)" },
-                                                        { name: "Test B", mutation: "ZOOM_FACE + Slow Motion (Hook+Climax)" }
+                                                        { name: "Test A", mutation: "Hook 강화 (0-3초)" },
                                                     ]
                                                 },
-                                                confidence: 0.87
+                                                confidence: 0.5
                                             }
                                         }
                                     };
                                 }
                                 return n;
                             }));
-                            showToast('✅ Opal: 실험 계획 생성 완료!', 'success');
-                        }, 2000);
+                            showToast('⚠️ API 오류: 기본 계획으로 대체', 'error');
+                        }
                     }
-                }),
-                ...(type === 'crawlerOutlier' && {
-                    outlier: data?.outlier,
-                    onPromote: (item: CrawlerOutlierItem) => {
-                        // TODO: API call to promote outlier to parent
-                        showToast(`🚀 "${item.title}" 프로모션 준비 중...`, 'info');
-                    },
                 }),
             },
         };
@@ -539,12 +600,8 @@ function CanvasFlow() {
         setNodes((nds) => nds.concat(newNode));
 
         if (type === 'outlier') {
-            setCreatedNodeId(data.id || data.node_id); // Auto-set active node context
+            setCreatedNodeId(data.id || data.node_id);
             showToast(`선택된 노드: ${data.title}`, 'success');
-        }
-
-        if (type === 'crawlerOutlier') {
-            showToast(`🎯 Crawler Outlier 추가됨: ${data?.outlier?.title}`, 'success');
         }
     }, [setNodes, handleSourceSubmit, handleAnalyze, handleExport, createdNodeId, nodes, edges, takeSnapshot, showToast]);
 
@@ -576,15 +633,19 @@ function CanvasFlow() {
         takeSnapshot(nodes, edges);
     }, [takeSnapshot, nodes, edges]);
 
-    const handleOutlierSelect = (node: any) => {
-        addNode('outlier', undefined, node); // Add to center/offset
+    const handleOutlierSelect = (item: OutlierItem) => {
+        // Unified handler: add outlier node with all data
+        addNode('outlier', undefined, {
+            id: item.id,
+            title: item.title,
+            platform: item.platform,
+            video_url: item.video_url,
+            thumbnail_url: item.thumbnail_url,
+            view_count: item.view_count,
+            tier: item.tier,
+            vdg_analysis: item.vdg_analysis,
+        });
         setShowOutlierSelector(false);
-    };
-
-    // Handler for crawler outlier selection
-    const handleCrawlerOutlierSelect = (item: CrawlerOutlierItem) => {
-        addNode('crawlerOutlier', undefined, { outlier: item });
-        setShowCrawlerOutlierSelector(false);
     };
 
     // Modal backdrop click handler
@@ -635,6 +696,9 @@ function CanvasFlow() {
             {/* Global Header */}
             <AppHeader />
 
+            {/* Session HUD - Progress Tracker */}
+            <SessionHUD nodes={nodes} canvasMode={canvasMode} />
+
             <div className="flex flex-1 overflow-hidden relative">
                 {/* Toast Notification */}
                 {toast && (
@@ -664,19 +728,25 @@ function CanvasFlow() {
                         {/* Mode Toggle - Simple/Pro */}
                         <div className="mt-4 flex items-center gap-2 p-2 bg-white/5 rounded-lg border border-white/10">
                             <button
-                                onClick={() => setCanvasMode('simple')}
+                                onClick={() => {
+                                    setCanvasMode('simple');
+                                    showToast('🎯 Simple 모드: 핵심 노드만 표시', 'info');
+                                }}
                                 className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${canvasMode === 'simple'
-                                        ? 'bg-emerald-500 text-white'
-                                        : 'text-white/60 hover:text-white hover:bg-white/10'
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'text-white/60 hover:text-white hover:bg-white/10'
                                     }`}
                             >
                                 🎯 Simple
                             </button>
                             <button
-                                onClick={() => setCanvasMode('pro')}
+                                onClick={() => {
+                                    setCanvasMode('pro');
+                                    showToast('⚙️ Pro 모드: 모든 노드 사용 가능', 'info');
+                                }}
                                 className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${canvasMode === 'pro'
-                                        ? 'bg-violet-500 text-white'
-                                        : 'text-white/60 hover:text-white hover:bg-white/10'
+                                    ? 'bg-violet-500 text-white'
+                                    : 'text-white/60 hover:text-white hover:bg-white/10'
                                     }`}
                             >
                                 ⚙️ Pro
@@ -686,6 +756,16 @@ function CanvasFlow() {
                             {canvasMode === 'simple' ? '가이드 중심 모드 - 핵심 노드만 표시' : 'Pro 모드 - 모든 노드 및 상세 제어'}
                         </p>
                     </div>
+
+                    {/* P0: Pattern Guide Panel - displays when ?pattern= is in URL */}
+                    {patternId && showPatternGuide && (
+                        <div className="mb-4">
+                            <PatternGuidePanel
+                                patternId={patternId}
+                                onClose={() => setShowPatternGuide(false)}
+                            />
+                        </div>
+                    )}
 
                     <div className="space-y-6">
                         {/* Nodes Section */}
@@ -722,88 +802,11 @@ function CanvasFlow() {
                                     <div className="text-[10px] text-violet-300">바이럴 히트에서 시작</div>
                                 </div>
                             </div>
-
-                            {/* Crawler Outlier Node - from 3-platform crawlers */}
-                            <div
-                                className="p-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl cursor-pointer hover:border-amber-500/50 transition-all mb-2 flex items-center gap-3"
-                                onClick={() => setShowCrawlerOutlierSelector(true)}
-                                draggable={false}
-                            >
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center text-amber-400"><Radar className="w-4 h-4" /></div>
-                                <div>
-                                    <span className="text-sm font-bold text-white">Crawler Outlier</span>
-                                    <div className="text-[10px] text-amber-300">3-플랫폼 자동 수집</div>
-                                </div>
-                            </div>
                         </div>
 
+                        {/* Core Tools - Always Visible */}
                         <div>
-                            <h3 className="text-xs font-bold text-white/40 uppercase mb-3 tracking-wider">프로세서</h3>
-                            <div
-                                className="p-3 bg-white/5 border border-white/10 rounded-xl cursor-pointer hover:bg-white/10 hover:border-violet-500/50 transition-all mb-2 flex items-center gap-3"
-                                onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'process')}
-                                onClick={() => addNode('process')}
-                                draggable
-                            >
-                                <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400"><Brain className="w-4 h-4" /></div>
-                                <span className="text-sm font-bold">AI 리믹스 엔진</span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 className="text-xs font-bold text-white/40 uppercase mb-3 tracking-wider">에비던스 루프</h3>
-
-                            <div
-                                className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl cursor-pointer hover:border-blue-500/50 transition-all mb-2 flex items-center gap-3"
-                                onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'evidence')}
-                                onClick={() => addNode('evidence', undefined, {
-                                    evidence: {
-                                        period: '4w',
-                                        depth1: {
-                                            visual: {
-                                                'ZOOM_FACE': { success_rate: 0.85, sample_count: 12, avg_delta: '+127%', confidence: 0.9 },
-                                                'FAST_CUT': { success_rate: 0.45, sample_count: 8, avg_delta: '-12%', confidence: 0.7 }
-                                            }
-                                        },
-                                        topMutation: { type: 'visual', pattern: 'ZOOM_FACE', avgDelta: '+127%', confidence: 0.9 },
-                                        sampleCount: 20
-                                    }
-                                })}
-                                draggable
-                            >
-                                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400"><BarChart3 className="w-4 h-4" /></div>
-                                <div>
-                                    <span className="text-sm font-bold">Evidence Node</span>
-                                    <div className="text-[10px] text-blue-300">VDG 성과 테이블</div>
-                                </div>
-                            </div>
-
-                            <div
-                                className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl cursor-pointer hover:border-sky-500/50 transition-all mb-2 flex items-center gap-3"
-                                onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'notebook')}
-                                onClick={() => addNode('notebook')}
-                                draggable
-                            >
-                                <div className="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center text-sky-400"><FileText className="w-4 h-4" /></div>
-                                <div>
-                                    <span className="text-sm font-bold">Notebook Library</span>
-                                    <div className="text-[10px] text-sky-300">요약/클러스터</div>
-                                </div>
-                            </div>
-
-                            <div
-                                className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl cursor-pointer hover:border-amber-500/50 transition-all mb-2 flex items-center gap-3"
-                                onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'decision')}
-                                onClick={() => addNode('decision')}
-                                draggable
-                            >
-                                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400"><Scale className="w-4 h-4" /></div>
-                                <div>
-                                    <span className="text-sm font-bold">Decision Node</span>
-                                    <div className="text-[10px] text-amber-300">Opal 결정/실험 계획</div>
-                                </div>
-                            </div>
-
+                            <h3 className="text-xs font-bold text-white/40 uppercase mb-3 tracking-wider">핵심 도구</h3>
                             <div
                                 className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl cursor-pointer hover:border-rose-500/50 transition-all mb-2 flex items-center gap-3"
                                 onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'capsule')}
@@ -813,10 +816,95 @@ function CanvasFlow() {
                                 <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400"><Lock className="w-4 h-4" /></div>
                                 <div>
                                     <span className="text-sm font-bold">Capsule Node</span>
-                                    <div className="text-[10px] text-rose-300">Opal/NotebookLM 래핑</div>
+                                    <div className="text-[10px] text-rose-300">가이드 생성 (AI)</div>
                                 </div>
                             </div>
                         </div>
+
+                        {/* Pro Mode Only: AI 프로세서 */}
+                        {canvasMode === 'pro' && (
+                            <div>
+                                <h3 className="text-xs font-bold text-white/40 uppercase mb-3 tracking-wider">프로세서</h3>
+                                <div
+                                    className="p-3 bg-white/5 border border-white/10 rounded-xl cursor-pointer hover:bg-white/10 hover:border-violet-500/50 transition-all mb-2 flex items-center gap-3"
+                                    onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'process')}
+                                    onClick={() => addNode('process')}
+                                    draggable
+                                >
+                                    <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400"><Brain className="w-4 h-4" /></div>
+                                    <span className="text-sm font-bold">AI 리믹스 엔진</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Pro Mode Only: 에비던스 루프 */}
+                        {canvasMode === 'pro' && (
+                            <div>
+                                <h3 className="text-xs font-bold text-white/40 uppercase mb-3 tracking-wider">에비던스 루프</h3>
+
+                                <div
+                                    className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl cursor-pointer hover:border-blue-500/50 transition-all mb-2 flex items-center gap-3"
+                                    onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'evidence')}
+                                    onClick={() => addNode('evidence', undefined, {
+                                        nodeId: createdNodeId || undefined,
+                                    })}
+                                    draggable
+                                >
+                                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400"><BarChart3 className="w-4 h-4" /></div>
+                                    <div>
+                                        <span className="text-sm font-bold">Evidence Node</span>
+                                        <div className="text-[10px] text-blue-300">VDG 성과 테이블 (API 연동)</div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl cursor-pointer hover:border-sky-500/50 transition-all mb-2 flex items-center gap-3"
+                                    onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'notebook')}
+                                    onClick={() => addNode('notebook')}
+                                    draggable
+                                >
+                                    <div className="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center text-sky-400"><FileText className="w-4 h-4" /></div>
+                                    <div>
+                                        <span className="text-sm font-bold">Notebook Library</span>
+                                        <div className="text-[10px] text-sky-300">요약/클러스터</div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl cursor-pointer hover:border-amber-500/50 transition-all mb-2 flex items-center gap-3"
+                                    onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'decision')}
+                                    onClick={() => addNode('decision')}
+                                    draggable
+                                >
+                                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400"><Scale className="w-4 h-4" /></div>
+                                    <div>
+                                        <span className="text-sm font-bold">Decision Node</span>
+                                        <div className="text-[10px] text-amber-300">Opal 결정/실험 계획</div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl cursor-pointer hover:border-emerald-500/50 transition-all mb-2 flex items-center gap-3 border-dashed"
+                                    onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'templateSeed')}
+                                    onClick={() => addNode('templateSeed', undefined, {
+                                        seed: {
+                                            seed_id: `seed_${Date.now()}`,
+                                            template_type: 'guide',
+                                            hook: 'Opal이 생성할 훅...',
+                                            shotlist: [],
+                                            parent_id: createdNodeId || undefined,
+                                        }
+                                    })}
+                                    draggable
+                                >
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">💊</div>
+                                    <div>
+                                        <span className="text-sm font-bold">Template Seed</span>
+                                        <div className="text-[10px] text-emerald-300">Opal 시드 템플릿</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         <div>
                             <h3 className="text-xs font-bold text-white/40 uppercase mb-3 tracking-wider">출력</h3>
@@ -953,6 +1041,10 @@ function CanvasFlow() {
                         onPaneClick={() => setSelectedNodeId(null)}
                         nodeTypes={nodeTypes}
                         fitView
+                        fitViewOptions={{ maxZoom: 0.8, padding: 0.2 }}
+                        minZoom={0.3}
+                        maxZoom={2}
+                        defaultViewport={{ x: 0, y: 0, zoom: 0.75 }}
                         className="bg-transparent"
                         colorMode="dark"
                     >
@@ -968,12 +1060,16 @@ function CanvasFlow() {
                         onClose={() => setShowInspector(false)}
                         onDeleteNode={handleDeleteNode}
                         onUpdateNodeData={handleUpdateNodeData}
-                        viralData={selectedNode ? {
-                            performanceDelta: '+127%',
-                            parentViews: 245000,
-                            genealogyDepth: 2,
-                            forkCount: 34
-                        } : undefined}
+                        viralData={(() => {
+                            const outlier = (selectedNode?.data as Record<string, unknown>)?.outlier as Record<string, unknown> | undefined;
+                            if (!outlier) return undefined;
+                            return {
+                                performanceDelta: (outlier.performance_delta as string) || ((selectedNode?.data as Record<string, unknown>)?.viralBadge as string) || undefined,
+                                parentViews: (outlier.view_count as number) || 0,
+                                genealogyDepth: (outlier.genealogy_depth as number) ?? 0,
+                                forkCount: (outlier.fork_count as number) || 0
+                            };
+                        })()}
                     />
                 )}
             </div>
@@ -990,15 +1086,6 @@ function CanvasFlow() {
                 <OutlierSelector
                     onSelect={handleOutlierSelect}
                     onClose={() => setShowOutlierSelector(false)}
-                />
-            )}
-
-            {/* Crawler Outlier Selector Modal */}
-            {showCrawlerOutlierSelector && (
-                <CrawlerOutlierSelector
-                    isOpen={showCrawlerOutlierSelector}
-                    onSelect={handleCrawlerOutlierSelect}
-                    onClose={() => setShowCrawlerOutlierSelector(false)}
                 />
             )}
 

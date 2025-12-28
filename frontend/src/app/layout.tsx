@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Providers } from "./providers";
+import { BottomNav } from "@/components/BottomNav";
+import { SkipLink } from "@/components/ui/Accessible";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,15 +30,18 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased text-white`}
       >
+        <SkipLink targetId="main-content" />
         <ErrorBoundary>
           <Providers>
-            {children}
+            <main id="main-content">
+              {children}
+            </main>
+            <BottomNav />
           </Providers>
         </ErrorBoundary>
       </body>
     </html>
   );
 }
-

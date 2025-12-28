@@ -59,3 +59,6 @@ frontend/out/
 **/credentials.json
 **/service-account*.json
 *.pem
+backend/token.json
+backend/oauth_client.json
+backend/tiktok_cookies_auto.json

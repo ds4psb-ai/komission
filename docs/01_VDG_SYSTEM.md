@@ -20,9 +20,14 @@ VDG는 **Parent(원본) → Depth1(1차 변주) → Depth2(최적화 변주)**�
 - **가변**: 소재, 인물, 반전, 중간 킥 등 창의성 추가
 
 **입력 흐름(전제)**
-- 관리자 수동/크롤링 아웃라이어 → 영상 해석(코드) → 유사도 클러스터링 → **Notebook Library(DB, 요약/RAG)** → Parent 후보 → Depth 실험
-- NotebookLM은 **요약/라벨 보조 레이어**이며 결과는 **DB에 저장**되고 SoR은 DB입니다.
- - NotebookLM 노트북 폴더는 클러스터를 보기 좋게 정리하는 **지식 레이어**입니다.
+- 관리자 수동/크롤링 아웃라이어 → 영상 해석(코드) → 유사도 클러스터링 → **NotebookLM(Pattern Engine)** → Parent 후보 → Depth 실험
+- NotebookLM은 **Pattern Engine**으로 적극 활용한다.
+  - Source Pack을 받아 **불변 규칙 + 변주 포인트**를 합성한다.
+- **패턴 경계 원칙 (중요)**:
+  - 패턴 경계(cluster_id)는 **VDG/DB 기준선**으로 고정한다.
+  - NotebookLM이 패턴을 "결정/정의"하지 않는다.
+  - 패턴 경계/정합성/재현성은 코드/DB가 담당한다.
+- 결과는 반드시 **DB에 구조화 저장**하며 SoR은 DB이다.
 
 ---
 
@@ -192,6 +197,85 @@ VDG v3.2의 `microbeats`/`sentiment_arc` 필드를 활용해 **구간 순서 유
 - `vdg_variants.structure_elements.microbeat_sequence`
 - `vdg_pattern_trace.weight` (sequence 반영)
 - `vdg_pattern_lift`는 sequence 유사도 기반으로 보정
+
+---
+
+## 5.1) VDG v3.3 스키마 확장 (2025-01)
+
+**업데이트 목표**: 이전 Gemini 2.5 Pro 수준의 상세 분석을 Gemini 3.0 Pro에서 활용
+
+### 5.1.1 새로운 필드 (v3.3)
+
+| 필드 | 타입 | 용도 |
+| --- | --- | --- |
+| `focus_windows[]` | FocusWindow[] | RL 보상 신호용 구간별 분석 |
+| `cross_scene_analysis` | CrossSceneAnalysis | 씬 간 패턴/일관성 분석 |
+| `asr_transcript` | ASRTranscript | 음성 인식 원본 + 영어 번역 |
+| `ocr_text[]` | OCRItem[] | 화면 내 텍스트 + 타임스탬프 |
+| `upload_date` | string | OutlierItem 실제 업로드 날짜 |
+
+### 5.1.2 Focus Window (RL 보상 신호)
+```json
+{
+  "window_id": "W00",
+  "t_window": [0, 3.5],
+  "hotspot": {
+    "reasons": ["hook", "cv_change"],
+    "scores": {"hook": 0.9, "interest": 0.8, "boundary": 0.6}
+  },
+  "mise_en_scene": {
+    "composition": {"grid": "center", "subject_size": "CU"},
+    "lighting": {"type": "soft_light"},
+    "lens": {"fov_class": "medium", "dof": "shallow"}
+  },
+  "entities": [
+    {"label": "main_character", "traits": {"pose": "sitting", "emotion": "neutral"}}
+  ],
+  "tags": {"narrative_roles": ["SETUP"], "cinematic": ["STATIC_SHOT"]}
+}
+```
+
+### 5.1.3 Cross-Scene Analysis (패턴 합성)
+```json
+{
+  "global_summary": "A complete narrative arc from setup to punchline in one take.",
+  "consistent_elements": [
+    {"aspect": "composition", "evidence": "Center framing maintained throughout"}
+  ],
+  "evolving_elements": [
+    {"dimension": "emotion_arc", "description": "Neutral → Tense → Comedic relief", "pattern": "escalating"}
+  ],
+  "director_intent": [
+    {"technique": "slow_long_take", "intended_effect": "comedic_timing", "rationale": "..."}
+  ],
+  "entity_state_changes": [
+    {"entity_id": "Customer", "initial_state": "Polite", "final_state": "Assertive", "triggering_event": "Owner's insult"}
+  ]
+}
+```
+
+### 5.1.4 메타데이터 통합 (OutlierItem → VDG)
+VDG 저장 시 OutlierItem의 **실제 메트릭**을 병합:
+```python
+vdg_data["metrics"] = {
+    "view_count": item.view_count,
+    "like_count": item.like_count,
+    "outlier_tier": item.outlier_tier,
+    "outlier_score": item.outlier_score,
+    "creator_avg_views": item.creator_avg_views,
+}
+```
+
+### 5.1.5 댓글 증거 통합 (OutlierItem → VDG)
+- `OutlierItem.best_comments`를 `vdg_data["audience_reaction"]["best_comments"]`에 병합
+- `metrics.comment_count`는 **실제 댓글 수**(플랫폼 메타데이터) 기준을 유지  
+  - 샘플 수는 `best_comments` 길이로 표현
+- 댓글이 없거나 차단되면 `best_comments=[]`로 두고 VDG 분석은 진행
+
+### 5.1.6 코드 위치
+- 스키마: `backend/app/schemas/vdg.py`
+- 프롬프트: `backend/app/services/gemini_pipeline.py` (VDG_PROMPT)
+- 메타데이터 병합: `backend/app/routers/outliers.py` (_run_vdg_analysis_with_comments)
 
 ---
 

@@ -4,6 +4,8 @@ Pattern Calibrator - Feedback Loop for Self-Learning System
 """
 from typing import Dict, List, Optional
 from datetime import datetime
+
+from app.utils.time import utcnow
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from app.schemas.viral_codebook import VisualPatternCode, AudioPatternCode, SemanticIntent
@@ -40,7 +42,7 @@ class PatternCalibrator:
             pattern_type=pattern_type,
             segment_index=segment_index,
             predicted_retention=predicted_retention,
-            created_at=datetime.utcnow()
+            created_at=utcnow()
         )
         
         db.add(prediction)
@@ -84,7 +86,7 @@ class PatternCalibrator:
             # 예측 레코드 업데이트
             pred.actual_retention = actual_retention
             pred.prediction_error = error
-            pred.verified_at = datetime.utcnow()
+            pred.verified_at = utcnow()
             pred.verification_source = source
             
             # 패턴 신뢰도 테이블 업데이트
@@ -146,7 +148,7 @@ class PatternCalibrator:
             confidence.sample_count = new_sample_count
             confidence.avg_absolute_error = new_avg_error
             confidence.confidence_score = new_confidence
-            confidence.last_updated = datetime.utcnow()
+            confidence.last_updated = utcnow()
         else:
             # 새 레코드 생성
             new_confidence = PatternConfidence(
@@ -155,8 +157,8 @@ class PatternCalibrator:
                 sample_count=1,
                 avg_absolute_error=abs(error),
                 confidence_score=max(0.0, min(1.0, 1.0 - abs(error))),
-                created_at=datetime.utcnow(),
-                last_updated=datetime.utcnow()
+                created_at=utcnow(),
+                last_updated=utcnow()
             )
             db.add(new_confidence)
     

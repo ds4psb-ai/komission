@@ -357,7 +357,7 @@ async def _calculate_weekly_kpi(
     """Calculate KPI for a specific week."""
     
     # Calculate week boundaries
-    today = datetime.utcnow().date()
+    today = utcnow().date()
     week_start = today - timedelta(days=today.weekday() + 7 * weeks_ago)
     week_end = week_start + timedelta(days=6)
     

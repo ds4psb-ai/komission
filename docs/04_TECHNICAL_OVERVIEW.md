@@ -18,12 +18,15 @@
 - `notebook_library` (분석 스키마/클러스터 + NotebookLM 요약 저장)
 - `template_seeds` (Opal 템플릿 시드 저장)
 - `template_versions`, `template_feedback`, `template_policy` (템플릿 학습)
+- `pattern_recurrence_links` (Temporal Recurrence / Lineage)
 
 ---
 
 ## 2) 핵심 데이터 흐름
 ```
-Outlier Source(수동/크롤링) → 영상 해석(코드) → 유사도 클러스터링 → notebook_library(DB)
+Outlier Source(수동/크롤링) → 댓글 추출(best_comments) → 영상 해석(코드)
+  → 유사도 클러스터링 → notebook_library(DB)
+  → Pattern Library(DB) → L1/L2 Retrieval(Answer-First (For You))
   → remix_nodes(Parent/Variants) + metric_daily
   → evidence_snapshots → Evidence Sheet → Decision Sheet → Template Seeds(Opal)
   → Capsule/Template → Canvas UI
@@ -32,6 +35,22 @@ Outlier Source(수동/크롤링) → 영상 해석(코드) → 유사도 클러�
 **클러스터링 핵심**
 - VDG v3.2 `microbeats` 기반 **sequence similarity**를 포함
 - 패턴 set 유사도(훅/씬/오디오/타이밍)와 결합해 최종 점수 산출
+
+## 2.1 Comment Evidence (HITL)
+- 댓글은 **증거 레이어**로 취급한다.
+- `best_comments`는 Outlier에 저장 후 VDG `audience_reaction`에 병합된다.
+- Pack에는 `comment_samples.md`로 포함되어 NotebookLM에 함께 투입된다.
+- `comment_count`는 실제 수치만 기록한다 (샘플 수와 분리).
+
+## 2.2 Pattern Retrieval + Temporal Recurrence
+- **L1 하이브리드 검색**: 키워드(BM25) + 벡터로 후보 풀 생성
+- **L2 리랭커**: fit/evidence/quality/recency/risk 피처로 정밀 재정렬
+- **Temporal Recurrence**: `pattern_recurrence_links`에 배치 매칭 결과 저장
+- 재등장 확정에는 `comment_signature_sim`을 사용한다.
+
+## 2.3 MCP 통합 (선택)
+- **Resources는 읽기 전용**, Tools는 사용자 동의 후 실행
+- MCP는 DB SoR를 대체하지 않으며, UI/운영에 “접근 레이어”로만 사용
 
 ---
 

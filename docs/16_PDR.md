@@ -19,7 +19,7 @@
 | **증거 기반 복제** | Parent-Kids 변주 데이터를 축적해 재현 가능한 공식화 | Pattern Lift > 2x |
 | **실행 속도** | 마이크로 인플루언서가 5분 내 촬영 시작 가능한 브리프 제공 | Time-to-Shoot < 5min |
 | **운영 효율** | DB SoR + Sheet 버스로 1-2인 운영 체계 구축 | 운영 FTE < 2 |
-| **확장성** | NotebookLM/Opal을 보조 레이어로 두고 코드 기반 엔진에 집중 | 클러스터 600개+ 관리 가능 |
+| **확장성** | NotebookLM/Opal을 Pattern Engine/가속 레이어로 두되 결과는 DB-wrapped | 클러스터 600개+ 관리 가능 |
 
 ### 1.3 차별화 요소
 - **Virlo 대비**: 단순 탐색 UI가 아닌 **Evidence 기반 실행 브리프** 제공
@@ -36,7 +36,7 @@
 | **Outlier 수집** | 수동 링크 + 구독 CSV + YouTube API | P0 |
 | **영상 분석** | Gemini 3.0 Pro 기반 스키마 추출 (Structured Output) | P0 |
 | **클러스터링** | 유사도 기반 Parent-Kids 구조 자동 생성 | P0 |
-| **Notebook Library** | 분석 스키마 + 선택적 NotebookLM 요약 저장 | P0 |
+| **Notebook Library** | 분석 스키마 + NotebookLM Pattern Engine 결과(DB-wrapped) 저장 | P0 |
 | **Evidence Loop** | VDG + Progress + Decision 자동 생성 | P0 |
 | **Canvas 템플릿** | 노드 기반 템플릿 실행 (입출력만 노출) | P1 |
 | **Opal 시드** | 템플릿 초안 자동 생성 (선택 기능) | P2 |

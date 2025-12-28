@@ -21,6 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, and_
 from sqlalchemy.orm import selectinload
 
+from app.utils.time import utc_date_today
+
 from app.models import (
     User, RemixNode, NodeRoyalty, RoyaltyReason
 )
@@ -120,7 +122,7 @@ class RoyaltyEngine:
         Check if user has reached daily earning cap.
         Returns (is_capped, remaining_points)
         """
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = utc_date_today()
         
         today_earned = await self.db.scalar(
             select(func.sum(NodeRoyalty.points_earned))

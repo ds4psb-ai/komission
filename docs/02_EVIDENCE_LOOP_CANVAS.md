@@ -15,7 +15,7 @@
 ```
 Outlier: 수동 입력/외부 소스 크롤링
   ↓
-영상 해석(코드) → 유사도 클러스터링 → Notebook Library(DB, 요약/RAG)
+영상 해석(코드) → 유사도 클러스터링 → NotebookLM(Pattern Engine)
   ↓
 Parent 후보 선정
   ↓
@@ -221,14 +221,18 @@ DB에서 수집한 Outlier는 `sync_outliers_to_sheet.py`로 동기화합니다.
 
 ### Programmatic Analysis + Clustering (Primary)
 - Outlier Raw → **영상 해석(코드)** → 구조/패턴 스키마 생성
-- 스키마 기반 **유사도 클러스터링** → Notebook Library(DB) 저장
+- 스키마 기반 **유사도 클러스터링** → NotebookLM(Pattern Engine) 저장
 
-### NotebookLM (Optional Summary/RAG)
-- Notebook Library 클러스터 → 요약/라벨/근거 설명 보조
+### NotebookLM (Pattern Engine)
+- **역할**: Pattern Engine으로 적극 활용
+  - Source Pack을 받아 **불변 규칙 + 변주 포인트**를 합성
+- **경계 원칙**: 패턴 경계(cluster_id)는 VDG/DB 기준선으로 고정
+  - NotebookLM이 패턴을 결정/정의하지 않음
+  - 패턴 경계/정합성/재현성은 코드/DB가 담당
 - NotebookLM은 **정적 소스 스냅샷**을 사용하므로 클러스터 분할 전략 적용
 - NotebookLM 입력은 **Source Pack(Sheets/Docx)**으로 고정해 일관성 유지
 - NotebookLM이 Sheets로 직접 출력하는 경우, **Sheet → DB ingest**로 SoR 유지
-- 결과는 **DB에 저장 후** 필요 시 Insights Sheet로 동기화
+- **DB-wrapped 필수**: 결과는 반드시 **DB에 구조화 저장 후** 필요 시 Insights Sheet로 동기화
 
 ### Opal
 - Evidence/Insights Sheet 입력 → Decision Sheet 생성
@@ -241,10 +245,14 @@ DB에서 수집한 Outlier는 `sync_outliers_to_sheet.py`로 동기화합니다.
 
 ---
 
-## 5) Pattern Library/Trace (옵션)
-패턴은 엔진이며, NotebookLM은 패턴 후보를 **요약/라벨링**하는 보조 레이어입니다.
+## 5) Pattern Library/Trace
+> **NotebookLM(Pattern Engine)은 기본(필수)입니다.** 아래 Sheet 구조는 운영 편의를 위한 옵션입니다.
 
-### 5.1 Pattern Library Sheet (옵션)
+NotebookLM(Pattern Engine)은 **불변 규칙 + 변주 포인트를 합성**합니다.
+- 모든 클러스터는 Source Pack을 생성하고 NotebookLM 패턴 합성을 거칩니다.
+- 결과는 DB-wrapped 후 Pattern Library에 저장됩니다.
+
+### 5.1 Pattern Library Sheet (운영 옵션)
 | 컬럼 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | pattern_id | uuid | O | 패턴 ID |
@@ -253,7 +261,7 @@ DB에서 수집한 Outlier는 `sync_outliers_to_sheet.py`로 동기화합니다.
 | description | text | X | 설명 |
 | created_at | datetime | O | 생성 시각 |
 
-### 5.2 Pattern Trace Sheet (옵션)
+### 5.2 Pattern Trace Sheet (운영 옵션)
 | 컬럼 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | trace_id | uuid | O | Trace ID |

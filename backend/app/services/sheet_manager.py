@@ -2,11 +2,14 @@ import logging
 import re
 import google.auth
 import os
+from pathlib import Path
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from typing import List, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.auth.credentials import with_scopes_if_required
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 
 logger = logging.getLogger(__name__)
 
@@ -35,31 +38,61 @@ class SheetManager:
                 self.project_id = getattr(credentials, 'quota_project_id', 'unknown')
                 logger.info("Using provided credentials.")
             else:
-                # Try Service Account from Env first (for Server Automation)
-                service_account_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
-                if service_account_path and os.path.exists(service_account_path):
+                # Priority 1: OAuth token.json (user account with more storage)
+                base_dir = Path(__file__).resolve().parent.parent.parent
+                token_path = base_dir / "token.json"
+                
+                if token_path.exists():
                     try:
-                        self.creds, self.project_id = google.auth.load_credentials_from_file(
-                            service_account_path, scopes=self.scopes
-                        )
-                        self.creds = with_scopes_if_required(self.creds, scopes=self.scopes)
-                        logger.info(f"Authenticated with Credentials File: {service_account_path}")
-                        if not self.project_id:
-                            self.project_id = getattr(self.creds, 'project_id', 'unknown')
+                        self.creds = Credentials.from_authorized_user_file(str(token_path), self.scopes)
+                        
+                        # Refresh if expired
+                        if self.creds and self.creds.expired and self.creds.refresh_token:
+                            logger.info("Refreshing expired OAuth token...")
+                            self.creds.refresh(Request())
+                            # Save refreshed token
+                            with open(token_path, 'w') as f:
+                                f.write(self.creds.to_json())
+                            logger.info("OAuth token refreshed and saved.")
+                        
+                        if self.creds and self.creds.valid:
+                            self.project_id = 'oauth-user'
+                            logger.info(f"Authenticated with OAuth token: {token_path}")
+                        else:
+                            raise ValueError("OAuth token invalid")
                     except Exception as e:
-                        logger.warning(f"Failed to load credentials file: {e}. Falling back to default auth.")
-                        self.creds, self.project_id = google.auth.default(scopes=self.scopes)
-                        logger.info(f"Authenticated with Default/Gcloud. Project ID: {self.project_id}")
+                        logger.warning(f"Failed to load OAuth token: {e}. Trying service account...")
+                        self._load_service_account_or_default()
                 else:
-                    # Fallback to gcloud default (for Local Dev)
-                    self.creds, self.project_id = google.auth.default(scopes=self.scopes)
-                    logger.info(f"Authenticated with Default/Gcloud. Project ID: {self.project_id}")
+                    # Priority 2: Service Account or Default
+                    self._load_service_account_or_default()
 
             self.drive_service = build('drive', 'v3', credentials=self.creds)
             self.sheets_service = build('sheets', 'v4', credentials=self.creds)
         except Exception as e:
             logger.error(f"Failed to authenticate with Google: {e}")
             raise
+    
+    def _load_service_account_or_default(self):
+        """Load service account credentials or fall back to default auth."""
+        service_account_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+        if service_account_path and os.path.exists(service_account_path):
+            try:
+                self.creds, self.project_id = google.auth.load_credentials_from_file(
+                    service_account_path, scopes=self.scopes
+                )
+                self.creds = with_scopes_if_required(self.creds, scopes=self.scopes)
+                logger.info(f"Authenticated with Credentials File: {service_account_path}")
+                if not self.project_id:
+                    self.project_id = getattr(self.creds, 'project_id', 'unknown')
+            except Exception as e:
+                logger.warning(f"Failed to load credentials file: {e}. Falling back to default auth.")
+                self.creds, self.project_id = google.auth.default(scopes=self.scopes)
+                logger.info(f"Authenticated with Default/Gcloud. Project ID: {self.project_id}")
+        else:
+            # Fallback to gcloud default (for Local Dev)
+            self.creds, self.project_id = google.auth.default(scopes=self.scopes)
+            logger.info(f"Authenticated with Default/Gcloud. Project ID: {self.project_id}")
 
     def _validate_sheet_title(self, title: str):
         """Validate sheet title to prevent injection or malformed names."""
@@ -97,19 +130,38 @@ class SheetManager:
             logger.error(f"An error occurred creating sheet '{title}': {error}")
             raise
 
+    @_google_api_retry()
+    def _get_first_sheet_title(self, spreadsheet_id: str) -> str:
+        """Get the title of the first sheet in the spreadsheet."""
+        try:
+            spreadsheet = self.sheets_service.spreadsheets().get(
+                spreadsheetId=spreadsheet_id
+            ).execute()
+            sheets = spreadsheet.get('sheets', [])
+            if not sheets:
+                raise ValueError(f"No sheets found in spreadsheet {spreadsheet_id}")
+            return sheets[0]['properties']['title']
+        except HttpError as error:
+            logger.error(f"Failed to get spreadsheet metadata for {spreadsheet_id}: {error}")
+            raise
+
     def write_header(self, spreadsheet_id: str, headers: List[str]):
         """Write the header row to the first sheet."""
         try:
+            sheet_title = self._get_first_sheet_title(spreadsheet_id)
             body = {
                 'values': [headers]
             }
+            # Quote the sheet title to handle spaces or special characters
+            range_name = f"'{sheet_title}'!A1"
+            
             result = self.sheets_service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id,
-                range='A1',
+                range=range_name,
                 valueInputOption='RAW',
                 body=body
             ).execute()
-            logger.info(f"Updated headers for sheet {spreadsheet_id}: {result.get('updatedCells')} cells updated")
+            logger.info(f"Updated headers for sheet {spreadsheet_id} ({sheet_title}): {result.get('updatedCells')} cells updated")
         except HttpError as error:
             logger.error(f"An error occurred writing headers to {spreadsheet_id}: {error}")
             raise
@@ -203,17 +255,20 @@ class SheetManager:
             return
 
         try:
+            sheet_real_title = self._get_first_sheet_title(sheet_id)
+            range_name = f"'{sheet_real_title}'!A1"
+            
             body = {
                 'values': rows
             }
             result = self.sheets_service.spreadsheets().values().append(
                 spreadsheetId=sheet_id,
-                range='A1',
+                range=range_name,
                 valueInputOption='RAW',
                 insertDataOption='INSERT_ROWS',
                 body=body
             ).execute()
-            logger.info(f"Appended {result.get('updates').get('updatedRows')} rows to {sheet_title} ({sheet_id})")
+            logger.info(f"Appended {result.get('updates').get('updatedRows')} rows to {sheet_title} ({sheet_id}) - Sheet: {sheet_real_title}")
         except HttpError as error:
             logger.error(f"An error occurred appending data to {sheet_title}: {error}")
             raise

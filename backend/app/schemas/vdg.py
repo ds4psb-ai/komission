@@ -152,12 +152,20 @@ class ShotlistItem(BaseModel):
     action: str
     shot: str = "MS"
 
+class ProductPlacementGuide(BaseModel):
+    """체험단 제품 배치 가이드"""
+    recommended_timing: str = ""  # 제품 등장 추천 시점
+    invariant_elements: List[str] = Field(default_factory=list)  # 반드시 유지할 요소
+    variable_elements: List[str] = Field(default_factory=list)  # 변주 가능한 요소
+    product_slot: str = ""  # 제품 삽입 위치
+
 class CapsuleBrief(BaseModel):
     """Actionable guide for the creator"""
     hook_script: str = ""
     shotlist: List[ShotlistItem] = Field(default_factory=list)
     constraints: ProductionConstraints = Field(default_factory=ProductionConstraints)
     do_not: List[str] = Field(default_factory=list)
+    product_placement_guide: ProductPlacementGuide = Field(default_factory=ProductPlacementGuide)
 
 # ==================== REMIX & INTENT ====================
 class IntentLayer(BaseModel):
@@ -169,10 +177,12 @@ class IntentLayer(BaseModel):
     sentiment_arc: SentimentArc = Field(default_factory=SentimentArc)  # NEW
 
 class RemixSuggestion(BaseModel):
-    target_niche: str
-    concept: str
-    template_type: str = "re_enact"
-    viral_element_to_keep: str = ""
+    """변주 제안 - 체험단 적용 가이드"""
+    target_niche: str  # 타겟 크리에이터 유형
+    concept: str  # 변주 컨셉
+    template_type: str = "re_enact"  # re_enact | mashup | parody | product_placement
+    viral_element_to_keep: str = ""  # 유지해야 할 바이럴 요소
+    variable_elements: List[str] = Field(default_factory=list)  # 변경 가능한 요소들
 
 # ==================== O2O COMMERCE (레거시 필수) ====================
 class ProductMention(BaseModel):
@@ -207,17 +217,107 @@ class AudienceReaction(BaseModel):
     overall_sentiment: str = "positive"
     viral_signal: str = ""  # 왜 바이럴됐는지 핵심 이유
 
+# ==================== FOCUS WINDOW (v3.3) ====================
+class FocusWindowHotspot(BaseModel):
+    """구간별 주목도 분석"""
+    reasons: List[str] = Field(default_factory=list)  # ["hook", "cv_change", "scene_boundary"]
+    scores: Dict[str, float] = Field(default_factory=dict)  # {"hook": 0.9, "interest": 0.8}
+    confidence: float = 0.8
+    source_evidence: Dict[str, Any] = Field(default_factory=dict)
+
+class FocusWindowMiseEnScene(BaseModel):
+    """구간 내 미장센 분석"""
+    composition: Dict[str, Any] = Field(default_factory=dict)  # grid, subject_size
+    lighting: Dict[str, str] = Field(default_factory=dict)  # type
+    lens: Dict[str, str] = Field(default_factory=dict)  # fov_class, dof
+    camera_move: str = "static"
+
+class FocusWindowEntity(BaseModel):
+    """구간 내 엔티티 (인물/객체)"""
+    label: str
+    traits: Dict[str, Any] = Field(default_factory=dict)  # pose, emotion, outfit_color
+    role_in_window: str = "SUBJECT"  # SUBJECT, BACKGROUND, PROP
+
+class FocusWindow(BaseModel):
+    """특정 시간 구간의 집중 분석 (RL 보상 신호용)"""
+    window_id: str
+    t_window: List[float] = Field(default_factory=list)  # [start_sec, end_sec]
+    hotspot: FocusWindowHotspot = Field(default_factory=FocusWindowHotspot)
+    mise_en_scene: FocusWindowMiseEnScene = Field(default_factory=FocusWindowMiseEnScene)
+    entities: List[FocusWindowEntity] = Field(default_factory=list)
+    parent_scene_id: Optional[str] = None
+    tags: Dict[str, List[str]] = Field(default_factory=dict)  # narrative_roles, cinematic
+
+# ==================== CROSS-SCENE ANALYSIS (v3.3) ====================
+class DirectorIntent(BaseModel):
+    """연출 의도 분석"""
+    technique: str = ""  # narrative_reveal, slow_long_take
+    intended_effect: str = ""  # comedic_punchline, stability/poise
+    rationale: str = ""
+    evidence: Dict[str, Any] = Field(default_factory=dict)  # scenes, cues
+
+class EntityStateChange(BaseModel):
+    """캐릭터/객체 상태 변화 추적"""
+    entity_id: str
+    initial_state: str
+    final_state: str
+    triggering_event: str
+    scene_id: str
+    time_span: List[float] = Field(default_factory=list)
+
+class ConsistentElement(BaseModel):
+    """씬 간 일관된 요소"""
+    aspect: str  # composition, comedic_device, aesthetic
+    evidence: str
+    scenes: List[str] = Field(default_factory=list)
+
+class EvolvingElement(BaseModel):
+    """씬 간 변화하는 요소"""
+    dimension: str  # pacing, emotion_arc, character_outfit
+    description: str
+    evidence: str
+    pattern: str = "unknown"  # steady, escalating, oscillating
+
+class CrossSceneAnalysis(BaseModel):
+    """전체 영상의 씬 간 관계 분석"""
+    global_summary: str = ""
+    consistent_elements: List[ConsistentElement] = Field(default_factory=list)
+    evolving_elements: List[EvolvingElement] = Field(default_factory=list)
+    director_intent: List[DirectorIntent] = Field(default_factory=list)
+    entity_state_changes: List[EntityStateChange] = Field(default_factory=list)
+
+# ==================== ASR/OCR (v3.3) ====================
+class OCRItem(BaseModel):
+    """화면 내 텍스트"""
+    text: str
+    lang: str = "en"
+    translation_en: Optional[str] = None
+    timestamp: Optional[float] = None
+
+class ASRTranscript(BaseModel):
+    """음성 인식 결과"""
+    lang: str = "en"
+    transcript: str = ""
+    translation_en: Optional[str] = None
+
 # ==================== MAIN VDG MODEL ====================
 class VDG(BaseModel):
     """
-    VDG (Video Data Graph) v3.2
-    Complete schema with O2O, audience reaction, and legacy essentials.
+    VDG (Video Data Graph) v3.3
+    Complete schema with O2O, audience reaction, focus windows, and cross-scene analysis.
+    
+    v3.3 Changes:
+    - Added focus_windows (RL reward signals)
+    - Added cross_scene_analysis (pattern synthesis)
+    - Added asr_transcript, ocr_text (explicit extraction)
+    - Added upload_date for temporal context
     """
     # Identity
     content_id: str
     platform: str = "youtube"
     title: str = ""
     duration_sec: float = 0.0
+    upload_date: Optional[str] = None  # NEW v3.3
     metrics: VideoMetrics = Field(default_factory=VideoMetrics)
     
     # Core Analysis
@@ -230,16 +330,27 @@ class VDG(BaseModel):
     # The Brain (Psychology)
     intent_layer: IntentLayer = Field(default_factory=IntentLayer)
     
+    # Focus Windows (NEW v3.3 - RL reward signals)
+    focus_windows: List[FocusWindow] = Field(default_factory=list)
+    
+    # Cross-Scene Analysis (NEW v3.3 - pattern synthesis)
+    cross_scene_analysis: CrossSceneAnalysis = Field(default_factory=CrossSceneAnalysis)
+    
+    # ASR/OCR (NEW v3.3 - explicit extraction)
+    asr_transcript: ASRTranscript = Field(default_factory=ASRTranscript)
+    ocr_text: List[OCRItem] = Field(default_factory=list)
+    
     # The Future (Action)
     remix_suggestions: List[RemixSuggestion] = Field(default_factory=list)
     capsule_brief: CapsuleBrief = Field(default_factory=CapsuleBrief)
     
-    # O2O Commerce (NEW in v3.2)
+    # O2O Commerce
     commerce: Commerce = Field(default_factory=Commerce)
     
-    # Audience Reaction (NEW in v3.2)
+    # Audience Reaction
     audience_reaction: AudienceReaction = Field(default_factory=AudienceReaction)
     
     # Legacy Fields (Frontend Backward Compatibility)
     global_context: Optional[Dict[str, Any]] = None
     scene_frames: Optional[List[Dict[str, Any]]] = None
+

@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 
+from app.utils.time import utcnow
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -283,7 +285,7 @@ async def add_item_to_board(
     db.add(item)
     
     # Update board timestamp and status
-    board.updated_at = datetime.utcnow()
+    board.updated_at = utcnow()
     if board.status == EvidenceBoardStatus.DRAFT:
         board.status = EvidenceBoardStatus.ACTIVE
     
@@ -323,8 +325,8 @@ async def set_conclusion(
     board.conclusion = data.conclusion
     board.winner_item_id = data.winner_item_id
     board.status = EvidenceBoardStatus.CONCLUDED
-    board.concluded_at = datetime.utcnow()
-    board.updated_at = datetime.utcnow()
+    board.concluded_at = utcnow()
+    board.updated_at = utcnow()
     
     await db.commit()
     

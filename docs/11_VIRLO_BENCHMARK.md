@@ -45,7 +45,7 @@
 ### 공통 방향
 - 탐색 UI가 아닌 **Evidence 기반 실행 브리프**로 연결
 - Role Switch(Creator/Business)로 컨텍스트 이동 최소화
-- Notebook Library는 **DB로 래핑** 후 사용 (NotebookLM 요약은 선택)
+- Notebook Library는 **DB로 래핑** 후 사용 (NotebookLM = Pattern Engine, 기본 실행)
 
 ### 매핑 제안
 | Virlo 기능 | Komission 대응 | 차별화 포인트 |

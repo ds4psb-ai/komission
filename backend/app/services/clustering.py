@@ -1,11 +1,15 @@
 """
-Pattern Clustering Service
+Pattern Clustering Service (PEGL v1.0)
 Based on 15_FINAL_ARCHITECTURE.md
 
 핵심 원칙:
 - 유사도 클러스터링(DB): Parent-Kids 변주를 데이터화
 - 패턴 뎁스 구조를 축적
 - 클러스터 ID를 기반으로 NotebookLM 폴더 분할
+
+PEGL v1.0 Updates:
+- VDGEdge candidate 자동 생성
+- 유사도 기반 Parent-Child 관계 추론
 """
 import logging
 import re
@@ -15,8 +19,10 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.utils.time import utcnow
+
 from app.schemas.analysis_schema import VideoAnalysisSchema
-from app.models import PatternCluster, NotebookLibraryEntry
+from app.models import PatternCluster, NotebookLibraryEntry, RemixNode, VDGEdgeType
 
 logger = logging.getLogger(__name__)
 
@@ -344,7 +350,7 @@ class PatternClusteringService:
         candidate_id = proposed_cluster_id
         if any(c.cluster_id == candidate_id for c in existing_clusters):
             candidate_id = self._sanitize_cluster_id(
-                f"{candidate_id}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+                f"{candidate_id}-{utcnow().strftime('%Y%m%d%H%M%S')}"
             )
 
         new_cluster = PatternCluster(
@@ -429,3 +435,95 @@ async def assign_cluster_to_entry(
     
     logger.info(f"Assigned cluster {cluster_id} to entry {entry.id} (new={is_new})")
     return cluster_id
+
+
+async def create_similarity_based_edges(
+    db: AsyncSession,
+    child_node_id,
+    child_schema: VideoAnalysisSchema,
+    similarity_threshold: float = 0.70,
+    max_edges: int = 5,
+) -> List[Tuple[str, float]]:
+    """
+    유사도 기반으로 VDGEdge candidate 생성 (PEGL v1.0)
+    
+    새로 분석된 콘텐츠와 기존 Parent 후보들 사이의 유사도를 계산하여
+    임계값 이상인 경우 VDGEdge candidate를 생성합니다.
+    
+    Args:
+        db: DB 세션
+        child_node_id: 새로 분석된 노드의 ID
+        child_schema: 새 노드의 분석 스키마
+        similarity_threshold: Edge 생성 임계값 (기본 0.70)
+        max_edges: 최대 생성할 Edge 수 (기본 5)
+        
+    Returns:
+        [(parent_node_id, confidence), ...] 생성된 Edge 정보
+    """
+    from app.services.vdg_edge_service import VDGEdgeService
+    from uuid import UUID
+    
+    service = PatternClusteringService(db)
+    edge_service = VDGEdgeService(db)
+    
+    # Parent 후보 조회 (분석 스키마가 있는 RemixNode)
+    result = await db.execute(
+        select(RemixNode)
+        .where(RemixNode.gemini_analysis.isnot(None))
+        .where(RemixNode.id != child_node_id)  # 자기 자신 제외
+        .order_by(RemixNode.created_at.desc())
+        .limit(100)  # 최근 100개만 비교
+    )
+    parent_candidates = result.scalars().all()
+    
+    # 유사도 계산 및 정렬
+    scored_parents = []
+    for parent in parent_candidates:
+        try:
+            parent_schema = parent.gemini_analysis
+            if not parent_schema:
+                continue
+            
+            score = service.calculate_similarity(child_schema, parent_schema)
+            if score >= similarity_threshold:
+                scored_parents.append((parent, score))
+        except Exception as e:
+            logger.warning(f"Similarity calculation failed for {parent.id}: {e}")
+            continue
+    
+    # 점수순 정렬
+    scored_parents.sort(key=lambda x: x[1], reverse=True)
+    scored_parents = scored_parents[:max_edges]
+    
+    # VDGEdge candidate 생성
+    created_edges = []
+    for parent, score in scored_parents:
+        try:
+            # Edge 타입 결정 (유사도 기준)
+            if score >= 0.85:
+                edge_type = VDGEdgeType.VARIATION
+            elif score >= 0.75:
+                edge_type = VDGEdgeType.INSPIRED_BY
+            else:
+                edge_type = VDGEdgeType.INSPIRED_BY
+            
+            edge = await edge_service.create_candidate_edge(
+                parent_node_id=parent.id,
+                child_node_id=UUID(str(child_node_id)) if not isinstance(child_node_id, UUID) else child_node_id,
+                edge_type=edge_type,
+                confidence=score,
+                evidence_json={
+                    "source": "similarity_based",
+                    "similarity_score": score,
+                    "threshold": similarity_threshold,
+                }
+            )
+            created_edges.append((str(parent.id), score))
+            logger.info(f"Created candidate edge: {parent.id} -> {child_node_id} (confidence={score:.2f})")
+        except Exception as e:
+            logger.warning(f"Failed to create edge for {parent.id}: {e}")
+    
+    await db.commit()
+    
+    logger.info(f"Created {len(created_edges)} similarity-based VDGEdge candidates for {child_node_id}")
+    return created_edges

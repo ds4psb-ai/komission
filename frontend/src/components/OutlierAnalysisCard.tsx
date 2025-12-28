@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { api, OutlierItem } from "@/lib/api";
+import { VDGCard } from "@/components/canvas/VDGCard";
 
 interface AnalysisStatusBadgeProps {
     status: OutlierItem["analysis_status"];
@@ -182,6 +183,13 @@ export function OutlierAnalysisCard({ item, onUpdate }: OutlierAnalysisCardProps
                 >
                     🎬 분석 결과 보기 →
                 </a>
+            )}
+
+            {/* VDG Analysis Card (when data available) */}
+            {item.vdg_analysis && (
+                <div className="mt-4">
+                    <VDGCard vdg={item.vdg_analysis} className="border-0" />
+                </div>
             )}
         </div>
     );

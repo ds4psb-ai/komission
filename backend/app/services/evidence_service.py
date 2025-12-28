@@ -3,11 +3,13 @@ Evidence Service - VDG (Variant Depth Genealogy) 계산 및 Evidence 생성
 Phase 2: Evidence Loop 핵심 로직
 """
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from uuid import UUID
 import json
+
+from app.utils.time import utcnow, days_ago
 
 from app.models import RemixNode, EvidenceSnapshot
 from app.schemas.evidence import (
@@ -48,7 +50,7 @@ class EvidenceService:
         """
         # 기간 필터 계산
         period_days = self._parse_period(period)
-        cutoff_date = datetime.utcnow() - timedelta(days=period_days)
+        cutoff_date = days_ago(period_days)
         
         # Depth 1 자식들 조회
         depth1_result = await db.execute(
@@ -223,7 +225,7 @@ class EvidenceService:
                     depth=1,
                     confidence=stats["confidence"],
                     risk=self._assess_risk(stats),
-                    updated_at=datetime.utcnow(),
+                    updated_at=utcnow(),
                 ))
         
         # Depth 2 rows
@@ -242,7 +244,7 @@ class EvidenceService:
                     depth=2,
                     confidence=stats["confidence"],
                     risk=self._assess_risk(stats),
-                    updated_at=datetime.utcnow(),
+                    updated_at=utcnow(),
                 ))
         
         # Sort by success rate
@@ -252,7 +254,7 @@ class EvidenceService:
         
         return EvidenceTableResponse(
             parent_node_id=parent_node_id,
-            generated_at=datetime.utcnow(),
+            generated_at=utcnow(),
             period=period,
             rows=rows,
             total_samples=vdg_summary["sample_count"],

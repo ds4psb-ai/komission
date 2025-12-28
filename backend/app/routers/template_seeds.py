@@ -16,6 +16,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import google.generativeai as genai
 
+from app.utils.time import utcnow
+import google.generativeai as genai
+
 from app.database import get_db
 from app.config import settings
 from app.models import TemplateSeed, RemixNode, NotebookLibraryEntry
@@ -110,7 +113,7 @@ async def generate_template_seed(
         )
         
         # DB에 저장
-        seed_id = f"seed_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{uuid_lib.uuid4().hex[:6]}"
+        seed_id = f"seed_{utcnow().strftime('%Y%m%d%H%M%S')}_{uuid_lib.uuid4().hex[:6]}"
         
         new_seed = TemplateSeed(
             seed_id=seed_id,

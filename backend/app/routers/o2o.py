@@ -10,6 +10,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from app.utils.time import utcnow
+
 from app.database import get_db
 from app.models import O2OLocation, O2OCampaign, O2OApplication, O2OApplicationStatus, User
 from app.routers.auth import get_current_user
@@ -92,7 +94,7 @@ class VerifyRequest(BaseModel):
 @router.get("/locations", response_model=List[O2OLocationResponse])
 async def list_active_locations(db: AsyncSession = Depends(get_db)):
     """List all currently active O2O campaign locations"""
-    now = datetime.utcnow()
+    now = utcnow()
     query = select(O2OLocation).where(
         (O2OLocation.active_start <= now) & 
         (O2OLocation.active_end >= now)
@@ -121,7 +123,7 @@ async def list_active_locations(db: AsyncSession = Depends(get_db)):
 @router.get("/campaigns", response_model=List[O2OCampaignResponse])
 async def list_active_campaigns(db: AsyncSession = Depends(get_db)):
     """List all active O2O campaigns (visit/instant/shipment)"""
-    now = datetime.utcnow()
+    now = utcnow()
 
     location_query = select(O2OLocation).where(
         (O2OLocation.active_start <= now) &
@@ -210,7 +212,7 @@ async def apply_campaign(
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    now = datetime.utcnow()
+    now = utcnow()
     if not (campaign.active_start <= now <= campaign.active_end):
         raise HTTPException(status_code=400, detail="Campaign is not active")
 
@@ -293,7 +295,7 @@ async def verify_location(
         raise HTTPException(status_code=404, detail="Location not found")
         
     # 2. Check Validity (Date)
-    now = datetime.utcnow()
+    now = utcnow()
     if not (location.active_start <= now <= location.active_end):
         raise HTTPException(status_code=400, detail="Campaign is not active")
         
@@ -453,7 +455,7 @@ async def create_campaign(
     
     from datetime import timedelta
     
-    now = datetime.utcnow()
+    now = utcnow()
     campaign = O2OCampaign(
         campaign_id=f"campaign_{now.strftime('%Y%m%d')}_{uuid.uuid4().hex[:8]}",
         campaign_type=data.campaign_type,

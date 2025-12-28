@@ -1,5 +1,5 @@
 """
-API Routers package
+API Routers package (PEGL v1.0)
 """
 from fastapi import APIRouter
 
@@ -24,6 +24,11 @@ from app.routers.analytics import router as analytics_router
 from app.routers.ingest import router as ingest_router
 from app.routers.events import router as events_router
 from app.routers.template_customization import router as template_customization_router
+from app.routers.ops import router as ops_router  # PEGL v1.0 P0-7
+from app.routers.monitoring import router as monitoring_router  # PEGL v1.0
+from app.routers.creator import router as creator_router  # P2 Feedback Loop
+from app.routers.usage import router as usage_router  # Week 2: Creator Usage Tracking
+from app.routers.for_you import router as for_you_router  # For You API (MCP Ready)
 
 api_router.include_router(remix_router, prefix="/remix", tags=["Remix"])
 api_router.include_router(auth_router, prefix="/auth", tags=["Auth"])
@@ -42,4 +47,9 @@ api_router.include_router(analytics_router, tags=["Analytics"])
 api_router.include_router(ingest_router, tags=["Ingest"])
 api_router.include_router(events_router, tags=["Events"])
 api_router.include_router(template_customization_router, tags=["Templates"])
+api_router.include_router(ops_router, tags=["Ops Console"])  # PEGL v1.0 P0-7
+api_router.include_router(monitoring_router, tags=["Monitoring"])  # PEGL v1.0
+api_router.include_router(creator_router, tags=["Creator"])  # P2 Feedback Loop
+api_router.include_router(usage_router, tags=["Usage Tracking"])  # Week 2
+api_router.include_router(for_you_router, tags=["For You"])  # MCP Ready
 

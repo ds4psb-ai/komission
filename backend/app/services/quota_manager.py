@@ -9,6 +9,8 @@ import logging
 from datetime import datetime, date
 from typing import Optional
 
+from app.utils.time import utcnow
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,7 +53,7 @@ class QuotaManager:
     
     def _get_key(self, platform: str) -> str:
         """Generate Redis key for today's quota."""
-        today = datetime.utcnow().strftime("%Y%m%d")
+        today = utcnow().strftime("%Y%m%d")
         return f"{self.KEY_PREFIX}{platform}:{today}"
     
     def _reset_local_if_new_day(self):

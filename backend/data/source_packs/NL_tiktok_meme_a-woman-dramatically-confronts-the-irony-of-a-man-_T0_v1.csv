@@ -1,0 +1,56 @@
+﻿cluster,cluster_id,a-woman-dramatically-confronts-the-irony-of-a-man-claiming-he-isn-t-ready-for-a-relationsh-ed093823,
+cluster,cluster_name,A woman dramatically confronts the irony of a man claiming he isn't ready for a relationship despite meeting her on a dating app. The skit uses dramatic classical music to heighten the comedic despair.,
+cluster,pattern_type,visual,
+cluster,member_count,1,
+cluster,avg_outlier_score,N/A,
+cluster,platform_distribution,"{""tiktok"": 1}",
+cluster,category_distribution,"{""meme"": 1}",
+cluster,temporal_phase_distribution,"{""T0"": 1}",
+cluster,avg_variant_age_days,0.00,
+cluster,avg_novelty_decay_score,1.0000,
+cluster,avg_burstiness_index,0.3012,
+entry,platform,tiktok,1
+entry,category,meme,1
+entry,source_url,https://vt.tiktok.com/ZSPKdL6gv/,1
+entry,created_at,2025-12-25T18:19:47.899732,1
+entry_temporal,temporal_phase,T0,1
+entry_temporal,variant_age_days,0,1
+entry_temporal,novelty_decay_score,1.0,1
+entry_temporal,burstiness_index,0.3012,1
+entry_analysis,schema_version,v3.2,1
+entry_analysis,title,We Met on a Dating App Meltdown,1
+entry_analysis,content_duration,9.0,1
+analysis_hook,pattern,problem_solution,1
+analysis_hook,delivery,dialogue,1
+analysis_hook,strength,0.95,1
+analysis_hook,summary,Immediate introduction of a universal dating trigger phrase ('I'm not ready for a relationship') paired with visual distress.,1
+analysis_hook,microbeats_json,"[{""t"": 0.0, ""cue"": ""visual_text"", ""note"": ""Text overlay: 'I'm not ready for a relationship' sets the conflict"", ""role"": ""start""}, {""t"": 2.5, ""cue"": ""dialogue"", ""note"": ""She repeats the phrase in disbelief, voice cracking"", ""role"": ""build""}, {""t"": 6.0, ""cue"": ""dialogue"", ""note"": ""Screams the logical fallacy: 'WE MET ON A DATING APP'"", ""role"": ""punch""}]",1
+analysis_hook_viral,curiosity_gap,Why is she so upset? (Resolved immediately by the relatability of the situation),1
+analysis_hook_viral,meme_potential,remixable_action,1
+analysis_hook_viral,engagement_pattern,share_trigger,1
+analysis_hook_viral,relatability_factor,painful_truth,1
+analysis_intent,hook_trigger,emotional_validation,1
+analysis_intent,hook_trigger_reason,Viewers immediately recognize the pain of the 'not ready' excuse used on dating platforms.,1
+analysis_intent,retention_strategy,Escalation of volume and emotion synced with dramatic music.,1
+analysis_intent,dopamine_radar_json,"{""comedy_shock"": 7, ""visual_spectacle"": 2, ""audio_stimulation"": 8, ""narrative_intrigue"": 6, ""emotional_resonance"": 10}",1
+analysis_intent,irony_analysis_json,"{""setup"": ""Man says he isn't ready for a relationship."", ""twist"": ""They met on a platform explicitly designed for finding relationships."", ""gap_type"": ""logic_gap""}",1
+analysis_intent,sentiment_trajectory,Rapid escalation from sadness to aggressive logic.,1
+analysis_intent,sentiment_micro_shifts_json,"[{""t"": 2.0, ""cue"": ""Questioning the statement"", ""to_emotion"": ""confusion"", ""from_emotion"": ""despair""}, {""t"": 6.0, ""cue"": ""Realization of the contradiction"", ""to_emotion"": ""rage"", ""from_emotion"": ""confusion""}]",1
+analysis_scenes,structure_summary,"Scene 1 (9.0s): A woman leans against a brick wall at night, spiraling over a rejection. [Rhetoric: rhetorical_question,irony]",1
+analysis_scenes,full_scenes_json,"[{""shots"": [{""end"": 9.0, ""start"": 0.0, ""camera"": {""move"": ""static"", ""shot"": ""MCU"", ""angle"": ""eye_level""}, ""shot_id"": ""S01_01"", ""keyframes"": [], ""confidence"": ""medium"", ""composition"": {""grid"": ""center"", ""notes"": []}}], ""setting"": {""location"": ""Urban Exterior (Night)"", ""audio_style"": {""tone"": """", ""music"": """", ""audio_events"": [{""event"": ""note"", ""intensity"": ""medium"", ""timestamp"": 0.0, ""description"": ""Mozart Lacrimosa (Dramatic Classical Music)""}, {""event"": ""note"", ""intensity"": ""medium"", ""timestamp"": 0.0, ""description"": ""Screaming""}], ""ambient_sound"": """"}, ""visual_style"": {""lighting"": ""Streetlight/Low Key"", ""edit_pace"": ""fast"", ""mood_palette"": []}}, ""scene_id"": ""S01"", ""time_end"": 9.0, ""time_start"": 0.0, ""duration_sec"": 9.0, ""narrative_unit"": {""role"": ""Climax"", ""summary"": ""A woman leans against a brick wall at night, spiraling over a rejection."", ""dialogue"": ""I'm not ready for a relationship... What do you mean you're not ready for a relationship?!? WE MET ON A DATING APP!"", ""rhetoric"": [""rhetorical_question"", ""irony""], ""dialogue_lang"": ""en"", ""comedic_device"": [""juxtaposition"", ""overreaction""], ""dialogue_translation_en"": ""N/A""}}]",1
+analysis_capsule,hook_script,"Start with a text overlay of a common, frustrating excuse someone gives during dating.",1
+analysis_capsule,constraints_json,"{""props"": [], ""locations"": [""Street corner at night""], ""difficulty"": ""Easy"", ""min_actors"": 1, ""primary_challenge"": ""Acting intensity""}",1
+analysis_capsule,do_not_list,"[""Use upbeat music"", ""Laugh during the take""]",1
+analysis_capsule,shotlist_json,"[{""seq"": 1, ""shot"": ""MCU"", ""action"": ""Actor leans against wall looking distraught, then yells into camera."", ""duration"": 9.0}]",1
+analysis_commerce,commerce_json,"{""cta_types"": [], ""product_mentions"": [], ""service_mentions"": [""Dating App (Generic)""], ""has_sponsored_content"": false}",1
+analysis_audience,viral_signal,The top comment 'WE MET ON A DATING APP' (almost 500k likes) proves the punchline served as a massive anthem for frustrated daters.,1
+analysis_audience,common_reactions,"[""Validation of the anger"", ""Sharing personal stories of similar contradictions"", ""Quoting the punchline 'WE MET ON A DATING APP'""]",1
+analysis_audience,best_comments_json,[],1
+evidence,snapshot_date,2025-12-25T18:19:47.906793,
+evidence,period,baseline,
+evidence,top_mutation_type,hook,
+evidence,top_mutation_pattern,problem_solution,
+evidence,top_mutation_rate,,
+evidence,sample_count,1,
+evidence,confidence,0.5,
+evidence,depth1_summary,"{""hook"": {""problem_solution"": {""avg_delta"": ""baseline"", ""sample_count"": 1, ""success_rate"": 0.5}}}",

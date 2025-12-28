@@ -1,5 +1,5 @@
 """
-Remix Node Router - CRUD + Analysis
+Remix Node Router - CRUD + Analysis (PEGL v1.0)
 """
 from datetime import datetime
 from typing import List, Optional
@@ -9,13 +9,16 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
+from app.utils.time import utcnow
+
 from app.database import get_db
-from app.models import RemixNode, NodeLayer, NodePermission, NodeGovernance, O2OCampaign, O2OLocation
+from app.models import RemixNode, NodeLayer, NodePermission, NodeGovernance, O2OCampaign, O2OLocation, VDGEdgeType
 from app.routers.auth import get_current_user, require_admin, User
 from app.services.gemini_pipeline import gemini_pipeline
 from app.services.remix_nodes import generate_remix_node_id
 from app.services.royalty_engine import RoyaltyEngine
 from app.services.neo4j_graph import neo4j_graph
+from app.services.vdg_edge_service import VDGEdgeService
 
 router = APIRouter()
 
@@ -238,8 +241,25 @@ async def analyze_node_video(
     
     # Run AI Pipeline
     try:
-        # 1. Gemini Analysis
-        analysis = await gemini_pipeline.analyze_video(node.source_video_url, node_id)
+        # 1. Extract best comments for audience context
+        audience_comments = []
+        try:
+            from app.services.comment_extractor import extract_best_comments
+            audience_comments = await extract_best_comments(
+                node.source_video_url, 
+                node.platform or "youtube", 
+                limit=5
+            )
+            print(f"📝 Extracted {len(audience_comments)} comments for {node_id}")
+        except Exception as ce:
+            print(f"⚠️ Comment extraction failed (non-fatal): {ce}")
+        
+        # 2. Gemini Analysis with audience comments
+        analysis = await gemini_pipeline.analyze_video(
+            node.source_video_url, 
+            node_id,
+            audience_comments=audience_comments
+        )
         node.gemini_analysis = analysis.model_dump()
         
         # 2. Claude Korean Planning
@@ -373,6 +393,24 @@ async def fork_remix_node(
         # Log error but don't fail the fork operation
         print(f"⚠️ Royalty distribution failed: {e}")
     
+    # PEGL v1.0: VDGEdge 자동 생성 (candidate 상태)
+    try:
+        edge_service = VDGEdgeService(db)
+        await edge_service.create_candidate_edge(
+            parent_node_id=parent.id,
+            child_node_id=fork.id,
+            edge_type=VDGEdgeType.FORK,
+            confidence=0.9,  # Fork는 명시적 관계이므로 높은 confidence
+            evidence_json={
+                "source": "direct_fork",
+                "created_by": str(current_user.id),
+                "mutations": data.mutations,
+            }
+        )
+    except Exception as e:
+        # Log error but don't fail the fork operation
+        print(f"⚠️ VDGEdge creation failed: {e}")
+    
     return RemixNodeResponse(
         id=str(fork.id),
         node_id=fork.node_id,
@@ -498,7 +536,7 @@ async def get_quest_matching(
             category = analysis.get("category") or analysis.get("content_type")
     
     # 3. Query active O2O location campaigns (visit)
-    now = datetime.utcnow()
+    now = utcnow()
     location_query = select(O2OLocation).where(
         (O2OLocation.active_start <= now) &
         (O2OLocation.active_end >= now)
@@ -1003,7 +1041,7 @@ async def export_vdg_for_notebooklm(
             "irony_analysis": irony,
             "production_constraints": constraints,
             "export_format": "notebooklm_source_pack",
-            "exported_at": datetime.utcnow().isoformat()
+            "exported_at": utcnow().isoformat()
         }
     
     # Markdown format
@@ -1071,7 +1109,7 @@ async def export_vdg_for_notebooklm(
     # Footer
     md_lines.extend([
         "---",
-        f"*Exported from Komission VDG v3.0 | {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC*"
+        f"*Exported from Komission VDG v3.0 | {utcnow().strftime('%Y-%m-%d %H:%M')} UTC*"
     ])
     
     markdown_content = "\n".join(md_lines)
@@ -1082,4 +1120,3 @@ async def export_vdg_for_notebooklm(
         media_type="text/markdown",
         headers={"Content-Disposition": f"attachment; filename=vdg_{node_id}.md"}
     )
-

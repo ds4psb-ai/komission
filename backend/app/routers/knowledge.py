@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 
+from app.utils.time import utcnow
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
@@ -104,7 +106,7 @@ async def get_hook_library(
     else:
         # 기본 추천 (데이터 없을 때)
         top_hooks = _get_default_hooks()
-        last_updated = datetime.utcnow()
+        last_updated = utcnow()
     
     # Get unique categories
     categories = list(set(p.pattern_type for p in patterns)) if patterns else ["visual", "audio", "hook"]

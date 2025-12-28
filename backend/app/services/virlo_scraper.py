@@ -1,6 +1,8 @@
 """
-Virlo Outlier Scraper using httpx API calls
+Virlo Outlier Scraper using httpx API calls (PEGL v1.0)
 Fetches viral outlier data from Virlo's internal API endpoints
+
+PEGL v1.0: 스키마 검증 적용
 """
 import asyncio
 import json
@@ -9,6 +11,9 @@ import os
 import re
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+
+from app.utils.time import utcnow
+from app.validators.schema_validator import validate_outlier_schema, SchemaValidationError
 
 import httpx
 from pydantic import BaseModel
@@ -31,7 +36,7 @@ class VirloOutlierItem(BaseModel):
     
     def __init__(self, **data):
         if 'scraped_at' not in data or data['scraped_at'] is None:
-            data['scraped_at'] = datetime.utcnow()
+            data['scraped_at'] = utcnow()
         super().__init__(**data)
 
 
@@ -241,14 +246,25 @@ async def scrape_outliers(
     return await scrape_outliers_via_api(limit=limit, platforms=platforms)
 
 
-async def scrape_and_save_to_db(limit: int = 50) -> dict:
+async def scrape_and_save_to_db(
+    limit: int = 50,
+    run_id: Optional[str] = None,  # PEGL v1.0: Run 연결
+) -> dict:
     """
     Scrape Virlo outliers and save to database.
+    
+    PEGL v1.0 Updates:
+    - run_id 연결
+    - raw_payload 저장
+    - canonical_url 추가
+    - upsert 로직 개선 (platform + video_url 기준)
+    
     Returns summary of operation.
     """
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
     from sqlalchemy.orm import sessionmaker
+    from uuid import UUID
     
     from app.config import settings
     from app.models import OutlierSource, OutlierItem
@@ -264,6 +280,7 @@ async def scrape_and_save_to_db(limit: int = 50) -> dict:
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
     inserted = 0
+    updated = 0
     
     async with async_session() as db:
         # Get or create Virlo source
@@ -277,40 +294,68 @@ async def scrape_and_save_to_db(limit: int = 50) -> dict:
                 name="virlo_scraper",
                 platform="virlo",
                 source_type="scraper",
-                last_crawled=datetime.utcnow()
+                last_crawled=utcnow()
             )
             db.add(source)
             await db.flush()
         
-        # Insert items
+        # Insert items with upsert logic
         for item in items:
-            # Check for duplicates
+            # PEGL v1.0: raw_payload 저장
+            raw_payload = {
+                "title": item.title,
+                "creator_username": item.creator_username,
+                "platform": item.platform,
+                "video_url": item.video_url,
+                "view_count": item.view_count,
+                "multiplier": item.multiplier,
+                "niche": item.niche,
+                "posted_date": item.posted_date,
+                "thumbnail_url": item.thumbnail_url,
+                "scraped_at": item.scraped_at.isoformat() if item.scraped_at else None,
+            }
+            
+            # Upsert: check by platform + video_url (더 강력한 중복 방지)
+            existing = None
             if item.video_url:
-                existing = await db.execute(
+                existing_result = await db.execute(
                     select(OutlierItem).where(
+                        OutlierItem.platform == item.platform,
                         OutlierItem.video_url == item.video_url
                     )
                 )
-                if existing.scalar_one_or_none():
-                    continue
+                existing = existing_result.scalar_one_or_none()
             
-            outlier = OutlierItem(
-                source_id=source.id,
-                title=item.title,
-                platform=item.platform,
-                category=item.niche,
-                video_url=item.video_url,
-                thumbnail_url=item.thumbnail_url,
-                channel_name=item.creator_username,
-                view_count=item.view_count,
-                outlier_score=int(item.multiplier * 10),  # Convert multiplier to score
-                status="pending",
-                scraped_at=item.scraped_at,
-            )
-            db.add(outlier)
-            inserted += 1
+            if existing:
+                # Update existing item with new data
+                existing.view_count = item.view_count
+                existing.outlier_score = int(item.multiplier * 10)
+                existing.raw_payload = raw_payload
+                existing.updated_at = utcnow()
+                updated += 1
+            else:
+                # Insert new item
+                outlier = OutlierItem(
+                    source_id=source.id,
+                    title=item.title,
+                    platform=item.platform,
+                    category=item.niche,
+                    video_url=item.video_url,
+                    thumbnail_url=item.thumbnail_url,
+                    channel_name=item.creator_username,
+                    view_count=item.view_count,
+                    outlier_score=int(item.multiplier * 10),  # Convert multiplier to score
+                    status="pending",
+                    scraped_at=item.scraped_at,
+                    # PEGL v1.0 필드
+                    run_id=UUID(run_id) if run_id else None,
+                    raw_payload=raw_payload,
+                    canonical_url=item.video_url,  # TODO: URL 정규화 함수 적용
+                )
+                db.add(outlier)
+                inserted += 1
         
-        source.last_crawled = datetime.utcnow()
+        source.last_crawled = utcnow()
         await db.commit()
     
     await engine.dispose()
@@ -319,6 +364,7 @@ async def scrape_and_save_to_db(limit: int = 50) -> dict:
         "status": "success",
         "collected": len(items),
         "inserted": inserted,
+        "updated": updated,
         "platform": "virlo"
     }
 

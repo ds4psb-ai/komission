@@ -4,6 +4,8 @@ import uuid
 from datetime import datetime
 from typing import Optional, Set, Tuple
 
+from app.utils.time import utcnow
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -76,7 +78,7 @@ class OutlierSelector:
                     views,
                     0.0,
                     "selector",
-                    datetime.utcnow().isoformat(),
+                    utcnow().isoformat(),
                     "planning",
                 ])
                 existing_urls.add(outlier.video_url)

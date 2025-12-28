@@ -14,6 +14,8 @@ from typing import List, Optional, Dict, Any
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from app.utils.time import utcnow
+
 from app.crawlers.base import BaseCrawler
 from app.schemas.evidence import OutlierCrawlItem
 from app.config import settings
@@ -94,7 +96,30 @@ class YouTubeCrawler(BaseCrawler):
             if shorts_only:
                 videos = [v for v in videos if self._is_shorts(v)]
             
-            # Step 4: Calculate outlier scores and normalize
+            # Step 4: Apply content filter (TV/연예인/편집영상 제외)
+            from app.crawlers.content_filter import filter_with_reason
+            filtered_videos = []
+            for video in videos:
+                snippet = video.get("snippet", {})
+                title = snippet.get("title", "")
+                channel = snippet.get("channelTitle", "")
+                description = snippet.get("description", "")
+                
+                result = filter_with_reason(
+                    title=title,
+                    channel_name=channel,
+                    description=description
+                )
+                
+                if result.should_collect:
+                    filtered_videos.append(video)
+                else:
+                    logger.debug(f"Filtered out: {title[:50]}... ({result.reject_reason})")
+            
+            logger.info(f"Content filter: {len(videos)} → {len(filtered_videos)} videos")
+            videos = filtered_videos
+            
+            # Step 5: Calculate outlier scores and normalize
             items = []
             for video in videos[:limit]:
                 try:
@@ -339,7 +364,8 @@ class YouTubeCrawler(BaseCrawler):
         Search for Shorts by keyword (alternative to trending).
         Uses search.list which costs 100 units per call.
         """
-        published_after = (datetime.utcnow() - timedelta(days=published_after_days)).isoformat() + "Z"
+        from datetime import datetime
+        published_after = (datetime.utcnow() - timedelta(days=published_after_days)).strftime('%Y-%m-%dT%H:%M:%SZ')
         
         response = self.client.get(
             f"{self.BASE_URL}/search",

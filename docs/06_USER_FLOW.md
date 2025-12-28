@@ -20,7 +20,7 @@
    - `sync_outliers_to_sheet.py`로 `VDG_Outlier_Raw` 반영
 3. **영상 해석(코드) + 클러스터링**
    - 구조/패턴 스키마 생성 → `notebook_library` 저장
-   - NotebookLM 요약은 선택적 보조
+   - NotebookLM = Pattern Engine (기본 실행, 결과 DB-wrapped)
 4. **Parent 후보 선정**
    - 후보 기준(조회수/성장률/카테고리)
    - `VDG_Parent_Candidates` 상태 업데이트

@@ -18,8 +18,16 @@ Other utilities:
 - `run_selector.py` — DB outliers → Parent Candidates (Sheet)
 - `ingest_notebook_library.py` — NotebookLM JSON/JSONL → notebook_library (DB)
 - `ingest_notebook_library_sheet.py` — NotebookLM Sheet → notebook_library (DB)
+- `ingest_pattern_library.py` — JSON → PatternLibrary (정제된 패턴)
+- `ingest_notebooklm_tables.py` — NotebookLM Data Tables → PatternSynthesis:
+  - 기본: `--sheet-url "..." --cluster-id "hook-2s"`
+  - **풀 파이프라인**: `--sheet-url "..." --promote` (PatternLibrary로 승격)
+  - 다중 출력: `--output-format creator|business|ops`
 - `sync_notebook_library_to_sheet.py` — notebook_library → VDG_Insights
-- `build_notebook_source_pack.py` — NotebookLM Source Pack (Sheet) 생성
+- `build_notebook_source_pack.py` — NotebookLM Source Pack 생성:
+  - 표준 모드: `--cluster-id X --temporal-phase T1`
+  - **Ultra Mega-Pack**: `--mega-pack --cluster-ids "c1,c2,c3" --limit 600`
+  - 다중 출력: `--output-targets "creator,business,ops"`
 - `refresh_tiktok_session.py` — TikTok comment/list session refresh (headful)
 - `ingest_outlier_csv_db.py` — provider CSV → DB outliers (SoR)
 - `pull_provider_csv.py` — provider CSV fetch → DB ingest

@@ -1,5 +1,5 @@
 // frontend/src/app/remix/[nodeId]/page.tsx
-// Unified page with query-based tab navigation
+// Unified page with query-based tab navigation (PEGL v1.0)
 "use client";
 
 import Link from "next/link";
@@ -13,11 +13,16 @@ import dynamic from "next/dynamic";
 import { QuickGuide } from "@/components/remix/QuickGuide";
 import { VariableSlotEditor } from "@/components/remix/VariableSlotEditor";
 import { QuestChip } from "@/components/remix/QuestChip";
+import { HeroSection } from "@/components/remix/HeroSection";
 import { CelebrationModal } from "@/components/CelebrationModal";
+import { StoryboardPanel } from "@/components/video/StoryboardPanel";
+import { VDGCard } from "@/components/canvas/VDGCard";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { Target, Clapperboard, Check, ShoppingBag, Upload } from "lucide-react";
+import { PipelineProgress, type PipelineStep } from "@/components/PipelineProgress";
+import { SessionHUD } from "@/components/SessionHUD";
+import { Target, Clapperboard, Check, ShoppingBag, Upload, MessageCircle } from "lucide-react";
 
 // Dynamic imports for PRO tab content
 const PatternConfidenceChart = dynamic(
@@ -85,18 +90,25 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
     const startLabel = canShoot ? "촬영 가이드 시작" : "모바일에서만 촬영 가능";
     const completeLabel = canShoot ? "촬영 완료" : "모바일에서 촬영 완료";
 
+    // Get VDG analysis data from outlier if available
+    const vdgAnalysis = outlier?.vdg_analysis;
+    const hookGenome = vdgAnalysis?.hook_genome;
+
     return (
         <div className="space-y-6">
-            {/* Hero CTA */}
-            <Card variant="neon" padding="lg">
-                <div className="flex flex-col md:flex-row items-center gap-6">
-                    <div className="flex-1 text-center md:text-left">
-                        <h1 className="text-2xl font-black text-white mb-2">
-                            {outlier?.title || "리믹스 촬영"}
-                        </h1>
-                        <div className="text-sm text-white/50 mb-3">
-                            예상 조회수 <span className="text-white font-bold">50K ~ 100K</span>
-                        </div>
+            {/* 🆕 Hero Section - Video + Hook Highlight */}
+            <HeroSection
+                title={outlier?.title || "리믹스 촬영"}
+                sourceUrl={outlier?.sourceUrl || ""}
+                thumbnailUrl={outlier?.thumbnailUrl}
+                platform={outlier?.platform}
+                hookGenome={hookGenome}
+            />
+
+            {/* CTA Section */}
+            <Card variant="neon" padding="md">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div>
                         {quest && (
                             <Badge variant="soft" intent="success" className="gap-1.5">
                                 <Target className="w-3.5 h-3.5" />
@@ -104,16 +116,15 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
                             </Badge>
                         )}
                     </div>
-
-                    <div className="flex flex-col items-center gap-2">
+                    <div className="flex items-center gap-3">
                         {run?.status === "shooting" ? (
                             <Button
                                 variant="primary"
                                 size="lg"
                                 onClick={canShoot ? handleCompleteFilming : undefined}
                                 disabled={!canShoot}
-                                leftIcon={<Upload className="w-6 h-6" />}
-                                className="text-lg px-8 py-5 bg-gradient-to-r from-emerald-500 to-cyan-500"
+                                leftIcon={<Upload className="w-5 h-5" />}
+                                className="bg-gradient-to-r from-emerald-500 to-cyan-500"
                             >
                                 {completeLabel}
                             </Button>
@@ -124,21 +135,30 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
                                 onClick={canShoot ? handleStartFilming : undefined}
                                 isLoading={isStarting}
                                 disabled={isStarting || !canShoot}
-                                leftIcon={<Clapperboard className="w-6 h-6" />}
-                                className="text-lg px-8 py-5"
+                                leftIcon={<Clapperboard className="w-5 h-5" />}
                             >
                                 {startLabel}
                             </Button>
                         )}
-                        <span className="text-xs text-white/40">
-                            촬영은 모바일에서 진행하고 웹은 가이드/제출을 담당합니다
-                        </span>
                     </div>
                 </div>
+                <p className="text-xs text-white/40 text-center mt-3">
+                    촬영은 모바일에서 진행하고 웹은 가이드/제출을 담당합니다
+                </p>
             </Card>
 
+            {/* 🆕 Storyboard - Scene-by-scene guide */}
+            {vdgAnalysis && (
+                <StoryboardPanel rawVdg={vdgAnalysis as any} defaultExpanded={true} />
+            )}
+
+            {/* Quick Guide */}
             <QuickGuide />
+
+            {/* Variable Slots */}
             {slots.length > 0 && <VariableSlotEditor />}
+
+            {/* Quest Info */}
             <QuestChip />
 
             {/* Celebration Modal */}
@@ -162,22 +182,23 @@ function EarnTabContent({ nodeId }: { nodeId: string }) {
 
     useEffect(() => {
         let active = true;
-        setLoading(true);
-        setErrorMessage(null);
 
-        api.getQuestMatching(nodeId)
-            .then((data) => {
-                if (!active) return;
-                setQuests(data.recommended_quests || []);
-            })
-            .catch((error) => {
-                if (!active) return;
-                setErrorMessage(error instanceof Error ? error.message : "추천 퀘스트를 불러오지 못했습니다.");
-            })
-            .finally(() => {
-                if (!active) return;
-                setLoading(false);
-            });
+        const fetchQuests = async () => {
+            try {
+                const data = await api.getQuestMatching(nodeId);
+                if (active) {
+                    setQuests(data.recommended_quests || []);
+                    setLoading(false);
+                }
+            } catch (error) {
+                if (active) {
+                    setErrorMessage(error instanceof Error ? error.message : "추천 퀘스트를 불러오지 못했습니다.");
+                    setLoading(false);
+                }
+            }
+        };
+
+        fetchQuests();
 
         return () => {
             active = false;
@@ -458,7 +479,32 @@ function RemixPageContent({ nodeId }: { nodeId: string }) {
         }
     };
 
-    return <div className="max-w-4xl mx-auto">{renderTabContent()}</div>;
+    // Map tab to pipeline step
+    const tabToPipeline: Record<string, PipelineStep> = {
+        shoot: 'guide',
+        earn: 'experiment',
+        analyze: 'graph',
+        genealogy: 'graph',
+        studio: 'guide',
+    };
+    const currentPipelineStep = tabToPipeline[tab] || 'guide';
+
+    return (
+        <div className="max-w-4xl mx-auto">
+            {/* PEGL v1.0: Pipeline Progress Header */}
+            <div className="mb-6 py-3 border-b border-white/5">
+                <PipelineProgress
+                    currentStep={currentPipelineStep}
+                    completedSteps={['outlier']}
+                />
+            </div>
+
+            {renderTabContent()}
+
+            {/* Session HUD */}
+            <SessionHUD />
+        </div>
+    );
 }
 
 export default function RemixPage() {

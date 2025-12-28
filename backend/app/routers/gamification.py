@@ -9,6 +9,12 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 
+from app.utils.time import utcnow, utc_date_today
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, and_
+
 from app.database import get_db
 from app.models import (
     User, RemixNode, UserBadge, BadgeType, 
@@ -162,7 +168,7 @@ async def check_in_streak(
         streak = UserStreak(user_id=current_user.id)
         db.add(streak)
     
-    today = datetime.utcnow().date()
+    today = utcnow().date()
     last_activity = streak.last_activity_date.date() if streak.last_activity_date else None
     
     points_earned = 0
@@ -183,7 +189,7 @@ async def check_in_streak(
         # Streak broken - reset
         streak.current_streak = 1
     
-    streak.last_activity_date = datetime.utcnow()
+    streak.last_activity_date = utcnow()
     
     # Update longest streak
     if streak.current_streak > streak.longest_streak:
@@ -230,7 +236,7 @@ async def get_daily_missions(
     db: AsyncSession = Depends(get_db)
 ):
     """Get today's daily missions and their completion status"""
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = utc_date_today()
     
     # Get existing missions for today
     result = await db.execute(
@@ -273,7 +279,7 @@ async def complete_mission(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid mission type")
     
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = utc_date_today()
     
     # Check if already completed
     result = await db.execute(
@@ -298,7 +304,7 @@ async def complete_mission(
     
     if existing:
         existing.completed = True
-        existing.completed_at = datetime.utcnow()
+        existing.completed_at = utcnow()
         existing.points_earned = points
     else:
         mission = DailyMission(
@@ -306,7 +312,7 @@ async def complete_mission(
             mission_type=mt,
             mission_date=today,
             completed=True,
-            completed_at=datetime.utcnow(),
+            completed_at=utcnow(),
             points_earned=points
         )
         db.add(mission)

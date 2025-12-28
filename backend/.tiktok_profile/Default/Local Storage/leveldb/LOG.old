@@ -1,0 +1,9 @@
+2025/12/28-14:26:03.435 343d21 Reusing MANIFEST /Users/ted/komission/backend/.tiktok_profile/Default/Local Storage/leveldb/MANIFEST-000001
+2025/12/28-14:26:03.439 343d21 Recovering log #3
+2025/12/28-14:26:03.439 343d21 Reusing old log /Users/ted/komission/backend/.tiktok_profile/Default/Local Storage/leveldb/000003.log 
+2025/12/28-14:27:03.442 343d25 Level-0 table #5: started
+2025/12/28-14:27:03.447 343d25 Level-0 table #5: 48416 bytes OK
+2025/12/28-14:27:03.449 343d25 Delete type=0 #3
+2025/12/28-14:28:04.113 343d25 Level-0 table #7: started
+2025/12/28-14:28:04.116 343d25 Level-0 table #7: 58518 bytes OK
+2025/12/28-14:28:04.118 343d25 Delete type=0 #4

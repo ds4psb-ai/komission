@@ -10,6 +10,8 @@ from typing import Optional, List
 from datetime import datetime
 import httpx
 
+from app.utils.time import utcnow
+
 logger = logging.getLogger(__name__)
 
 
@@ -188,7 +190,7 @@ class NotificationService:
                     "elements": [
                         {
                             "type": "mrkdwn",
-                            "text": f"Outlier ID: `{outlier_id}` | Detected: {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC"
+                            "text": f"Outlier ID: `{outlier_id}` | Detected: {utcnow().strftime('%Y-%m-%d %H:%M')} UTC"
                         }
                     ]
                 },

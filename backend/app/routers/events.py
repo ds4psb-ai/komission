@@ -18,6 +18,11 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 
+from app.utils.time import utcnow
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, desc
+
 from app.database import get_db
 from app.models import User
 from app.routers.auth import get_current_user_optional
@@ -107,8 +112,8 @@ async def track_events(
             "resource_type": event.resource_type,
             "resource_id": event.resource_id,
             "metadata": event.metadata or {},
-            "timestamp": (event.timestamp or datetime.utcnow()).isoformat(),
-            "logged_at": datetime.utcnow().isoformat(),
+            "timestamp": (event.timestamp or utcnow()).isoformat(),
+            "logged_at": utcnow().isoformat(),
         }
         _store_event(event_data)
         logged += 1

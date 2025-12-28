@@ -1,11 +1,15 @@
 """
-run_real_evidence_loop.py
+run_real_evidence_loop.py (PEGL v1.0)
 
 REAL DATA PIPELINE for NotebookLM
 =================================
 
 This script acts as the "Time & Experience Simulator" for the content engine.
 It moves data between sheets to simulate the passage of time and evidence collection.
+
+PEGL v1.0 Updates:
+- EvidenceEvent 상태머신 통합 (선택적)
+- RunManager 지원 (선택적)
 
 Flow:
 1. READ `VDG_Parent_Candidates` (Source of Truth)
@@ -42,6 +46,9 @@ logger = logging.getLogger(__name__)
 
 from app.services.sheet_manager import SheetManager
 from app.services.opal_engine import OpalEngine
+
+# PEGL v1.0: Optional DB integration
+USE_DB_TRACKING = os.environ.get("EVIDENCE_LOOP_USE_DB", "false").lower() == "true"
 
 # --- Configuration (from Environment Variables) ---
 SHEET_OUTLIER = "VDG_Outlier_Raw"

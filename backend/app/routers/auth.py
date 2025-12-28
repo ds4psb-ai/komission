@@ -12,6 +12,8 @@ from sqlalchemy import select
 import jwt
 import httpx
 
+from app.utils.time import utcnow
+
 from app.config import settings
 from app.database import get_db
 from app.models import User
@@ -67,7 +69,7 @@ class AuthResponse(BaseModel):
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -137,9 +139,39 @@ async def require_curator(current_user: User = Depends(get_current_user)) -> Use
     Curators have special permissions for video curation and analysis.
     """
     if not current_user.is_curator and current_user.role != "admin":
+        # Also allow super admins
+        if not is_super_admin(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Curator access required. Contact admin for curator privileges."
+            )
+    return current_user
+
+
+def is_super_admin(user: User) -> bool:
+    """
+    Check if user is a Super Admin based on environment variable.
+    Super Admins are defined in SUPER_ADMIN_EMAILS environment variable.
+    This is designed for 1-person admin/developer setup.
+    """
+    if not user or not user.email:
+        return False
+    return user.email.lower() in settings.SUPER_ADMIN_EMAIL_LIST
+
+
+async def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Require Super Admin privileges.
+    Super Admins have full access to all features including:
+    - Ops Console
+    - NotebookLM Integration
+    - All Curator functions
+    - All Admin functions
+    """
+    if not is_super_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Curator access required. Contact admin for curator privileges."
+            detail="Super Admin access required. Your email must be in SUPER_ADMIN_EMAILS."
         )
     return current_user
 

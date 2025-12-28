@@ -610,6 +610,94 @@ export class ApiClient {
             method: 'POST',
         });
     }
+
+    // ==================
+    // PATTERN LIBRARY (PEGL v1.0)
+    // ==================
+    async getPatternLibrary(options?: { cluster_id?: string; platform?: string; limit?: number }): Promise<PatternLibraryResponse> {
+        const params = new URLSearchParams();
+        if (options?.cluster_id) params.set('cluster_id', options.cluster_id);
+        if (options?.platform) params.set('platform', options.platform);
+        if (options?.limit) params.set('limit', options.limit.toString());
+        const query = params.toString();
+        return this.request<PatternLibraryResponse>(`/api/v1/patterns/library${query ? '?' + query : ''}`);
+    }
+
+    async getPatternDetail(patternId: string): Promise<PatternLibraryItem> {
+        return this.request<PatternLibraryItem>(`/api/v1/patterns/library/${patternId}`);
+    }
+
+    // ==================
+    // SOURCE PACKS (Phase D - NotebookLM Integration)
+    // ==================
+    async getSourcePacks(options?: { cluster_id?: string; has_notebook?: boolean; limit?: number }): Promise<SourcePackListResponse> {
+        const params = new URLSearchParams();
+        if (options?.cluster_id) params.set('cluster_id', options.cluster_id);
+        if (options?.has_notebook !== undefined) params.set('has_notebook', options.has_notebook.toString());
+        if (options?.limit) params.set('limit', options.limit.toString());
+        const query = params.toString();
+        return this.request<SourcePackListResponse>(`/api/v1/notebook-library/source-packs${query ? '?' + query : ''}`);
+    }
+
+    async getSourcePackDetail(packId: string): Promise<SourcePackDetail> {
+        return this.request<SourcePackDetail>(`/api/v1/notebook-library/source-packs/${packId}`);
+    }
+
+    async uploadSourcePackToNotebook(packId: string): Promise<UploadToNotebookResponse> {
+        return this.request<UploadToNotebookResponse>('/api/v1/notebook-library/source-packs/upload-to-notebook', {
+            method: 'POST',
+            body: JSON.stringify({ pack_id: packId }),
+        });
+    }
+
+    // ==================
+    // CREATOR FEEDBACK LOOP (P2)
+    // ==================
+
+    async submitCreatorVideo(data: {
+        pattern_id: string;
+        video_url: string;
+        platform: 'tiktok' | 'instagram' | 'youtube';
+        creator_notes?: string;
+        invariant_checklist?: Record<string, boolean>;
+    }): Promise<CreatorSubmissionResponse> {
+        return this.request<CreatorSubmissionResponse>('/api/v1/creator/submissions', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async getMySubmissions(limit = 20): Promise<CreatorSubmissionListResponse> {
+        return this.request<CreatorSubmissionListResponse>(`/api/v1/creator/submissions?limit=${limit}`);
+    }
+
+    async getSubmissionDetail(submissionId: string): Promise<CreatorSubmissionItem> {
+        return this.request<CreatorSubmissionItem>(`/api/v1/creator/submissions/${submissionId}`);
+    }
+
+    // ==================
+    // TEMPLATE SEEDS (Opal)
+    // ==================
+    async generateTemplateSeed(data: {
+        parent_id?: string;
+        cluster_id?: string;
+        template_type?: 'capsule' | 'guide' | 'edit';
+        context?: Record<string, unknown>;
+    }): Promise<GenerateTemplateSeedResponse> {
+        return this.request<GenerateTemplateSeedResponse>('/api/v1/template-seeds/generate', {
+            method: 'POST',
+            body: JSON.stringify({
+                parent_id: data.parent_id || null,
+                cluster_id: data.cluster_id || null,
+                template_type: data.template_type || 'capsule',
+                context: data.context || {},
+            }),
+        });
+    }
+
+    async getTemplateSeed(seedId: string): Promise<TemplateSeedDetail> {
+        return this.request<TemplateSeedDetail>(`/api/v1/template-seeds/${seedId}`);
+    }
 }
 
 // Evidence Loop Types
@@ -1174,6 +1262,67 @@ export interface CrawlerHealthResponse {
 // ==================
 // OUTLIER TYPES (VDG Analysis Gate)
 // ==================
+
+// VDG Analysis sub-types (from raw_payload.vdg_analysis)
+export interface VDGDopamineRadar {
+    visual_spectacle?: number;
+    audio_stimulation?: number;
+    narrative_intrigue?: number;
+    emotional_resonance?: number;
+    comedy_shock?: number;
+}
+
+export interface VDGIronyAnalysis {
+    setup?: string;
+    twist?: string;
+    gap_type?: string;
+}
+
+export interface VDGMicrobeats {
+    start?: string;
+    build?: string;
+    punch?: string;
+}
+
+export interface VDGHookGenome {
+    pattern?: string;
+    delivery?: string;
+    strength?: number;
+    hook_summary?: string;
+    microbeats?: VDGMicrobeats;
+    virality_analysis?: Record<string, string>;
+}
+
+export interface VDGIntentLayer {
+    hook_trigger?: string;
+    hook_trigger_reason?: string;
+    retention_strategy?: string;
+    dopamine_radar?: VDGDopamineRadar;
+    irony_analysis?: VDGIronyAnalysis;
+}
+
+export interface VDGProductionConstraints {
+    min_actors?: number;
+    locations?: string[];
+    props?: string[];
+    difficulty?: string;
+    primary_challenge?: string;
+}
+
+export interface VDGCapsuleBrief {
+    hook_script?: string;
+    constraints?: VDGProductionConstraints;
+    do_not?: string[];
+}
+
+export interface VDGAnalysis {
+    title?: string;
+    hook_genome?: VDGHookGenome;
+    intent_layer?: VDGIntentLayer;
+    capsule_brief?: VDGCapsuleBrief;
+    scenes?: Array<Record<string, unknown>>;
+}
+
 export interface OutlierItem {
     id: string;
     external_id: string;
@@ -1195,6 +1344,8 @@ export interface OutlierItem {
     analysis_status: 'pending' | 'approved' | 'analyzing' | 'completed' | 'skipped';
     promoted_to_node_id: string | null;
     best_comments_count: number;
+    // VDG Analysis Data (from raw_payload)
+    vdg_analysis?: VDGAnalysis | null;
 }
 
 export interface OutlierListResponse {
@@ -1220,7 +1371,118 @@ export interface ApproveVDGResponse {
     message: string;
 }
 
+// ==================
+// PATTERN LIBRARY TYPES (PEGL v1.0)
+// ==================
+export interface PatternLibraryItem {
+    id: string;
+    pattern_id: string;
+    cluster_id: string;
+    temporal_phase: string;
+    platform: string;
+    category: string;
+    invariant_rules: Record<string, any>;
+    mutation_strategy: Record<string, any>;
+    citations: any[] | null;
+    revision: number;
+    created_at: string;
+}
+
+export interface PatternLibraryResponse {
+    total: number;
+    patterns: PatternLibraryItem[];
+}
+
+// ==================
+// SOURCE PACK TYPES (Phase D)
+// ==================
+export interface SourcePackItem {
+    id: string;
+    cluster_id: string;
+    temporal_phase: string;
+    pack_type: string;
+    drive_url: string | null;
+    notebook_id: string | null;
+    output_targets: string | null;
+    pack_mode: string | null;
+    entry_count: number;
+    created_at: string;
+}
+
+export interface SourcePackListResponse {
+    total: number;
+    source_packs: SourcePackItem[];
+}
+
+export interface SourcePackDetail extends SourcePackItem {
+    drive_file_id: string;
+    schema_version: string | null;
+    inputs_hash: string | null;
+}
+
+export interface UploadToNotebookResponse {
+    success: boolean;
+    notebook_id: string | null;
+    message: string;
+}
+
+// ==================
+// CREATOR SUBMISSION TYPES (P2 Feedback Loop)
+// ==================
+export interface CreatorSubmissionResponse {
+    id: string;
+    pattern_id: string;
+    video_url: string;
+    platform: string;
+    status: string;
+    submitted_at: string;
+    message: string;
+}
+
+export interface CreatorSubmissionItem {
+    id: string;
+    pattern_id: string;
+    video_url: string;
+    platform: string;
+    status: string;
+    submitted_at: string;
+    final_view_count: number | null;
+    performance_vs_baseline: string | null;
+}
+
+export interface CreatorSubmissionListResponse {
+    total: number;
+    submissions: CreatorSubmissionItem[];
+}
+
+// ==================
+// TEMPLATE SEEDS (Opal)
+// ==================
+export interface TemplateSeedParams {
+    hook?: string;
+    shotlist?: string[];
+    audio?: string;
+    scene?: string;
+    timing?: string[];
+    do_not?: string[];
+}
+
+export interface TemplateSeedDetail {
+    seed_id: string;
+    parent_id: string | null;
+    cluster_id: string | null;
+    template_type: 'capsule' | 'guide' | 'edit';
+    prompt_version: string;
+    seed_params: TemplateSeedParams;
+    created_at: string;
+}
+
+export interface GenerateTemplateSeedResponse {
+    success: boolean;
+    seed?: TemplateSeedDetail;
+    error?: string;
+}
+
 // Singleton instance
 export const api = new ApiClient();
-
 

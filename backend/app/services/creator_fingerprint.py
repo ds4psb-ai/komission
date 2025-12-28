@@ -10,6 +10,8 @@ Based on PDR FR-010: 암묵 신호 기반 스타일 추정
 """
 from collections import Counter
 from datetime import datetime, timedelta
+
+from app.utils.time import utcnow, days_ago
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from uuid import UUID
@@ -96,7 +98,7 @@ class CreatorFingerprintService:
                 visual_style="neutral",
                 confidence=0.1,
                 sample_count=len(user_events),
-                last_updated=datetime.utcnow(),
+                last_updated=utcnow(),
             )
         
         # Analyze events
@@ -114,7 +116,7 @@ class CreatorFingerprintService:
             visual_style=visual_style,
             confidence=confidence,
             sample_count=len(user_events),
-            last_updated=datetime.utcnow(),
+            last_updated=utcnow(),
         )
     
     def _get_user_events(self, user_id: str) -> List[dict]:
@@ -230,7 +232,7 @@ class CreatorFingerprintService:
         recent_events = [
             e for e in events 
             if datetime.fromisoformat(e.get("timestamp", "2020-01-01")) 
-               > datetime.utcnow() - timedelta(days=7)
+               > days_ago(7)
         ]
         recency_boost = 0.1 if len(recent_events) > 3 else 0
         

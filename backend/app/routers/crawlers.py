@@ -17,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from pydantic import BaseModel
 
+from app.utils.time import utcnow
+
 from app.database import get_db
 from app.models import OutlierSource, OutlierItem, OutlierItemStatus
 from app.routers.auth import require_curator, User
@@ -87,7 +89,7 @@ async def _run_crawler_background(
     
     _running_jobs[job_id] = {
         "status": "running",
-        "started_at": datetime.utcnow(),
+        "started_at": utcnow(),
         "platforms": platforms,
         "results": {}
     }
@@ -175,7 +177,7 @@ async def _run_crawler_background(
                                 outlier_score=item.outlier_score,
                                 outlier_tier=item.outlier_tier,
                                 status=OutlierItemStatus.PENDING,
-                                crawled_at=datetime.utcnow(),
+                                crawled_at=utcnow(),
                             )
                             db.add(outlier)
                             await db.flush()  # Get the ID
@@ -197,7 +199,7 @@ async def _run_crawler_background(
                                     logger.warning(f"S-tier notification failed: {e}")
                     
                     # Update source last_crawled
-                    source.last_crawled = datetime.utcnow()
+                    source.last_crawled = utcnow()
                     
                     _running_jobs[job_id]["results"][platform] = {
                         "collected": len(items),
@@ -213,7 +215,7 @@ async def _run_crawler_background(
         
         await engine.dispose()
         _running_jobs[job_id]["status"] = "completed"
-        _running_jobs[job_id]["completed_at"] = datetime.utcnow()
+        _running_jobs[job_id]["completed_at"] = utcnow()
         
         # Send batch complete notification
         try:
@@ -264,7 +266,7 @@ async def run_crawlers(
     백그라운드에서 크롤러를 실행하고 job_id를 반환합니다.
     /crawlers/status/{job_id}로 진행 상황을 확인할 수 있습니다.
     """
-    job_id = f"crawl_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+    job_id = f"crawl_{utcnow().strftime('%Y%m%d_%H%M%S')}"
     
     # Resolve platforms
     if Platform.ALL in request.platforms:
@@ -315,7 +317,7 @@ async def get_crawler_status(
     sources = result.scalars().all()
     
     platform_statuses = []
-    now = datetime.utcnow()
+    now = utcnow()
     day_ago = now - timedelta(days=1)
     
     for source in sources:
@@ -385,7 +387,7 @@ async def crawler_health(
     """
     from datetime import timedelta
     
-    now = datetime.utcnow()
+    now = utcnow()
     day_ago = now - timedelta(days=1)
     
     # Check each platform

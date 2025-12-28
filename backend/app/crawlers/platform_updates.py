@@ -16,6 +16,8 @@ from datetime import datetime
 from typing import Optional, List
 from dataclasses import dataclass, field
 
+from app.utils.time import utcnow
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,7 +29,7 @@ class PlatformUpdate:
     source_url: str
     title: str
     published_at: Optional[datetime] = None
-    crawled_at: datetime = field(default_factory=datetime.utcnow)
+    crawled_at: datetime = field(default_factory=utcnow)
     raw_content: Optional[str] = None
     summary_kr: Optional[str] = None
     category: Optional[str] = None  # algorithm, monetization, policy, feature

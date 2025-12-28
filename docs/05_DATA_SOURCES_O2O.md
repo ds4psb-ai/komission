@@ -21,9 +21,9 @@
 2. **정규화**: 플랫폼/카테고리/시간대 표준화
 3. **중복 제거**: URL, 작성자, 업로드일 기준
 4. **우선순위 스코어링**: 성장률/조회수/최근성
-5. **영상 해석(코드)**: 구조/패턴 스키마 → **Notebook Library(DB) 저장**
+5. **영상 해석(코드)**: 구조/패턴 스키마 → **NotebookLM(Pattern Engine)** 저장
 6. **Parent 후보 등록**: 후보 리스트 확정
-7. **요약/설명(보강, 선택)**: NotebookLM 요약으로 Pattern 라벨 보조
+7. **Pattern 합성(기본)**: NotebookLM Pattern Engine으로 불변 규칙 + 변주 포인트 합성 (DB-wrapped)
 8. **Opal 템플릿 시드(선택)**: Node/Template 시드 생성 → DB 래핑
 
 ### 주기
@@ -74,12 +74,12 @@ python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,se
 
 ### 영상 해석 단계 (옵션)
 - Parent 승격 이후 `/api/v1/remix/{node_id}/analyze` 호출
-- 분석 결과는 Pattern 후보 라벨/요약 보조로 사용 (Gemini 3.0 Pro 기반 코드 분석 우선)
+- 분석 결과는 Pattern 합성/클러스터링 입력으로 사용 (Gemini 3.0 Pro 기반 코드 분석 우선)
 
 ### Outlier 클러스터링 (기본)
 분석 스키마 기반 유사도 클러스터링으로 **패턴 묶음**을 만듭니다.
-NotebookLM은 **요약/라벨 보조**로만 사용합니다.
-결과는 반드시 **DB(Notebook Library)**에 저장된 후 활용합니다.
+NotebookLM은 **Pattern Engine 기본**으로 사용하며, 결과는 반드시 **DB(Notebook Library)**에 저장된 후 활용합니다.
+패턴 경계(cluster_id)는 **VDG/DB 기준선**으로 고정합니다.
 최종 후보 확정은 **DB/규칙 기반 스코어링**으로 진행합니다.
 
 ### 수집 필드 권장(상세)

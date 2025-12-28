@@ -1,13 +1,16 @@
 # Notebook Library + Node Module Spec (최신)
 
-**작성**: 2026-01-07
-**목표**: 코드 기반 영상 해석 스키마를 **Notebook Library**로 축적하고, NotebookLM 요약은 보조 레이어로 사용한다. 이를 **노드 모듈/템플릿**으로 연결하여 Komission 철학(Evidence Loop)을 유지하면서 고도화한다.
+**작성**: 2026-01-07  
+**최종 수정**: 2025-12-26  
+**목표**: 코드 기반 영상 해석 스키마를 **Notebook Library**로 축적하고, **NotebookLM을 Pattern Engine으로 기본 사용**한다. 이를 **노드 모듈/템플릿**으로 연결하여 Komission 철학(Evidence Loop)을 유지하면서 고도화한다.
 
 ---
 
 ## 1) 핵심 철학 (Notebook Library 특화)
 - 기본 원칙은 `docs/00_DOCS_INDEX.md`, `docs/15_FINAL_ARCHITECTURE.md`를 따른다.
-- NotebookLM은 **요약/라벨/근거 보조 레이어**이며 결과는 **DB로 래핑**한다.
+- **NotebookLM = Pattern Engine (기본)**: Source Pack 기반 불변 규칙 + 변주 포인트 합성
+- **패턴 경계(cluster_id)는 VDG/DB 기준선으로 고정** — NotebookLM이 패턴을 결정하지 않음
+- **NotebookLM 실행은 기본**, 결과는 **DB-wrapped** 후 사용
 - 소스는 **정적 스냅샷**이며, 노트북당 소스 제한을 고려해 클러스터를 분할한다.
 - 템플릿 학습은 **창작자/PD/작가 커스텀 로그**를 축적해 개선한다.
 
@@ -18,7 +21,7 @@
 - **코드 기반 해석 스키마**(훅/씬/오디오/템포/텍스트 패턴)
 - **Parent → Kids 변주 기록**의 요약
 - **실행 가능한 숏폼 브리프**(캡슐 출력 스키마에 맞춤)
-- (선택) NotebookLM 요약/라벨
+- **NotebookLM 패턴 합성 결과** (불변 규칙, 변주 전략, 실패 패턴)
 
 ### 2.2 무엇을 하지 않는가?
 - 원본 영상/민감 데이터 직접 저장 금지
@@ -33,13 +36,46 @@
 
 ---
 
+## 2.5) Parent–Multi Depth Kids 관계 프로토콜 (VDG 기준선)
+
+> **목표**: 패턴 경계(cluster_id)는 VDG/DB가 확정하고, NotebookLM은 그 안에서 "패턴 합성"만 수행.
+
+### 2.5.1 Canonicalization (정규화)
+- `platform + external_id + canonical_url`을 기준으로 동일 영상 병합
+- TikTok short URL → video ID 변환 규칙 적용
+- 중복 제거: URL hash + 플랫폼 ID 기준
+
+### 2.5.2 Fact Extraction (Gemini VDG)
+- VDG 스키마 생성: microbeats, hook_genome, sentiment_arc, pacing, audio
+- 이 단계는 "패턴 합성"이 아니라 **Fact 기록만 수행**
+- Structured Output (JSON Schema 강제)
+
+### 2.5.3 Edge 생성 (Parent–Kids)
+
+| 필드 | 필수 | 설명 |
+| --- | --- | --- |
+| `relation_type` | ✅ | remix/parody/reaction/cover |
+| `confidence` | ✅ | 유사도 점수 (0~1) |
+| `evidence_json` | ✅ | 근거 데이터 |
+| `status` | ✅ | candidate → confirmed (Evidence Loop에서만) |
+
+**규칙:**
+- 낮은 confidence (< 0.5)는 확정 금지
+- Edge는 `candidate` 상태로 생성 후 Evidence Loop에서만 `confirmed`
+
+### 2.5.4 Cluster Boundary 확정
+- `cluster_id`는 **코드/DB가 고정** (NotebookLM이 바꾸지 않음)
+- 패턴 경계가 흔들리면 시간이 지나면서 일관성 무너짐
+
+---
+
 ## 3) 노트북 기반 노드 모듈 구조
 
 ### 3.1 노드 타입
 1) **Notebook Source Node**
 - 입력: outlier_url, platform, category
 - 출력: analysis_schema_id
-- 역할: **코드 기반 영상 해석** 파이프라인 실행 (NotebookLM 요약은 선택)
+- 역할: **코드 기반 영상 해석** 파이프라인 실행 → **Source Pack 생성 → NotebookLM 패턴 합성 (기본)**
 
 2) **Notebook Library Node**
 - 입력: analysis_schema_id 또는 parent_id
@@ -73,15 +109,20 @@
 - 권장 모델: Gemini 3.0 Pro (단일 모델 고정)
 - 출력은 **JSON Schema**로 강제하여 재현성을 확보한다
 
-### Step 2.5: Notebook Source Pack 생성 (자동)
+### Step 2.5: Notebook Source Pack 생성 (필수)
+- **기본 단위**: `cluster_id + temporal_phase`
 - 분석 스키마/증거/결정 요약을 **Sheets/Docx로 자동 출력**
 - NotebookLM 소스는 **이 Pack에서만** 가져오도록 제한
+- Pack 구성: cluster_summary.docx, variants_table.xlsx, evidence_digest.docx, comment_samples.md
+  - comment_samples.md는 **정제된 베스트 댓글**(언어 우선/중복 제거/태깅)만 포함
 
-### Step 3: 유사도 클러스터링 + 요약(선택)
-- 유사 패턴을 **클러스터**로 묶어 라벨링
-- NotebookLM 요약은 **클러스터 설명 보조**로만 사용
-- 예: `Cluster: Hook-2s-TextPunch` / `Scene: Kitchen-Zoom` / `Audio: Viral-120bpm`
- - (선택) Deep Research로 외부 소스 보강 (허용 도메인만)
+### Step 3: NotebookLM 패턴 합성 (기본)
+- Source Pack → NotebookLM 실행
+- **Prompt A**: Invariant Extraction (불변 규칙)
+- **Prompt B**: Mutation Strategy (변주 전략)
+- **Prompt C**: Failure Modes (실패 패턴)
+- 결과는 **DB-wrapped** 후 Notebook Library에 저장
+- (선택) Deep Research로 외부 소스 보강 (허용 도메인만)
 
 ### Step 4: Evidence Loop 결합
 - 클러스터 결과를 Evidence 요약에 연결
@@ -109,8 +150,10 @@ CREATE TABLE notebook_library (
   platform VARCHAR(50),
   category VARCHAR(50),
   analysis_schema JSONB,     -- code-based hook/scene/audio/text schema
-  summary JSONB,             -- optional NotebookLM summary
+  summary JSONB,             -- NotebookLM pattern output (required, DB-wrapped)
   cluster_id VARCHAR(100),
+  temporal_phase VARCHAR(10), -- T0~T4
+  source_pack_id UUID,        -- link to notebook_source_packs
   parent_node_id UUID,       -- optional link to Parent
   created_at TIMESTAMP
 );
@@ -151,6 +194,7 @@ CREATE TABLE template_policy (
 CREATE TABLE notebook_source_packs (
   id UUID PRIMARY KEY,
   cluster_id VARCHAR(100),
+  temporal_phase VARCHAR(10), -- T0~T4
   pack_type VARCHAR(50), -- docx | sheet
   drive_file_id TEXT,
   source_version VARCHAR(50),
@@ -170,7 +214,7 @@ CREATE TABLE notebook_source_packs (
 - **정책 업데이트 주기**
   - 주간 배치 업데이트 (Evidence Snapshot과 동기화)
 
-> LLM은 **생성 보조**, 핵심은 **템플릿 파라미터의 지속 개선**이다.
+> LLM(NotebookLM)은 **패턴 합성 엔진**, 핵심은 **템플릿 파라미터의 지속 개선**이다.
 
 ---
 
@@ -184,7 +228,7 @@ CREATE TABLE notebook_source_packs (
 
 ## 8) 리스크/정책
 - 외부 플랫폼 데이터는 **약관 준수**
-- NotebookLM 결과는 **참고/요약 레이어**로만 사용
+- NotebookLM 결과는 **DB-wrapped 패턴 자산**으로만 사용
 - 토큰/비공개 키 추출 금지
 
 ---
@@ -192,10 +236,10 @@ CREATE TABLE notebook_source_packs (
 ## 9) 적용 우선순위
 1. Notebook Library 테이블 생성
 2. Outlier → 분석 스키마 연결
-3. 클러스터링 + (선택) NotebookLM 요약 연결
-4. Capsule Output에 Notebook Library 요약 반영
-4. 템플릿 커스터마이징 로그 축적
-5. RL-lite 정책 업데이트
+3. 클러스터링 + NotebookLM 패턴 합성(필수)
+4. Capsule Output에 Notebook Library 패턴 반영
+5. 템플릿 커스터마이징 로그 축적
+6. RL-lite 정책 업데이트
 
 ---
 

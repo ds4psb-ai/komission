@@ -12,11 +12,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppHeader } from '@/components/AppHeader';
+import { StoryboardPanel } from '@/components/video/StoryboardPanel';
 import {
-    ArrowLeft, Play, ExternalLink, Bookmark, Share2, Copy, Check,
-    Target, Clock, Sparkles, Zap, Eye, Heart, TrendingUp,
+    ArrowLeft, Play, ExternalLink, Bookmark, Copy, Check,
+    Target, Clock, Sparkles, Eye, Heart, TrendingUp,
     Camera, Mic, Film, Users, Truck, MapPin, Calendar,
-    ChevronRight, Award, Star, Lock
+    ChevronRight, Award, Star, Lock, Rocket
 } from 'lucide-react';
 
 // ==================
@@ -54,8 +55,51 @@ interface VideoDetail {
     outlier_tier?: 'S' | 'A' | 'B' | 'C' | null;
     creator_avg_views?: number;
     analysis?: VideoAnalysis;
+    rawVdg?: RawVDG | null;
     hasCampaign?: boolean;
     campaignType?: 'product' | 'visit' | 'delivery';
+}
+
+// RawVDG type for Storyboard
+interface RawVDG {
+    title: string;
+    title_ko: string;
+    total_duration: number;
+    scene_count: number;
+    scenes: Array<{
+        scene_id: string;
+        scene_number: number;
+        time_start: number;
+        time_end: number;
+        duration_sec: number;
+        time_label: string;
+        role: string;
+        role_en: string;
+        summary: string;
+        summary_ko: string;
+        dialogue: string;
+        comedic_device: string[];
+        camera: {
+            shot: string;
+            shot_en: string;
+            move: string;
+            move_en: string;
+            angle: string;
+            angle_en: string;
+        };
+        location: string;
+        lighting: string;
+        lighting_en: string;
+        edit_pace: string;
+        edit_pace_en: string;
+        audio_events: Array<{
+            label: string;
+            label_en: string;
+            intensity: string;
+        }>;
+        music: string;
+        ambient: string;
+    }>;
 }
 
 // Demo Data
@@ -181,7 +225,7 @@ const DEMO_VIDEOS: Record<string, VideoDetail> = {
 function VideoEmbed({ video }: { video: VideoDetail }) {
     const [resolvedVideoId, setResolvedVideoId] = useState<string | null>(null);
     const [isResolving, setIsResolving] = useState(false);
-    const [resolveFailed, setResolveFailed] = useState(false);
+    const [, setResolveFailed] = useState(false);
 
     // Check if it's a TikTok short link
     const isShortLink = video.platform === 'tiktok' &&
@@ -284,141 +328,119 @@ function VideoEmbed({ video }: { video: VideoDetail }) {
 }
 
 // ==================
-// Viral Guide Panel
+// Viral Guide Panel (Compact - Korean)
 // ==================
 
 function ViralGuidePanel({ analysis }: { analysis?: VideoAnalysis }) {
     if (!analysis) return null;
 
     return (
-        <div className="space-y-4">
-            {/* Hook */}
+        <div className="space-y-3">
+            {/* Hook - 핵심 훅 요약 */}
             <div className="p-4 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-xl">
-                <div className="flex items-center gap-2 mb-3">
-                    <Target className="w-4 h-4 text-cyan-400" />
-                    <span className="text-sm font-bold text-white">Hook</span>
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <Target className="w-4 h-4 text-cyan-400" />
+                        <span className="text-sm font-bold text-white">🎣 훅 패턴</span>
+                    </div>
                     {analysis.hook_score && (
-                        <span className="ml-auto px-2 py-0.5 bg-cyan-500/20 rounded text-xs text-cyan-300 font-mono">
-                            {analysis.hook_score}/10
+                        <span className="px-2 py-0.5 bg-cyan-500/20 rounded text-xs text-cyan-300 font-mono">
+                            {typeof analysis.hook_score === 'number' && analysis.hook_score < 1
+                                ? `${(analysis.hook_score * 10).toFixed(1)}/10`
+                                : `${analysis.hook_score}/10`
+                            }
                         </span>
                     )}
                 </div>
-                <div className="text-lg font-bold text-white mb-1">{analysis.hook_pattern || '-'}</div>
+                <div className="text-lg font-bold text-white mb-1">
+                    {analysis.hook_pattern === 'pattern_break' ? '패턴 브레이크' :
+                        analysis.hook_pattern === 'visual_reaction' ? '시각적 리액션' :
+                            analysis.hook_pattern === 'unboxing' ? '언박싱' :
+                                analysis.hook_pattern || '-'}
+                </div>
                 {analysis.hook_duration_sec && (
                     <div className="flex items-center gap-1 text-xs text-white/60">
                         <Clock className="w-3 h-3" />
-                        {analysis.hook_duration_sec}초 내 훅 완성
+                        처음 {analysis.hook_duration_sec}초 안에 시청자 잡기
                     </div>
                 )}
             </div>
 
-            {/* Shotlist */}
-            {analysis.shotlist && (
-                <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Film className="w-4 h-4 text-violet-400" />
-                        <span className="text-sm font-bold text-white">Shotlist</span>
-                    </div>
-                    <div className="space-y-2">
-                        {analysis.shotlist.map((shot, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                                <span className="w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center text-[10px] text-violet-300 font-bold">
-                                    {i + 1}
+            {/* Visual + Audio 통합 */}
+            <div className="grid grid-cols-2 gap-2">
+                {/* Visual */}
+                {analysis.visual_patterns && analysis.visual_patterns.length > 0 && (
+                    <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <Camera className="w-3.5 h-3.5 text-pink-400" />
+                            <span className="text-xs font-bold text-white">📷 영상 기법</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                            {analysis.visual_patterns.slice(0, 4).map((p, i) => (
+                                <span key={i} className="px-1.5 py-0.5 bg-pink-500/10 border border-pink-500/30 rounded text-[10px] text-pink-300">
+                                    {p}
                                 </span>
-                                <span className="text-xs text-white/80 flex-1">{shot}</span>
-                                {analysis.timing?.[i] && (
-                                    <span className="text-[10px] text-white/40 font-mono">{analysis.timing[i]}</span>
-                                )}
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* Visual Patterns */}
-            {analysis.visual_patterns && (
-                <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Camera className="w-4 h-4 text-pink-400" />
-                        <span className="text-sm font-bold text-white">Visual</span>
+                {/* Audio */}
+                {analysis.audio_pattern && (
+                    <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <Mic className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-xs font-bold text-white">🎵 오디오</span>
+                        </div>
+                        <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded text-[10px] text-emerald-300">
+                            {analysis.audio_pattern}
+                        </span>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        {analysis.visual_patterns.map((p, i) => (
-                            <span key={i} className="px-2 py-1 bg-pink-500/10 border border-pink-500/30 rounded text-xs text-pink-300">
-                                {p}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            )}
+                )}
+            </div>
 
-            {/* Audio */}
-            {analysis.audio_pattern && (
-                <div className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2">
-                    <Mic className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs text-white/70">Audio:</span>
-                    <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded text-xs text-emerald-300">
-                        {analysis.audio_pattern}
-                    </span>
-                </div>
-            )}
-
-            {/* Do Not */}
-            {analysis.do_not && (
+            {/* 주의사항 */}
+            {analysis.do_not && analysis.do_not.length > 0 && (
                 <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-xl">
-                    <div className="text-xs text-red-300 font-bold mb-1">⛔ Don't</div>
+                    <div className="text-xs text-red-300 font-bold mb-1">⛔ 주의</div>
                     {analysis.do_not.map((item, i) => (
                         <div key={i} className="text-xs text-red-300/70">• {item}</div>
                     ))}
                 </div>
             )}
 
-            {/* Invariant - 절대 유지해야 할 요소 */}
+            {/* Invariant - 절대 유지 */}
             {analysis.invariant && analysis.invariant.length > 0 && (
-                <div className="p-4 bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-500/40 rounded-xl">
-                    <div className="flex items-center gap-2 mb-3">
-                        <div className="w-6 h-6 rounded-full bg-orange-500/20 flex items-center justify-center">
-                            <Lock className="w-3.5 h-3.5 text-orange-400" />
-                        </div>
-                        <span className="text-sm font-bold text-orange-300">🔒 이건 꼭 지켜주세요</span>
+                <div className="p-3 bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Lock className="w-3.5 h-3.5 text-orange-400" />
+                        <span className="text-xs font-bold text-orange-300">🔒 핵심 유지 요소</span>
                     </div>
-                    <div className="space-y-2">
-                        {analysis.invariant.map((item, i) => (
-                            <div key={i} className="flex items-start gap-2">
-                                <span className="w-4 h-4 mt-0.5 rounded-full bg-orange-500/30 flex items-center justify-center text-[9px] text-orange-300 font-bold shrink-0">
-                                    {i + 1}
-                                </span>
-                                <span className="text-xs text-white/90">{item}</span>
+                    <div className="space-y-1">
+                        {analysis.invariant.slice(0, 3).map((item, i) => (
+                            <div key={i} className="text-[11px] text-white/80 flex items-start gap-1.5">
+                                <span className="text-orange-400">•</span>
+                                <span>{item}</span>
                             </div>
                         ))}
-                    </div>
-                    <div className="mt-3 pt-2 border-t border-orange-500/20">
-                        <p className="text-[10px] text-orange-300/60">⚠️ 핵심 로직 변경 시 바이럴 확률 급감</p>
                     </div>
                 </div>
             )}
 
-            {/* Variable - 창의성 발휘 가능 요소 */}
+            {/* Variable - 창의성 발휘 */}
             {analysis.variable && analysis.variable.length > 0 && (
-                <div className="p-4 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-2 border-emerald-500/30 rounded-xl">
-                    <div className="flex items-center gap-2 mb-3">
-                        <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                        </div>
-                        <span className="text-sm font-bold text-emerald-300">✨ 여기서 창의력 발휘!</span>
+                <div className="p-3 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-xs font-bold text-emerald-300">✨ 변주 가능 요소</span>
                     </div>
-                    <div className="space-y-2">
-                        {analysis.variable.map((item, i) => (
-                            <div key={i} className="flex items-start gap-2">
-                                <span className="w-4 h-4 mt-0.5 rounded-full bg-emerald-500/30 flex items-center justify-center text-[9px] text-emerald-300 font-bold shrink-0">
-                                    ✓
-                                </span>
-                                <span className="text-xs text-white/90">{item}</span>
+                    <div className="space-y-1">
+                        {analysis.variable.slice(0, 3).map((item, i) => (
+                            <div key={i} className="text-[11px] text-white/80 flex items-start gap-1.5">
+                                <span className="text-emerald-400">✓</span>
+                                <span>{item}</span>
                             </div>
                         ))}
-                    </div>
-                    <div className="mt-3 pt-2 border-t border-emerald-500/20">
-                        <p className="text-[10px] text-emerald-300/60">💡 핵심 로직은 유지하면서 변주하세요</p>
                     </div>
                 </div>
             )}
@@ -534,6 +556,8 @@ export default function VideoDetailPage() {
                                 ? data.analysis.best_comment?.text
                                 : data.analysis.best_comment,
                         } : undefined,
+                        // Raw VDG for Storyboard UI
+                        rawVdg: data.raw_vdg || null,
                     });
                     setLoading(false);
                     return;
@@ -665,6 +689,11 @@ export default function VideoDetailPage() {
                             <ViralGuidePanel analysis={video.analysis} />
                         </div>
 
+                        {/* Storyboard Panel - 씬별 스토리보드 UI */}
+                        {video.rawVdg && (
+                            <StoryboardPanel rawVdg={video.rawVdg} defaultExpanded={true} />
+                        )}
+
                         {video.hasCampaign ? (
                             <div>
                                 <div className="flex items-center gap-2 mb-4">
@@ -674,12 +703,20 @@ export default function VideoDetailPage() {
                                 <CampaignPanel video={video} />
                             </div>
                         ) : (
-                            <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Users className="w-4 h-4 text-white/40" />
-                                    <span className="text-sm text-white/50">체험단 캠페인</span>
+                            <div className="p-4 bg-gradient-to-br from-violet-500/5 to-pink-500/5 border border-violet-500/20 rounded-xl">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Users className="w-4 h-4 text-violet-400" />
+                                    <span className="text-sm font-bold text-white">체험단 캠페인</span>
                                 </div>
-                                <p className="text-xs text-white/40">현재 진행 중인 체험단이 없습니다</p>
+                                <p className="text-xs text-white/50 mb-4">이 영상으로 체험단을 모집하고 싶으신가요?</p>
+                                <button
+                                    onClick={() => router.push(`/o2o/campaigns/create?video_id=${video.id}`)}
+                                    className="w-full py-3 bg-gradient-to-r from-violet-500 to-pink-500 text-white text-sm font-bold rounded-xl hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Rocket className="w-4 h-4" />
+                                    체험단 열기
+                                </button>
+                                <p className="text-[10px] text-white/30 mt-2 text-center">크리에이터들이 이 영상을 오마주합니다</p>
                             </div>
                         )}
 

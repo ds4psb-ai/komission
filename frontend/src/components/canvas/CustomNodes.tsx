@@ -1,7 +1,10 @@
 import { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
+import { useRouter } from 'next/navigation';
 import { RemixNode } from '@/lib/api';
-import { Eye, Zap, Star, Award, Diamond, BarChart, ExternalLink } from 'lucide-react';
+import { Eye, Zap, Star, Award, Diamond, BarChart, ExternalLink, Camera, Rocket } from 'lucide-react';
+import { NodeWrapper } from './NodeWrapper';
+import { HANDLE_STYLES, formatViewCount } from './utils';
 
 /**
  * CrawlerOutlierItem interface for 3-platform crawler data
@@ -23,95 +26,7 @@ export interface CrawlerOutlierItem {
     crawled_at: string;
     status: 'pending' | 'selected' | 'rejected' | 'promoted';
 }
-interface NodeWrapperProps {
-    children: React.ReactNode;
-    title: string;
-    colorClass: string;
-    status?: 'idle' | 'running' | 'done' | 'error';
-    isLocked?: boolean;  // Governance: Brand protection (Master node)
-    isVariableSlot?: boolean;  // Phase 4: Editable/customizable slot
-    viralBadge?: string; // Viral performance insight
-}
 
-const NodeWrapper = ({ children, title, colorClass, status, isLocked, isVariableSlot, viralBadge }: NodeWrapperProps) => {
-    // Governance styling: locked = gold border + glow (Master nodes)
-    const lockedStyles = isLocked
-        ? 'border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.2)]'
-        : isVariableSlot
-            ? 'border-pink-500 shadow-[0_0_25px_rgba(236,72,153,0.3)] ring-2 ring-pink-500/20'
-            : 'hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:border-white/40';
-
-    const pulsingClass = !isLocked && status !== 'done'
-        ? 'animate-[pulse_4s_ease-in-out_infinite]'
-        : '';
-
-    // Gradient header based on color class
-    const headerGradient = colorClass.includes('emerald') ? 'from-emerald-900/40 to-emerald-800/20' :
-        colorClass.includes('violet') ? 'from-violet-900/40 to-violet-800/20' :
-            colorClass.includes('pink') && isVariableSlot ? 'from-pink-900/40 to-pink-800/20' :
-                'from-cyan-900/40 to-cyan-800/20';
-
-    return (
-        <div className={`glass-panel rounded-2xl min-w-[300px] overflow-hidden border ${colorClass} ${lockedStyles} ${pulsingClass} transition-all duration-300 group`}>
-            {/* Header */}
-            <div className={`px-5 py-3 border-b bg-gradient-to-r ${headerGradient} flex items-center justify-between ${colorClass}`}>
-                <div className="flex items-center gap-2">
-                    {isLocked && <span className="text-amber-400 text-lg drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]">🔒</span>}
-                    {isVariableSlot && !isLocked && <span className="text-pink-400 text-lg drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]">🎯</span>}
-                    <span className="font-bold text-sm tracking-widest text-white/90 uppercase">{title}</span>
-                    {isVariableSlot && !isLocked && (
-                        <span className="text-[9px] px-2 py-0.5 bg-pink-500/20 text-pink-300 border border-pink-500/30 rounded-full font-bold">
-                            편집 가능
-                        </span>
-                    )}
-                </div>
-                <div className="flex gap-2 items-center">
-                    {viralBadge && (
-                        <span className="text-[10px] px-2 py-0.5 bg-pink-500/20 text-pink-300 border border-pink-500/30 rounded-full font-bold shadow-[0_0_10px_rgba(236,72,153,0.3)]">
-                            {viralBadge}
-                        </span>
-                    )}
-                    <div className="flex gap-1">
-                        {status === 'running' && (
-                            <div className="relative w-2 h-2">
-                                <div className="absolute inset-0 bg-yellow-400 rounded-full animate-ping opacity-75"></div>
-                                <div className="relative w-2 h-2 bg-yellow-500 rounded-full"></div>
-                            </div>
-                        )}
-                        {status === 'done' && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></div>}
-                        {status === 'error' && <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_#ef4444]"></div>}
-                        {!status && (
-                            <>
-                                <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
-                                <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Body */}
-            <div className="p-5 bg-black/40 backdrop-blur-2xl relative">
-                {/* Subtle Grid Background */}
-                <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-[0.03] pointer-events-none" />
-
-                {isLocked && (
-                    <div className="mb-4 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-300 font-bold text-center shadow-[inset_0_0_10px_rgba(251,191,36,0.1)]">
-                        ⚠️ 브랜드 보호 노드 - 수정 불가
-                    </div>
-                )}
-                {isVariableSlot && !isLocked && (
-                    <div className="mb-4 px-3 py-2 bg-pink-500/10 border border-pink-500/30 rounded-lg text-xs text-pink-300 font-bold text-center shadow-[inset_0_0_10px_rgba(236,72,153,0.1)]">
-                        🎯 이 슬롯을 자유롭게 수정하세요!
-                    </div>
-                )}
-                <div className="relative z-10">
-                    {children}
-                </div>
-            </div>
-        </div>
-    );
-};
 
 interface SourceNodeData {
     url?: string;
@@ -139,7 +54,7 @@ export const SourceNode = memo(({ data }: { data: SourceNodeData }) => {
                 colorClass={data.isLocked ? "border-amber-500/40" : "border-emerald-500/40"}
                 status="done"
                 isLocked={data.isLocked}
-                viralBadge={data.viralBadge || `Layer ${data.outlier.genealogy_depth + 1}`}
+                viralBadge={data.viralBadge || `Layer ${(data.outlier.genealogy_depth ?? 0) + 1}`}
             >
                 <div className="space-y-4">
                     <div className="aspect-video bg-black/60 rounded-xl overflow-hidden border border-white/10 relative group">
@@ -177,7 +92,7 @@ export const SourceNode = memo(({ data }: { data: SourceNodeData }) => {
                         </div>
                     </div>
                 </div>
-                <Handle type="source" position={Position.Right} className="!bg-emerald-500 !w-3 !h-3 !border-2 !border-black" />
+                <Handle type="source" position={Position.Right} className={HANDLE_STYLES.emerald} />
             </NodeWrapper>
         );
     }
@@ -246,6 +161,8 @@ export const SourceNode = memo(({ data }: { data: SourceNodeData }) => {
     );
 });
 
+SourceNode.displayName = 'SourceNode';
+
 interface ProcessNodeData {
     nodeId?: string;
     status?: 'idle' | 'running' | 'done' | 'error';
@@ -278,7 +195,7 @@ export const ProcessNode = memo(({ data }: { data: ProcessNodeData }) => {
 
     return (
         <NodeWrapper title="AI 프로세서" colorClass="border-violet-500/40" status={done ? 'done' : running ? 'running' : 'idle'}>
-            <Handle type="target" position={Position.Left} className="!bg-violet-500 !w-3 !h-3 !border-2 !border-black" />
+            <Handle type="target" position={Position.Left} className={HANDLE_STYLES.violet} />
             <div className="space-y-4">
                 <div className="flex justify-between items-center">
                     <span className="text-[10px] text-white/50 uppercase tracking-wider font-medium">작업</span>
@@ -311,6 +228,8 @@ export const ProcessNode = memo(({ data }: { data: ProcessNodeData }) => {
     );
 });
 
+ProcessNode.displayName = 'ProcessNode';
+
 interface OutputNodeData {
     nodeId?: string;
     onExport?: (nodeId: string) => void;
@@ -328,7 +247,7 @@ export const OutputNode = memo(({ data }: { data: OutputNodeData }) => {
 
     return (
         <NodeWrapper title="최종 템플릿" colorClass="border-cyan-500/40">
-            <Handle type="target" position={Position.Left} className="!bg-cyan-500 !w-3 !h-3 !border-2 !border-black" />
+            <Handle type="target" position={Position.Left} className={HANDLE_STYLES.cyan} />
             <div className="space-y-4">
                 <div className="aspect-video bg-black rounded-xl border border-white/10 flex items-center justify-center relative group cursor-pointer overflow-hidden shadow-2xl">
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/40 via-transparent to-transparent opacity-60"></div>
@@ -366,6 +285,8 @@ export const OutputNode = memo(({ data }: { data: OutputNodeData }) => {
     );
 });
 
+OutputNode.displayName = 'OutputNode';
+
 interface NotebookNodeData {
     summary?: string;
     clusterId?: string;
@@ -378,7 +299,7 @@ export const NotebookNode = memo(({ data }: { data: NotebookNodeData }) => {
 
     return (
         <NodeWrapper title="Notebook Library" colorClass="border-sky-500/40">
-            <Handle type="target" position={Position.Left} className="!bg-sky-500 !w-3 !h-3 !border-2 !border-black" />
+            <Handle type="target" position={Position.Left} className={HANDLE_STYLES.sky} />
             <div className="space-y-3">
                 <div className="text-[10px] text-sky-300 uppercase tracking-widest">클러스터</div>
                 <div className="text-xs text-white/80 font-mono bg-sky-500/10 border border-sky-500/20 px-3 py-2 rounded-lg">
@@ -400,10 +321,12 @@ export const NotebookNode = memo(({ data }: { data: NotebookNodeData }) => {
                     </a>
                 )}
             </div>
-            <Handle type="source" position={Position.Right} className="!bg-sky-500 !w-3 !h-3 !border-2 !border-black" />
+            <Handle type="source" position={Position.Right} className={HANDLE_STYLES.sky} />
         </NodeWrapper>
     );
 });
+
+NotebookNode.displayName = 'NotebookNode';
 
 // Tier configuration for CrawlerOutlierNode
 const CRAWLER_TIER_CONFIG = {
@@ -419,12 +342,7 @@ const CRAWLER_PLATFORM_CONFIG = {
     instagram: { label: 'Reels', icon: '📷', gradient: 'from-purple-600/30 to-orange-600/20' },
 };
 
-// Format large numbers (e.g., 1500000 -> 1.5M)
-function formatViewCount(num: number): string {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
-}
+// Note: formatViewCount is now imported from ./utils
 
 interface CrawlerOutlierNodeData {
     outlier: CrawlerOutlierItem;
@@ -527,6 +445,7 @@ export const CrawlerOutlierNode = memo(({ data }: { data: CrawlerOutlierNodeData
     );
 });
 
+CrawlerOutlierNode.displayName = 'CrawlerOutlierNode';
 
 /**
  * Template Seed Node - Opal-generated template seeds
@@ -559,65 +478,168 @@ export const TemplateSeedNode = memo(({ data }: { data: TemplateSeedNodeData }) 
     const typeConfig = TEMPLATE_TYPE_CONFIG[seed.template_type] || TEMPLATE_TYPE_CONFIG.capsule;
 
     return (
-        <div className="w-[280px] p-4 rounded-xl bg-black/80 backdrop-blur border-2 border-dashed border-emerald-500/50">
-            {/* Header with Seed Badge */}
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
+        <NodeWrapper
+            title={`${typeConfig.icon} Template Seed`}
+            colorClass="border-emerald-500/40"
+            status="idle"
+        >
+            <div className="space-y-3">
+                {/* Type Badge */}
+                <div className="flex items-center justify-between">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${typeConfig.bgClass} ${typeConfig.colorClass}`}>
-                        {typeConfig.icon} Seed
+                        {typeConfig.label}
                     </span>
-                    <span className={`text-xs font-medium ${typeConfig.colorClass}`}>{typeConfig.label}</span>
+                    <span className="text-[9px] text-white/30 font-mono">{seed.seed_id?.slice(0, 12)}...</span>
                 </div>
-                <span className="text-[9px] text-white/30 font-mono">{seed.seed_id?.slice(0, 12)}...</span>
-            </div>
 
-            {/* Hook */}
-            {seed.hook && (
-                <div className="mb-3">
-                    <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Hook</div>
-                    <div className="text-sm text-white/90 leading-snug">{seed.hook}</div>
-                </div>
-            )}
-
-            {/* Shotlist Preview */}
-            {seed.shotlist && seed.shotlist.length > 0 && (
-                <div className="mb-3">
-                    <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Shots ({seed.shotlist.length})</div>
-                    <div className="space-y-1">
-                        {seed.shotlist.slice(0, 3).map((shot, i) => (
-                            <div key={i} className="text-[11px] text-white/60 truncate flex items-center gap-1">
-                                <span className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[9px]">{i + 1}</span>
-                                {shot}
-                            </div>
-                        ))}
-                        {seed.shotlist.length > 3 && (
-                            <div className="text-[10px] text-white/40">+{seed.shotlist.length - 3} more...</div>
-                        )}
+                {/* Hook */}
+                {seed.hook && (
+                    <div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Hook</div>
+                        <div className="text-sm text-white/90 leading-snug">{seed.hook}</div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* Timing */}
-            {seed.timing && seed.timing.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                    {seed.timing.slice(0, 5).map((t, i) => (
-                        <span key={i} className="px-1.5 py-0.5 bg-white/5 rounded text-[9px] text-white/50 font-mono">{t}</span>
-                    ))}
-                </div>
-            )}
+                {/* Shotlist Preview */}
+                {seed.shotlist && seed.shotlist.length > 0 && (
+                    <div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Shots ({seed.shotlist.length})</div>
+                        <div className="space-y-1">
+                            {seed.shotlist.slice(0, 3).map((shot, i) => (
+                                <div key={i} className="text-[11px] text-white/60 truncate flex items-center gap-1">
+                                    <span className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[9px]">{i + 1}</span>
+                                    {shot}
+                                </div>
+                            ))}
+                            {seed.shotlist.length > 3 && (
+                                <div className="text-[10px] text-white/40">+{seed.shotlist.length - 3} more...</div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
-            {/* Apply Button */}
-            {onApply && (
-                <button
-                    onClick={() => onApply(seed)}
-                    className="w-full py-2 mt-2 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-bold hover:bg-emerald-500/30 transition-all"
-                >
-                    ✨ Apply Seed
-                </button>
-            )}
+                {/* Timing */}
+                {seed.timing && seed.timing.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                        {seed.timing.slice(0, 5).map((t, i) => (
+                            <span key={i} className="px-1.5 py-0.5 bg-white/5 rounded text-[9px] text-white/50 font-mono">{t}</span>
+                        ))}
+                    </div>
+                )}
 
-            <Handle type="target" position={Position.Left} className="!bg-emerald-500 !w-3 !h-3 !border-2 !border-black" />
-            <Handle type="source" position={Position.Right} className="!bg-emerald-500 !w-3 !h-3 !border-2 !border-black" />
-        </div>
+                {/* Apply Button */}
+                {onApply && (
+                    <button
+                        onClick={() => onApply(seed)}
+                        className="w-full py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-bold hover:bg-emerald-500/30 hover:border-emerald-500/60 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)] transition-all"
+                    >
+                        ✨ Apply Seed
+                    </button>
+                )}
+            </div>
+            <Handle type="target" position={Position.Left} className={HANDLE_STYLES.emerald} />
+            <Handle type="source" position={Position.Right} className={HANDLE_STYLES.emerald} />
+        </NodeWrapper>
     );
 });
+
+TemplateSeedNode.displayName = 'TemplateSeedNode';
+
+export interface GuideNodeData {
+    hook: string;
+    shotlist: string[];
+    audio: string;
+    scene: string;
+    timing: string[];
+    do_not?: string[];
+    nodeId?: string;  // For navigation context
+}
+
+export const GuideNode = memo(({ data }: { data: GuideNodeData }) => {
+    const router = useRouter();
+    return (
+        <NodeWrapper
+            title="Guide: Short-Form"
+            colorClass="border-cyan-500/40"
+            status="done"
+        >
+            <div className="space-y-4">
+                {/* Hook Section */}
+                <div>
+                    <div className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider mb-1">Hook (0-2s)</div>
+                    <div className="p-4 bg-gradient-to-br from-cyan-950/30 to-black/20 border border-cyan-500/20 rounded-xl text-sm text-cyan-50 font-bold leading-relaxed shadow-inner">
+                        "{data.hook}"
+                    </div>
+                </div>
+
+                {/* Shotlist */}
+                <div>
+                    <div className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Sequence</div>
+                    <div className="space-y-1">
+                        {data.shotlist.map((shot, i) => (
+                            <div key={i} className="flex gap-3 items-start p-2 bg-black/20 rounded-lg hover:bg-white/5 transition-colors">
+                                <span className="text-[10px] text-cyan-500 font-mono mt-0.5">{(i + 1).toString().padStart(2, '0')}</span>
+                                <div className="space-y-1">
+                                    <div className="text-xs text-white/90 leading-snug">{shot}</div>
+                                    {data.timing?.[i] && (
+                                        <span className="inline-block px-1.5 py-0.5 rounded bg-white/10 text-[9px] text-white/40 font-mono">
+                                            {data.timing[i]}s
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Audio & Mood */}
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 border border-white/10 rounded-lg bg-white/5">
+                        <div className="text-[9px] text-white/40 uppercase mb-1">Audio</div>
+                        <div className="text-xs text-cyan-300 truncate">🎵 {data.audio}</div>
+                    </div>
+                    <div className="p-2 border border-white/10 rounded-lg bg-white/5">
+                        <div className="text-[9px] text-white/40 uppercase mb-1">Scene</div>
+                        <div className="text-xs text-purple-300 truncate">🎬 {data.scene}</div>
+                    </div>
+                </div>
+
+                {/* Do Not */}
+                {data.do_not && data.do_not.length > 0 && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                        <div className="text-[9px] text-red-400 font-bold uppercase mb-1">Warning (Do Not)</div>
+                        <ul className="list-disc list-inside text-xs text-red-300/80 space-y-1">
+                            {data.do_not.map((item, i) => (
+                                <li key={i}>{item}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {/* Next Step CTA */}
+                <div className="pt-3 border-t border-white/10 space-y-2">
+                    <button
+                        onClick={() => router.push('/wizard')}
+                        className="w-full py-3 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-white text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)]"
+                    >
+                        <Camera className="w-4 h-4" />
+                        🎬 Shoot 시작하기
+                    </button>
+                    {data.nodeId && (
+                        <button
+                            onClick={() => router.push(`/remix/${data.nodeId}`)}
+                            className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+                        >
+                            <ExternalLink className="w-3 h-3" />
+                            상세 편집 페이지
+                        </button>
+                    )}
+                </div>
+            </div>
+            <Handle type="target" position={Position.Left} className={HANDLE_STYLES.cyan} />
+            <Handle type="source" position={Position.Right} className={HANDLE_STYLES.cyan} />
+        </NodeWrapper>
+    );
+});
+
+GuideNode.displayName = 'GuideNode';

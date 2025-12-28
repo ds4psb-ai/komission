@@ -12,7 +12,7 @@
 - Drive 폴더 구조 확정: Evidence/Decision/Experiment/O2O
 - 카테고리/패턴 택소노미 고정 (beauty/meme/etc + hook/scene/audio/subtitle/pacing)
 - 영상 해석 파이프라인 범위 확정 (코드 기반 스키마 추출)
-- NotebookLM/Opal 사용 범위 확정 (요약/RAG만, DB 래핑)
+- NotebookLM/Opal 사용 범위 확정 (Pattern Engine, DB 래핑)
 - Capsule IO 계약 정의 (입력/출력/로그)
  - Notebook Library 테이블 설계 확정 (분석 스키마/클러스터/요약)
 
@@ -29,7 +29,7 @@
 1. ✅ Outlier 수동 입력 API 정리 (링크 기반) - `/api/v1/outliers/items`
 2. ✅ 중복 제거 규칙 확정 (URL hash) - `external_id` 기준
 3. [ ] DB → Sheet 동기화 스크립트 연결 (선택)
-4. ✅ 영상 해석(코드) + 클러스터링 → **Notebook Library(DB)** 적재 (2025-12-25)
+4. ✅ 영상 해석(코드) + 클러스터링 → **NotebookLM(Pattern Engine)** 적재 (2025-12-25)
    - VDG 스키마 + Gemini Pipeline
    - microbeat sequence 유사도 점수 계산
 4.1 ✅ JSON Schema 출력 강제 (Structured Output)

@@ -10,10 +10,13 @@ from typing import Optional
 
 def utcnow() -> datetime:
     """
-    Return current UTC datetime with timezone info.
-    Replaces deprecated datetime.utcnow() (Python 3.12+)
+    Return current UTC datetime as naive (no timezone info).
+    
+    PostgreSQL uses TIMESTAMP WITHOUT TIME ZONE, so we need naive datetimes.
+    Uses datetime.now(timezone.utc).replace(tzinfo=None) to get accurate UTC
+    time while maintaining DB compatibility.
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def utc_date_today() -> datetime:

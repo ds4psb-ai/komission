@@ -10,6 +10,16 @@ from app.database import Base, get_db
 from app.config import settings
 from app.services.cache import cache
 
+
+# pytest-asyncio event loop fixture
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create event loop for session scope to avoid event loop cleanup issues."""
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
+
 # Async Database URL
 TEST_DATABASE_URL = (
     f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"

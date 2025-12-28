@@ -10,6 +10,7 @@ import uuid
 import enum
 
 from app.database import Base
+from app.utils.time import utcnow
 
 
 class NodeLayer(str, enum.Enum):
@@ -39,6 +40,127 @@ class O2OApplicationStatus(str, enum.Enum):
     REJECTED = "rejected"
 
 
+# ==================
+# P0-1: RUN/ARTIFACT/IDEMPOTENCY LAYER (PEGL v1.0)
+# ==================
+
+class RunStatus(str, enum.Enum):
+    """파이프라인 실행 상태"""
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class RunType(str, enum.Enum):
+    """파이프라인 실행 유형"""
+    CRAWLER = "crawler"
+    ANALYSIS = "analysis"
+    CLUSTERING = "clustering"
+    EVIDENCE = "evidence"
+    SOURCE_PACK = "source_pack"
+    PATTERN_SYNTHESIS = "pattern_synthesis"
+    DECISION = "decision"
+    BANDIT = "bandit"
+
+
+class Run(Base):
+    """
+    파이프라인 실행 기록 (PEGL Phase 0 핵심)
+    - 모든 파이프라인은 Run을 생성해야 함
+    - idempotency_key로 중복 실행 방지
+    - 실패 시 원인 파악 1분 이내 목표
+    """
+    __tablename__ = "runs"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)  # 사람 친화적 ID
+    
+    # 실행 유형 및 상태
+    run_type: Mapped[str] = mapped_column(SQLEnum(RunType))
+    status: Mapped[str] = mapped_column(SQLEnum(RunStatus), default=RunStatus.QUEUED)
+    
+    # Idempotency (동일 입력 재실행 방지)
+    idempotency_key: Mapped[str] = mapped_column(String(64), index=True)  # SHA256 of inputs
+    inputs_hash: Mapped[str] = mapped_column(String(64))  # SHA256 of canonical inputs
+    inputs_json: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)  # 원본 입력
+    
+    # 실행 시간
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    # 결과 요약
+    result_summary: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_traceback: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # 메타데이터
+    triggered_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # "cron", "manual", "api"
+    parent_run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+    )  # 중첩 실행용
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    
+    # Relationships
+    artifacts: Mapped[List["Artifact"]] = relationship("Artifact", back_populates="run")
+    parent_run: Mapped[Optional["Run"]] = relationship("Run", remote_side=[id])
+
+
+class ArtifactType(str, enum.Enum):
+    """아티팩트 유형"""
+    RAW_DATA = "raw_data"
+    ANALYSIS_SCHEMA = "analysis_schema"
+    CLUSTER_RESULT = "cluster_result"
+    SOURCE_PACK = "source_pack"
+    PATTERN_LIBRARY = "pattern_library"
+    EVIDENCE_SNAPSHOT = "evidence_snapshot"
+    DECISION_OBJECT = "decision_object"
+    TRANSCRIPT = "transcript"
+
+
+class Artifact(Base):
+    """
+    파이프라인 산출물 (PEGL Phase 0 핵심)
+    - 모든 산출물은 Artifact로 추적
+    - storage_path로 실제 데이터 위치 참조
+    - schema_version으로 버전 관리
+    """
+    __tablename__ = "artifacts"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    artifact_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)  # 사람 친화적 ID
+    
+    # Run 연결
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("runs.id"), index=True)
+    
+    # 아티팩트 정보
+    artifact_type: Mapped[str] = mapped_column(SQLEnum(ArtifactType))
+    name: Mapped[str] = mapped_column(String(255))
+    
+    # 저장 위치
+    storage_type: Mapped[str] = mapped_column(String(50))  # "db", "s3", "drive", "local"
+    storage_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # 버전 관리
+    schema_version: Mapped[str] = mapped_column(String(20), default="v1.0")
+    content_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # SHA256 of content
+    
+    # 실제 데이터 (작은 데이터는 직접 저장)
+    data_json: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    
+    # 메타데이터
+    size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    mime_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    
+    # Relationships
+    run: Mapped["Run"] = relationship("Run", back_populates="artifacts")
+
 class User(Base):
     __tablename__ = "users"
 
@@ -59,8 +181,8 @@ class User(Base):
     total_royalty_received: Mapped[int] = mapped_column(Integer, default=0)  # Lifetime royalty earned
     pending_royalty: Mapped[int] = mapped_column(Integer, default=0)         # Unsettled royalty
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
     # Relationships
     remix_nodes: Mapped[List["RemixNode"]] = relationship("RemixNode", back_populates="creator")
@@ -111,8 +233,8 @@ class RemixNode(Base):
     total_fork_count: Mapped[int] = mapped_column(Integer, default=0)         # Number of times forked
     total_royalty_earned: Mapped[int] = mapped_column(Integer, default=0)     # Total points generated for creator
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
     # Relationships
     creator: Mapped["User"] = relationship("User", back_populates="remix_nodes")
@@ -138,7 +260,7 @@ class UserVideo(Base):
     certified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     points_awarded: Mapped[int] = mapped_column(Integer, default=0)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class O2OLocation(Base):
@@ -170,7 +292,7 @@ class O2OLocation(Base):
     active_end: Mapped[datetime] = mapped_column(DateTime)
     max_participants: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class O2OCampaign(Base):
@@ -193,7 +315,7 @@ class O2OCampaign(Base):
     active_end: Mapped[datetime] = mapped_column(DateTime)
     max_participants: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class O2OApplication(Base):
@@ -206,8 +328,8 @@ class O2OApplication(Base):
     status: Mapped[str] = mapped_column(SQLEnum(O2OApplicationStatus), default=O2OApplicationStatus.APPLIED)
     shipment_tracking: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class Pipeline(Base):
@@ -223,8 +345,8 @@ class Pipeline(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     
     # Metadata
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
     # Relationships
     creator: Mapped["User"] = relationship("User", back_populates="pipelines")
@@ -274,7 +396,7 @@ class NodeRoyalty(Base):
     settled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     
     # Metadata
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     # Relationships
     creator: Mapped["User"] = relationship("User", foreign_keys=[creator_id], backref="royalties_received")
@@ -306,7 +428,7 @@ class UserBadge(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
     badge_type: Mapped[str] = mapped_column(SQLEnum(BadgeType))
-    earned_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    earned_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     # Optional context (e.g., which node earned this badge)
     context_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True)
@@ -329,7 +451,7 @@ class UserStreak(Base):
     # K-Points earned from streaks
     streak_points_earned: Mapped[int] = mapped_column(Integer, default=0)
     
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class MissionType(str, enum.Enum):
@@ -381,7 +503,7 @@ class PatternPrediction(Base):
     verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     verification_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # "tiktok_api" | "youtube_api" | "manual"
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class PatternConfidence(Base):
@@ -403,8 +525,8 @@ class PatternConfidence(Base):
     confidence_score: Mapped[float] = mapped_column(default=0.5)  # 0.0 ~ 1.0 (높을수록 신뢰)
     
     # 메타데이터
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    last_updated: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    last_updated: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 # ==================
@@ -429,7 +551,7 @@ class OutlierSource(Base):
     crawl_interval_hours: Mapped[int] = mapped_column(Integer, default=24)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     # Relationships
     items: Mapped[List["OutlierItem"]] = relationship("OutlierItem", back_populates="source")
@@ -490,9 +612,25 @@ class OutlierItem(Base):
     # Best Comments (바이럴 인간 지표)
     best_comments: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
     # [{"text": "...", "likes": 1000, "lang": "ko", "translation_en": "..."}, ...]
+    comments_missing_reason: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)  # blocked, no_comments, timeout
     
-    crawled_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # P0-2: Raw 데이터 보관 (원본 재현성 보장)
+    raw_payload: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)  # 크롤링 원본
+    canonical_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # 정규화된 URL
+    run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+    )  # 수집 Run 연결
+    
+    # P0-4: Real upload date from platform (distinct from crawled_at)
+    upload_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 영상 실제 업로드일
+    
+    # P0-5: VDG Quality Score (vdg_quality_validator.py)
+    vdg_quality_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # 0.0 ~ 1.0
+    vdg_quality_valid: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    vdg_quality_issues: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)  # ["issue1", "issue2", ...]
+    
+    crawled_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
     
     # Relationships
     source: Mapped["OutlierSource"] = relationship("OutlierSource", back_populates="items")
@@ -525,7 +663,7 @@ class MetricDaily(Base):
     # 데이터 소스
     data_source: Mapped[str] = mapped_column(String(50), default="manual")  # manual, api, crawler
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     # Relationships
     node: Mapped["RemixNode"] = relationship("RemixNode", backref="daily_metrics")
@@ -542,7 +680,7 @@ class EvidenceSnapshot(Base):
     parent_node_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("remix_nodes.id"), index=True)
     
     # 스냅샷 기간
-    snapshot_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    snapshot_date: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     period: Mapped[str] = mapped_column(String(10))  # "4w", "12w", "1y"
     
     # 집계 데이터 (JSONB)
@@ -563,7 +701,14 @@ class EvidenceSnapshot(Base):
     sheet_synced: Mapped[bool] = mapped_column(Boolean, default=False)
     sheet_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Phase E: NotebookLM Citations Integration
+    notebooklm_citation: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Original citation from NLM
+    synthesis_source: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # "notebooklm_data_table", "pattern_synthesis"
+    synthesis_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("pattern_syntheses.id"), nullable=True
+    )  # Link to PatternSynthesis
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     # Relationships
     parent_node: Mapped["RemixNode"] = relationship("RemixNode", backref="evidence_snapshots")
@@ -571,7 +716,7 @@ class EvidenceSnapshot(Base):
 
 class NotebookLibraryEntry(Base):
     """
-    NotebookLM 요약 결과를 DB에 래핑한 라이브러리 엔트리
+    NotebookLM Pattern Engine 결과를 DB에 래핑한 라이브러리 엔트리
     + 코드 기반 분석 스키마 (15_FINAL_ARCHITECTURE.md 기반)
     """
     __tablename__ = "notebook_library"
@@ -580,10 +725,15 @@ class NotebookLibraryEntry(Base):
     source_url: Mapped[str] = mapped_column(Text)
     platform: Mapped[str] = mapped_column(String(50))
     category: Mapped[str] = mapped_column(String(50))
-    summary: Mapped[dict] = mapped_column(JSONB)
+    summary: Mapped[dict] = mapped_column(JSONB)  # NotebookLM Pattern Engine 결과 (필수, DB-wrapped)
     cluster_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     parent_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True
+    )
+    
+    # Source Pack 연결 (PEGL v1.0)
+    source_pack_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("notebook_source_packs.id"), nullable=True
     )
     
     # NEW: 코드 기반 분석 스키마 (Gemini 3.0 Pro Structured Output)
@@ -596,7 +746,7 @@ class NotebookLibraryEntry(Base):
     novelty_decay_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     burstiness_index: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     parent_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode")
 
@@ -624,12 +774,150 @@ class PatternCluster(Base):
         UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True
     )
     
+    # Temporal Recurrence / Pattern Lineage (v1)
+    ancestor_cluster_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)  # 조상 클러스터 ID
+    recurrence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # 재등장 점수 (0~1)
+    recurrence_count: Mapped[int] = mapped_column(Integer, default=0)  # 재등장 횟수
+    origin_cluster_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # 최초 기원 클러스터
+    last_recurrence_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 마지막 재등장 시점
+    
     # 메타데이터
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
     
     # Relationships
     representative_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode")
+
+
+# ==================
+# TEMPORAL RECURRENCE / PATTERN LINEAGE (v1)
+# ==================
+
+class RecurrenceLinkStatus(str, enum.Enum):
+    """재등장 링크 상태"""
+    CANDIDATE = "candidate"    # 후보 (임계값 0.80~0.88)
+    CONFIRMED = "confirmed"    # 확정 (임계값 ≥0.88 + 하드게이트 2/3)
+    REJECTED = "rejected"      # 기각
+
+
+class PatternRecurrenceLink(Base):
+    """
+    패턴 재등장 링크 (Temporal Recurrence v1)
+    과거 패턴과 현재 패턴의 유사성을 추적
+    
+    - confirmed만 L2 리랭커에 반영
+    - candidate는 Shadow Mode로 DB에만 기록
+    - 2회 이상 반복 매칭 시 confirmed로 승격
+    """
+    __tablename__ = "pattern_recurrence_links"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # 관계 클러스터
+    cluster_id_current: Mapped[str] = mapped_column(String(100), index=True)  # 현재 클러스터
+    cluster_id_ancestor: Mapped[str] = mapped_column(String(100), index=True)  # 과거 조상 클러스터
+    
+    # 상태
+    status: Mapped[str] = mapped_column(SQLEnum(RecurrenceLinkStatus), default=RecurrenceLinkStatus.CANDIDATE)
+    
+    # Recurrence Score 및 피처 (v1 공식)
+    # recurrence_score = 0.35*microbeat + 0.20*hook_genome + 0.15*focus_window + 0.10*audio_format + 0.10*comment_sig + 0.10*product_slot
+    recurrence_score: Mapped[float] = mapped_column(Float, default=0.0)
+    microbeat_sim: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    hook_genome_sim: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    focus_window_sim: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    audio_format_sim: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    comment_signature_sim: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    product_slot_sim: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    # 증거
+    evidence_count: Mapped[int] = mapped_column(Integer, default=1)  # 매칭 횟수 (2회 이상 → confirmed 승격 조건)
+    trigger_run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+    )  # 트리거 Run
+    feature_snapshot: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)  # 피처 스냅샷
+    
+    # 승격 정보
+    promotion_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # "2+ matches", "score >= 0.90 + hard_gate"
+    
+    # 타임스탬프
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+# ==================
+# P0-3: VDG EDGE (PEGL v1.0)
+# ==================
+
+class VDGEdgeStatus(str, enum.Enum):
+    """VDG Edge 상태"""
+    CANDIDATE = "candidate"    # 후보 (자동 생성)
+    CONFIRMED = "confirmed"    # 확정 (증거 기반)
+    REJECTED = "rejected"      # 기각
+
+
+class VDGEdgeType(str, enum.Enum):
+    """VDG Edge 관계 유형"""
+    FORK = "fork"              # 직접 포크
+    VARIATION = "variation"    # 변주 (동일 패턴)
+    INSPIRED_BY = "inspired_by"  # 영감 (간접 관계)
+
+
+class VDGEdge(Base):
+    """
+    VDG 관계 그래프 엣지 (PEGL Phase 0 핵심)
+    - Parent-Child 관계를 증거 기반으로 추적
+    - candidate → confirmed 상태 전이는 Evidence Loop에서만
+    - confidence는 자동 계산, evidence_json에 근거 저장
+    """
+    __tablename__ = "vdg_edges"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # 관계 노드
+    parent_node_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("remix_nodes.id"), index=True
+    )
+    child_node_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("remix_nodes.id"), index=True
+    )
+    
+    # 관계 유형 및 상태
+    edge_type: Mapped[str] = mapped_column(SQLEnum(VDGEdgeType), default=VDGEdgeType.FORK)
+    edge_status: Mapped[str] = mapped_column(SQLEnum(VDGEdgeStatus), default=VDGEdgeStatus.CANDIDATE)
+    
+    # 신뢰도 및 증거
+    confidence: Mapped[float] = mapped_column(Float, default=0.5)  # 0.0 ~ 1.0
+    evidence_json: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    # {
+    #   "similarity_score": 0.85,
+    #   "matching_patterns": ["hook-2s-text", "audio-trending"],
+    #   "temporal_distance_days": 7,
+    #   "performance_lift": "+35%"
+    # }
+    
+    # 확정 정보
+    confirmed_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    confirmation_method: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # "auto", "manual"
+    
+    # Run 연결
+    run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+    )  # 생성 Run
+    
+    # 메타데이터
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    
+    # Relationships
+    parent_node: Mapped["RemixNode"] = relationship("RemixNode", foreign_keys=[parent_node_id])
+    child_node: Mapped["RemixNode"] = relationship("RemixNode", foreign_keys=[child_node_id])
+    confirmer: Mapped[Optional["User"]] = relationship("User", foreign_keys=[confirmed_by])
 
 
 # ==================
@@ -658,7 +946,7 @@ class TemplateSeed(Base):
     seed_json: Mapped[dict] = mapped_column(JSONB)  # 템플릿 시드 JSON
     
     # 메타데이터
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     # Relationships
     parent_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode")
@@ -680,6 +968,12 @@ class BehaviorEventType(str, enum.Enum):
     EXPORT = "export"
     QUEST_APPLY = "quest_apply"
     CALIBRATION_CHOICE = "calibration_choice"
+    # Week 2: 크리에이터 활용 추적
+    GUIDE_VIEW = "guide_view"           # 가이드 페이지 방문
+    REMIX_GUIDE_CLICK = "remix_guide_click"  # remix_suggestions 클릭
+    CAPSULE_BRIEF_VIEW = "capsule_brief_view"  # capsule_brief 뷰
+    VIDEO_PRODUCTION_START = "video_production_start"  # 영상 제작 시작
+    VIDEO_PRODUCTION_COMPLETE = "video_production_complete"  # 영상 제작 완료
 
 
 class CreatorBehaviorEvent(Base):
@@ -701,7 +995,7 @@ class CreatorBehaviorEvent(Base):
     payload_json: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     
     # 메타데이터
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
 
 
 class CreatorStyleFingerprint(Base):
@@ -721,7 +1015,7 @@ class CreatorStyleFingerprint(Base):
     
     # 메타데이터
     version: Mapped[str] = mapped_column(String(20), default="v1.0")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class CalibrationChoice(str, enum.Enum):
@@ -749,7 +1043,7 @@ class CreatorCalibrationChoice(Base):
     selected: Mapped[str] = mapped_column(SQLEnum(CalibrationChoice))
     
     # 메타데이터
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 # ==================
@@ -786,7 +1080,7 @@ class TemplateVersion(Base):
     
     # 메타데이터
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     # Relationships
     parent_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode")
@@ -832,7 +1126,7 @@ class TemplateFeedback(Base):
     time_spent_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     
     # 메타데이터
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     # Relationships
     template_version: Mapped[Optional["TemplateVersion"]] = relationship("TemplateVersion")
@@ -875,8 +1169,8 @@ class EvidenceBoard(Base):
     status: Mapped[str] = mapped_column(SQLEnum(EvidenceBoardStatus), default=EvidenceBoardStatus.DRAFT)
     
     # Metadata
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
     concluded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     
     # Relationships
@@ -908,7 +1202,7 @@ class EvidenceBoardItem(Base):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     # Metadata
-    added_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    added_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     # Relationships
     board: Mapped["EvidenceBoard"] = relationship("EvidenceBoard", back_populates="items")
@@ -922,23 +1216,391 @@ class EvidenceBoardItem(Base):
 
 class NotebookSourcePack(Base):
     """
-    NotebookLM Source Pack 기록
-    클러스터별 생성된 Source Pack을 추적하여 NotebookLM 입력 일관성 보장
+    NotebookLM Source Pack 기록 (PEGL v1.0 업데이트)
+    클러스터 + temporal_phase 단위로 Source Pack 관리
+    - 패턴 경계는 VDG/DB 고정 원칙에 따라 cluster_id 기준
+    - temporal_phase로 시간대별 패턴 품질 변화 추적
     """
     __tablename__ = "notebook_source_packs"
     
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # 핵심 식별자: cluster_id + temporal_phase
     cluster_id: Mapped[str] = mapped_column(String(100), index=True)
+    temporal_phase: Mapped[str] = mapped_column(String(20), index=True)  # "early", "growth", "mature", "decay"
     
     # Pack 타입 및 파일 정보
     pack_type: Mapped[str] = mapped_column(String(50))  # "sheet" | "docx"
     drive_file_id: Mapped[str] = mapped_column(String(100))  # Google Drive file ID
     drive_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Full URL for convenience
     
+    # Idempotency (PEGL P0 기준)
+    inputs_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # SHA256 of input entries
+    run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+    )  # 생성 Run 연결
+    
     # 버전 관리
     source_version: Mapped[str] = mapped_column(String(50), default="v1.0")  # Pack 생성 시 스키마 버전
     entry_count: Mapped[int] = mapped_column(Integer, default=0)  # 포함된 엔트리 수
     
+    # Phase C: Multi-Output Protocol (SoR)
+    output_targets: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # "creator,business,ops"
+    pack_mode: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # "standard" | "mega"
+    schema_version: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # "v3.3"
+    
+    # Phase D: NotebookLM Integration
+    notebook_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # Automation linkage
+    
     # 메타데이터
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+# ==================
+# P0-4: PATTERN LIBRARY (PEGL v1.0)
+# ==================
+
+class PatternLibrary(Base):
+    """
+    패턴 라이브러리 (PEGL v1.0 핵심)
+    NotebookLM Pattern Engine의 출력을 DB-wrapped로 저장
+    
+    - invariant_rules: 불변 규칙 (이 패턴의 핵심)
+    - mutation_strategy: 변주 포인트 (이 패턴에서 변주 가능한 요소)
+    - citations: 출처 (Source Pack의 어느 항목에서 추출했는지)
+    """
+    __tablename__ = "pattern_library"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pattern_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)  # "tiktok_beauty_hook2s_v1"
+    
+    # Source Pack 연결
+    source_pack_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("notebook_source_packs.id"), nullable=True
+    )
+    
+    # 패턴 범위 (VDG/DB 패턴 경계 원칙)
+    cluster_id: Mapped[str] = mapped_column(String(100), index=True)
+    temporal_phase: Mapped[str] = mapped_column(String(20), index=True)  # "early", "growth", "mature", "decay"
+    platform: Mapped[str] = mapped_column(String(50))  # "tiktok", "instagram", "youtube"
+    category: Mapped[str] = mapped_column(String(50))  # "beauty", "food", "meme"
+    
+    # Pattern Engine 출력 (NotebookLM 결과)
+    invariant_rules: Mapped[dict] = mapped_column(JSONB)
+    # {
+    #   "hook": {"type": "text_punch", "duration_sec": 2, "required": true},
+    #   "music": {"genre": "trending_kpop", "bpm_range": [120, 140]},
+    #   "pacing": {"cuts_per_10sec": 5}
+    # }
+    
+    mutation_strategy: Mapped[dict] = mapped_column(JSONB)
+    # {
+    #   "modifiable": ["background_color", "font_style", "hook_text_content"],
+    #   "constrained": ["hook_duration", "music_genre"],
+    #   "forbidden": ["remove_hook", "slow_pacing"]
+    # }
+    
+    citations: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    # [
+    #   {"source_entry_id": "...", "context": "Best performing variant with +350% growth"},
+    #   {"source_entry_id": "...", "context": "Consistent hook pattern across 12 variants"}
+    # ]
+    
+    # 리비전 관리
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    previous_revision_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("pattern_library.id"), nullable=True
+    )
+    
+    # 성능 메타데이터 (추후 업데이트)
+    sample_count: Mapped[int] = mapped_column(Integer, default=0)  # 기반 샘플 수
+    avg_success_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # 성공률
+    confidence_score: Mapped[float] = mapped_column(Float, default=0.5)  # 신뢰도
+    
+    # Run 연결
+    run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+    )
+    
+    # 메타데이터
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    
+    # Relationships
+    source_pack: Mapped[Optional["NotebookSourcePack"]] = relationship("NotebookSourcePack")
+    previous_revision: Mapped[Optional["PatternLibrary"]] = relationship("PatternLibrary", remote_side=[id])
+
+
+# ==================
+# P0-5: EVIDENCE LOOP STATE MACHINE (PEGL v1.0)
+# ==================
+
+class EvidenceEventStatus(str, enum.Enum):
+    """Evidence Loop 이벤트 상태"""
+    QUEUED = "queued"              # 대기중
+    RUNNING = "running"            # 분석중
+    EVIDENCE_READY = "evidence_ready"  # 증거 수집 완료
+    DECIDED = "decided"            # 결정 완료
+    EXECUTED = "executed"          # 실행됨
+    MEASURED = "measured"          # 측정 완료
+    FAILED = "failed"              # 실패
+
+
+class EvidenceEvent(Base):
+    """
+    Evidence Loop 이벤트 (PEGL v1.0 핵심)
+    "증거 → 결정 → 실행 → 측정" 루프의 단일 이벤트
+    
+    상태 전이:
+    QUEUED → RUNNING → EVIDENCE_READY → DECIDED → EXECUTED → MEASURED
+    """
+    __tablename__ = "evidence_events"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)  # 사람 친화적 ID
+    
+    # Run 연결
+    run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+    )
+    
+    # 대상 Parent
+    parent_node_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("remix_nodes.id"), index=True
+    )
+    
+    # 상태
+    status: Mapped[str] = mapped_column(SQLEnum(EvidenceEventStatus), default=EvidenceEventStatus.QUEUED)
+    
+    # 산출물 연결
+    evidence_snapshot_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("evidence_snapshots.id"), nullable=True
+    )
+    decision_object_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), nullable=True  # DecisionObject.id (circular reference 방지)
+    )
+    
+    # 에러 정보
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # 타이밍
+    queued_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    evidence_ready_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    decided_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    executed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    measured_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    
+    # 메타데이터
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    
+    # Relationships
+    parent_node: Mapped["RemixNode"] = relationship("RemixNode")
+    evidence_snapshot: Mapped[Optional["EvidenceSnapshot"]] = relationship("EvidenceSnapshot")
+
+
+class DecisionType(str, enum.Enum):
+    """결정 유형"""
+    GO = "go"          # 진행
+    STOP = "stop"      # 중단
+    PIVOT = "pivot"    # 방향 전환
+
+
+class DecisionObject(Base):
+    """
+    결정 객체 (PEGL v1.0 핵심)
+    Evidence Loop에서 내린 결정을 구조화된 형태로 저장
+    
+    - decision_json: 구조화된 결정 내용
+    - transcript_artifact_id: Debate 기록 (옵션)
+    """
+    __tablename__ = "decision_objects"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    decision_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)  # 사람 친화적 ID
+    
+    # Evidence Event 연결
+    evidence_event_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("evidence_events.id"), index=True
+    )
+    
+    # 결정 내용
+    decision_type: Mapped[str] = mapped_column(SQLEnum(DecisionType))
+    decision_json: Mapped[dict] = mapped_column(JSONB)
+    # {
+    #   "action": "create_variant",
+    #   "variant_type": "audio_swap",
+    #   "rationale": "Top mutation type is audio with +127% avg delta",
+    #   "target_kpi": "view_retention > 50%",
+    #   "timeline_days": 7
+    # }
+    
+    # 근거
+    evidence_summary: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    # {
+    #   "top_mutation": "audio",
+    #   "avg_delta": "+127%",
+    #   "sample_count": 12,
+    #   "confidence": 0.85
+    # }
+    
+    # Debate 기록 (옵션)
+    transcript_artifact_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("artifacts.id"), nullable=True
+    )  # Debate 텍스트 기록
+    
+    # 결정자
+    decided_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )  # null이면 자동 결정
+    decision_method: Mapped[str] = mapped_column(String(50), default="auto")  # "auto", "manual", "hybrid"
+    
+    # 메타데이터
+    decided_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    
+    # Relationships
+    evidence_event: Mapped["EvidenceEvent"] = relationship("EvidenceEvent")
+    transcript_artifact: Mapped[Optional["Artifact"]] = relationship("Artifact")
+    decider: Mapped[Optional["User"]] = relationship("User")
+
+
+# ==================
+# PATTERN SYNTHESIS (NotebookLM Data Tables → DB) - Phase B
+# ==================
+
+class SynthesisType(str, enum.Enum):
+    """Pattern Synthesis 유형 (NotebookLM Data Tables 출력)"""
+    INVARIANT_RULES = "invariant_rules"    # 불변 규칙 추출
+    MUTATION_STRATEGY = "mutation_strategy"  # 변주 전략
+    FAILURE_MODES = "failure_modes"        # 실패 패턴
+    AUDIENCE_SIGNAL = "audience_signal"    # 오디언스 반응 시그널
+    HOOK_PATTERN = "hook_pattern"          # 훅 패턴
+    DIRECTOR_INTENT = "director_intent"    # 연출 의도
+
+
+class PatternSynthesis(Base):
+    """
+    NotebookLM Data Tables → DB 래핑 (Phase B: Data Tables Pipeline)
+    
+    NotebookLM의 구조화 테이블 출력을 DB에 저장하여 SoR 원칙 준수
+    - Data Tables → Sheets Export → 이 모델로 ingest
+    - Citations으로 Evidence Loop 연결
+    
+    참조: docs/17_NOTEBOOKLM_LIBRARY_STRATEGY.md (2.5 Data Tables)
+    """
+    __tablename__ = "pattern_syntheses"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # NotebookLM 연결
+    notebook_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)  # NotebookLM notebook ID
+    source_sheet_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Data Tables export URL
+    
+    # 패턴 경계 (VDG/DB 패턴 경계 원칙)
+    cluster_id: Mapped[str] = mapped_column(String(100), index=True)
+    temporal_phase: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    
+    # 합성 내용
+    synthesis_type: Mapped[str] = mapped_column(SQLEnum(SynthesisType), index=True)
+    synthesis_data: Mapped[dict] = mapped_column(JSONB)
+    # invariant_rules 예:
+    # {
+    #   "rules": ["Hook ≤ 2s", "CU shot opening"],
+    #   "must_keep": {"hook": "text_punch", "pacing": "5_cuts_per_10s"},
+    #   "confidence": 0.92
+    # }
+    
+    # 출처 (NotebookLM 인용 기능)
+    citations: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    # [
+    #   {"source_entry": "entry_123", "excerpt": "...", "relevance": 0.95},
+    #   {"source_entry": "entry_456", "excerpt": "..."}
+    # ]
+    
+    # 출력 대상 (Studio Multi-Output)
+    output_format: Mapped[str] = mapped_column(String(20), default="creator")  # creator, business, ops
+    language: Mapped[str] = mapped_column(String(10), default="ko")  # ko, en
+    
+    # Run/Pack 연결
+    source_pack_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("notebook_source_packs.id"), nullable=True
+    )
+    run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+    )
+    
+    # 메타데이터
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    
+    # Relationships
+    source_pack: Mapped[Optional["NotebookSourcePack"]] = relationship("NotebookSourcePack")
+
+
+# ==================
+# P2: CREATOR FEEDBACK LOOP
+# ==================
+
+class CreatorSubmissionStatus(str, enum.Enum):
+    """Status of a creator submission"""
+    PENDING = "pending"           # Submitted, awaiting metric tracking
+    TRACKING = "tracking"         # Metrics being collected (14 days)
+    COMPLETE = "complete"         # Tracking complete, evidence generated
+    FAILED = "failed"             # Video unavailable or rejected
+
+
+class CreatorSubmission(Base):
+    """
+    P2 Creator Feedback Loop - Links PatternLibrary to creator-submitted videos.
+    
+    Flow:
+    1. Creator views PatternLibrary guide
+    2. Creator films video following invariant_rules
+    3. Creator submits video URL with pattern_id
+    4. System tracks metrics for 14 days
+    5. Results feed back into Evidence Loop
+    """
+    __tablename__ = "creator_submissions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # Pattern reference
+    pattern_id: Mapped[str] = mapped_column(String(200), index=True)  # PatternLibrary.pattern_id
+    pattern_library_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("pattern_library.id"), nullable=True
+    )
+    
+    # Creator info
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    
+    # Video submission
+    video_url: Mapped[str] = mapped_column(String(500))
+    platform: Mapped[str] = mapped_column(String(50))  # tiktok, instagram, youtube
+    
+    # Creator notes on what they varied
+    creator_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    invariant_checklist: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    # {"첫 2초 시선 고정": true, "음악 싱크": true, ...}
+    
+    # Metric tracking
+    status: Mapped[str] = mapped_column(SQLEnum(CreatorSubmissionStatus), default=CreatorSubmissionStatus.PENDING)
+    outlier_item_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("outlier_items.id"), nullable=True
+    )  # Linked OutlierItem for metric tracking
+    
+    # Performance results (after 14-day tracking)
+    final_view_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    final_engagement_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    performance_vs_baseline: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # "+45%", "-10%"
+    
+    # Timestamps
+    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    tracking_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    tracking_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    
+    # Relationships
+    user: Mapped["User"] = relationship("User")
+    pattern_library: Mapped[Optional["PatternLibrary"]] = relationship("PatternLibrary")
+    outlier_item: Mapped[Optional["OutlierItem"]] = relationship("OutlierItem")

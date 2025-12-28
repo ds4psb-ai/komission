@@ -17,7 +17,7 @@ This specification defines the "Best of Breed" features extracted from our deep-
 - **Visual Evidence Chain**: Users see *why* a decision was made by tracing the graph from `Evidence Node` → `Capsule Node` → `Decision Node`.
 - **Transparent Economy**: First-class credit visibility ensures users understand the cost of "intelligence" vs "generation".
 - **Context-Aware Processing**: The AI Processor is not a black box; it visibly consumes up-stream evidence.
-- **Notebook Library Integration**: 분석 스키마/클러스터는 **DB로 래핑**되어 노드로 소비된다. NotebookLM 요약은 선택적 보조.
+- **Notebook Library Integration**: 분석 스키마/클러스터는 **DB로 래핑**되어 노드로 소비된다. NotebookLM = Pattern Engine (기본 실행).
 
 ---
 
@@ -35,7 +35,7 @@ We adopt a strictly typed node system to prevent "garbage graphs".
 2.  **Notebook Library (Context)**
     *   *Visual*: Rounded node, library icon.
     *   *Data*: `library_entry_id`, `cluster_id`.
-    *   *Behavior*: Notebook Library 요약/클러스터(NotebookLM 보조)를 **DB에서 불러와** 컨텍스트로 공급.
+    *   *Behavior*: Notebook Library 패턴 요약(NotebookLM Pattern Engine 결과)을 **DB에서 불러와** 컨텍스트로 공급.
 
 3.  **Template Seed (Opal, Optional)**
     *   *Visual*: Dotted outline, "Seed" badge.

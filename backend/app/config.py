@@ -77,6 +77,17 @@ class Settings(BaseSettings):
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
 
+    # Super Admin (1-person admin setup)
+    # Comma-separated list of emails that have full admin access
+    SUPER_ADMIN_EMAILS: str = ""
+    
+    @property
+    def SUPER_ADMIN_EMAIL_LIST(self) -> List[str]:
+        """Parse SUPER_ADMIN_EMAILS into list"""
+        if not self.SUPER_ADMIN_EMAILS:
+            return []
+        return [email.strip().lower() for email in self.SUPER_ADMIN_EMAILS.split(",") if email.strip()]
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

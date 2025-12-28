@@ -115,3 +115,107 @@ async def get_pattern_leaderboard(
             for i, p in enumerate(sorted_patterns[:limit])
         ]
     }
+
+
+# ==================
+# Pattern Library CRUD (PEGL Output)
+# ==================
+
+from app.models import PatternLibrary
+from sqlalchemy import select
+from uuid import UUID
+
+
+class PatternLibraryItem(BaseModel):
+    id: str
+    pattern_id: str
+    cluster_id: str
+    temporal_phase: str
+    platform: str
+    category: str
+    invariant_rules: dict
+    mutation_strategy: dict
+    citations: Optional[list] = None
+    revision: int
+    created_at: str
+    
+    class Config:
+        from_attributes = True
+
+
+class PatternLibraryListResponse(BaseModel):
+    total: int
+    patterns: List[PatternLibraryItem]
+
+
+@router.get("/library", response_model=PatternLibraryListResponse)
+async def list_pattern_library(
+    cluster_id: Optional[str] = None,
+    platform: Optional[str] = None,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List all patterns from PatternLibrary (PEGL output).
+    These are the refined patterns promoted from NotebookLM Data Tables.
+    """
+    query = select(PatternLibrary).order_by(PatternLibrary.created_at.desc())
+    
+    if cluster_id:
+        query = query.where(PatternLibrary.cluster_id == cluster_id)
+    if platform:
+        query = query.where(PatternLibrary.platform == platform)
+    
+    query = query.limit(limit)
+    result = await db.execute(query)
+    patterns = result.scalars().all()
+    
+    items = []
+    for p in patterns:
+        items.append(PatternLibraryItem(
+            id=str(p.id),
+            pattern_id=p.pattern_id,
+            cluster_id=p.cluster_id,
+            temporal_phase=p.temporal_phase,
+            platform=p.platform,
+            category=p.category,
+            invariant_rules=p.invariant_rules or {},
+            mutation_strategy=p.mutation_strategy or {},
+            citations=p.citations,
+            revision=p.revision,
+            created_at=p.created_at.isoformat() if p.created_at else "",
+        ))
+    
+    return PatternLibraryListResponse(total=len(items), patterns=items)
+
+
+@router.get("/library/{pattern_id}")
+async def get_pattern_library_item(
+    pattern_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get a specific pattern from PatternLibrary by pattern_id.
+    """
+    result = await db.execute(
+        select(PatternLibrary).where(PatternLibrary.pattern_id == pattern_id)
+    )
+    pattern = result.scalar_one_or_none()
+    
+    if not pattern:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Pattern not found")
+    
+    return {
+        "id": str(pattern.id),
+        "pattern_id": pattern.pattern_id,
+        "cluster_id": pattern.cluster_id,
+        "temporal_phase": pattern.temporal_phase,
+        "platform": pattern.platform,
+        "category": pattern.category,
+        "invariant_rules": pattern.invariant_rules or {},
+        "mutation_strategy": pattern.mutation_strategy or {},
+        "citations": pattern.citations,
+        "revision": pattern.revision,
+        "created_at": pattern.created_at.isoformat() if pattern.created_at else "",
+    }

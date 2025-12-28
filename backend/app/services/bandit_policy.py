@@ -1,9 +1,14 @@
 """
-Bandit Exploration Policy Service
+Bandit Exploration Policy Service (PEGL v1.0)
 backend/app/services/bandit_policy.py
 
 Implements Thompson Sampling for variant/mutation selection.
 Based on 15_FINAL_ARCHITECTURE.md - RL-lite 전략
+
+PEGL v1.0 Updates:
+- Reward Window 지원 (1h, 24h, 7d)
+- EvidenceEvent 연동
+- Parent 추천 우선순위 적용
 
 Reference: 
 - 변주 생성은 유전(변이), 선택은 bandit 탐색으로 현실화
@@ -13,15 +18,23 @@ Reference:
 import random
 import math
 from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import timedelta
 import logging
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants import CONFIDENCE_MEDIUM, RL_MIN_SIGNAL_COUNT
 from app.utils.time import utcnow
 
 logger = logging.getLogger(__name__)
+
+# PEGL v1.0: Reward Window 설정
+REWARD_WINDOWS = {
+    "1h": timedelta(hours=1),
+    "24h": timedelta(hours=24),
+    "7d": timedelta(days=7),
+}
 
 
 @dataclass
@@ -332,6 +345,143 @@ class BatchPolicyUpdater:
             "rl_updates": updated_templates,
             "customization_signals": len(customization_trends)
         }
+
+
+async def rank_parent_candidates(
+    db: AsyncSession,
+    candidates: List[Any],
+    window: str = "24h",
+) -> List[Dict[str, Any]]:
+    """
+    Parent 후보 우선순위 정렬 (PEGL v1.0)
+    
+    Bandit 점수를 기반으로 Parent 후보들을 우선순위 정렬합니다.
+    
+    Args:
+        db: DB 세션
+        candidates: Parent 후보 노드 리스트
+        window: Reward window ("1h", "24h", "7d")
+        
+    Returns:
+        우선순위 정렬된 후보 리스트 (bandit_score 포함)
+    """
+    from app.models import EvidenceSnapshot
+    
+    window_delta = REWARD_WINDOWS.get(window, REWARD_WINDOWS["24h"])
+    cutoff_time = utcnow() - window_delta
+    
+    scored_candidates = []
+    
+    for candidate in candidates:
+        try:
+            # 해당 candidate에 대한 최근 Evidence 조회
+            result = await db.execute(
+                select(EvidenceSnapshot)
+                .where(
+                    and_(
+                        EvidenceSnapshot.parent_node_id == candidate.id,
+                        EvidenceSnapshot.created_at >= cutoff_time
+                    )
+                )
+                .order_by(EvidenceSnapshot.confidence.desc())
+                .limit(10)
+            )
+            snapshots = result.scalars().all()
+            
+            # Bandit 점수 계산 (가중 평균)
+            if snapshots:
+                total_confidence = sum(s.confidence or 0.5 for s in snapshots)
+                avg_confidence = total_confidence / len(snapshots)
+                sample_count = sum(s.sample_count or 1 for s in snapshots)
+                
+                # Thompson Sampling 기반 점수
+                alpha = int(avg_confidence * sample_count) + 1
+                beta = int((1 - avg_confidence) * sample_count) + 1
+                bandit_score = random.betavariate(alpha, beta)
+            else:
+                # 데이터 없으면 탐색 우선
+                bandit_score = random.betavariate(1, 1)
+            
+            scored_candidates.append({
+                "node": candidate,
+                "node_id": str(candidate.id),
+                "bandit_score": bandit_score,
+                "evidence_count": len(snapshots),
+                "window": window,
+            })
+            
+        except Exception as e:
+            logger.warning(f"Failed to score candidate {candidate.id}: {e}")
+            scored_candidates.append({
+                "node": candidate,
+                "node_id": str(candidate.id),
+                "bandit_score": 0.5,
+                "evidence_count": 0,
+                "window": window,
+            })
+    
+    # 점수순 정렬
+    scored_candidates.sort(key=lambda x: x["bandit_score"], reverse=True)
+    
+    logger.info(f"Ranked {len(scored_candidates)} candidates with {window} window")
+    return scored_candidates
+
+
+async def calculate_reward_from_evidence(
+    db: AsyncSession,
+    evidence_event_id,
+) -> Optional[float]:
+    """
+    EvidenceEvent에서 reward 계산 (PEGL v1.0)
+    
+    MEASURED 상태의 EvidenceEvent를 기반으로 reward를 계산합니다.
+    
+    Args:
+        db: DB 세션
+        evidence_event_id: EvidenceEvent ID
+        
+    Returns:
+        reward 값 (0.0 ~ 1.0) 또는 None (계산 불가 시)
+    """
+    from app.models import EvidenceEvent, EvidenceEventStatus, DecisionObject
+    
+    # EvidenceEvent 조회
+    result = await db.execute(
+        select(EvidenceEvent).where(EvidenceEvent.id == evidence_event_id)
+    )
+    event = result.scalar_one_or_none()
+    
+    if not event:
+        logger.warning(f"EvidenceEvent not found: {evidence_event_id}")
+        return None
+    
+    if event.status != EvidenceEventStatus.MEASURED:
+        logger.warning(f"EvidenceEvent not measured: {event.event_id}")
+        return None
+    
+    # Decision 조회
+    if event.decision_object_id:
+        decision_result = await db.execute(
+            select(DecisionObject).where(DecisionObject.id == event.decision_object_id)
+        )
+        decision = decision_result.scalar_one_or_none()
+        
+        if decision and decision.decision_json:
+            # decision_json에서 reward 추출
+            reward = decision.decision_json.get("reward")
+            if reward is not None:
+                return float(reward)
+            
+            # 또는 decision_type에서 추론
+            from app.models import DecisionType
+            if decision.decision_type == DecisionType.GO:
+                return 1.0
+            elif decision.decision_type == DecisionType.STOP:
+                return 0.0
+            elif decision.decision_type == DecisionType.PIVOT:
+                return 0.5
+    
+    return None
 
 
 # Singleton instance

@@ -78,7 +78,29 @@ class TikTokCrawler(BaseCrawler):
             else:
                 videos = self._crawl_trending(region, limit)
             
-            items = [self._normalize_to_outlier_item(v) for v in videos[:limit]]
+            # Apply content filter (TV/연예인/편집영상 제외)
+            from app.crawlers.content_filter import filter_with_reason
+            filtered_videos = []
+            for video in videos:
+                title = video.get("desc") or video.get("text") or video.get("description", "")
+                author = video.get("author", {})
+                author_name = author.get("uniqueId") or author.get("nickname", "") if isinstance(author, dict) else str(author)
+                hashtag_list = video.get("hashtags", [])
+                
+                result = filter_with_reason(
+                    title=title,
+                    channel_name=author_name,
+                    hashtags=hashtag_list if isinstance(hashtag_list, list) else []
+                )
+                
+                if result.should_collect:
+                    filtered_videos.append(video)
+                else:
+                    logger.debug(f"Filtered out: {title[:50]}... ({result.reject_reason})")
+            
+            logger.info(f"Content filter: {len(videos)} → {len(filtered_videos)} videos")
+            
+            items = [self._normalize_to_outlier_item(v) for v in filtered_videos[:limit]]
             logger.info(f"TikTok crawl complete: {len(items)} items collected")
             return items
             

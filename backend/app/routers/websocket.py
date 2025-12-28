@@ -10,6 +10,10 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from app.utils.time import utcnow
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
 from app.database import get_db
 from app.models import User, RemixNode
 
@@ -82,7 +86,7 @@ async def websocket_metrics(websocket: WebSocket, user_id: str):
                 await websocket.send_json({
                     "type": "initial",
                     "data": initial_data,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": utcnow().isoformat()
                 })
                 break
         
@@ -98,7 +102,7 @@ async def websocket_metrics(websocket: WebSocket, user_id: str):
                 if data == "ping":
                     await websocket.send_json({
                         "type": "pong",
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": utcnow().isoformat()
                     })
                 elif data == "refresh":
                     # Client requested refresh
@@ -107,7 +111,7 @@ async def websocket_metrics(websocket: WebSocket, user_id: str):
                         await websocket.send_json({
                             "type": "refresh",
                             "data": fresh_data,
-                            "timestamp": datetime.utcnow().isoformat()
+                            "timestamp": utcnow().isoformat()
                         })
                         break
                         
@@ -115,7 +119,7 @@ async def websocket_metrics(websocket: WebSocket, user_id: str):
                 # Send keepalive ping
                 await websocket.send_json({
                     "type": "keepalive",
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": utcnow().isoformat()
                 })
                 
     except WebSocketDisconnect:
@@ -196,5 +200,5 @@ async def broadcast_metrics_update(user_id: str, update_type: str, data: dict):
     await manager.send_personal_message({
         "type": update_type,
         "data": data,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": utcnow().isoformat()
     }, user_id)

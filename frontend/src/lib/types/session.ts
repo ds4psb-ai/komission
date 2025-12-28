@@ -16,6 +16,20 @@ export interface Outlier {
     platform?: "tiktok" | "instagram" | "youtube" | "other";
     growthRatePct?: number;
     createdAt?: string;
+    vdg_analysis?: {
+        title?: string;
+        title_ko?: string;
+        total_duration?: number;
+        scene_count?: number;
+        scenes?: unknown[];
+        hook_genome?: {
+            pattern?: string;
+            strength?: number;
+            hook_summary?: string;
+        };
+        intent_layer?: unknown;
+        capsule_brief?: unknown;
+    };
 }
 
 export interface RecipeRef {

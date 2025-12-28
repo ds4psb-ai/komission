@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ApiClient, CalibrationPair } from '@/lib/api';
 
@@ -14,16 +14,10 @@ export default function TasteCalibrationPage() {
     const [submitting, setSubmitting] = useState(false);
     const [completed, setCompleted] = useState(false);
 
-    useEffect(() => {
-        loadPairs();
-    }, []);
-
-    const loadPairs = async () => {
+    const loadPairs = useCallback(async () => {
         try {
             const token = api.getToken();
             if (!token) {
-                // 토큰 없으면 로그인 유도 또는 임시 토큰 발급? 
-                // 일단 로그인 페이지로
                 router.push('/login?next=/calibration');
                 return;
             }
@@ -35,7 +29,11 @@ export default function TasteCalibrationPage() {
             console.error('Failed to load pairs:', error);
             alert('데이터를 불러오는데 실패했습니다.');
         }
-    };
+    }, [router]);
+
+    useEffect(() => {
+        loadPairs();
+    }, [loadPairs]);
 
     const handleChoice = async (selection: 'A' | 'B') => {
         if (submitting) return;

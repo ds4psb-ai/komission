@@ -5,16 +5,17 @@
 이 폴더가 **유일한 최신 문서**입니다. 루트/기타 폴더에는 포인터만 유지합니다.
 
 ## 핵심 원칙
-핵심 원칙은 `docs/00_DOCS_INDEX.md`와 `docs/15_FINAL_ARCHITECTURE.md`를 단일 기준으로 따른다.
+핵심 원칙은 `docs/00_SINGLE_SOURCE_OF_TRUTH.md`, `docs/00_DOCS_INDEX.md`, `docs/15_FINAL_ARCHITECTURE.md`를 단일 기준으로 따른다.
 
 ## 핵심 플로우
-Outlier 수동/크롤링 → 영상 해석(코드) → 유사도 클러스터링 → Notebook Library(DB, 요약/RAG)
+Outlier 수동/크롤링 → 영상 해석(코드) → 유사도 클러스터링 → NotebookLM(Pattern Engine)
 → Parent 후보 → Depth 실험 → Evidence/Decision → Opal 템플릿 시드 → Capsule/Template 실행
 → Pattern Trace/Lift → Evidence → Decision(Opal) → Capsule/Template 실행
 → 성과 반영 → 다음 Parent
 - **Outlier 소스는 외부 구독 크롤링** (TikTok/YouTube/Instagram 3-플랫폼)
 
 ## 문서 목록
+- `docs/00_SINGLE_SOURCE_OF_TRUTH.md` — SoR/계약/라인리지 단일 기준 문서
 - `docs/00_EXECUTIVE_SUMMARY.md` — CEO용 1장 요약
 - `docs/00_DOCS_INDEX.md` — 문서 구조/의존관계/SoR 규칙 인덱스
 - `docs/16_PDR.md` — 제품 요구사항(PDR) 단일 합의문
@@ -35,6 +36,7 @@ Outlier 수동/크롤링 → 영상 해석(코드) → 유사도 클러스터링
 - `docs/14_OUTLIER_CRAWLER_INTEGRATION_DESIGN.md` — 3-플랫폼 크롤러 + Canvas 통합 설계 ✅
 - `docs/15_FINAL_ARCHITECTURE.md` — 최종 아키텍처 블루프린트 (코드 해석 + NotebookLM + Opal)
 - `docs/17_NOTEBOOKLM_LIBRARY_STRATEGY.md` — NotebookLM 클러스터/노트북 운영 전략
+- `docs/18_NOTEBOOKLM_ENTERPRISE_INTEGRATION.md` — NotebookLM Enterprise API 연동 (Registry/라이프사이클)
 
 ## 템플릿(옵션)
 - `docs/templates/opal_workflow.md` — Opal 의사결정 프롬프트 템플릿
