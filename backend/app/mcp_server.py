@@ -15,15 +15,25 @@ Prompts (템플릿):
 - risk_summary
 """
 import asyncio
+import logging
 from typing import Optional
 from uuid import UUID
 
 from fastmcp import FastMCP
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import AsyncSessionLocal
 from app.models import OutlierItem, PatternCluster, PatternRecurrenceLink
+
+# Configure logging
+logger = logging.getLogger("mcp_server")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter('%(asctime)s [MCP] %(levelname)s: %(message)s'))
+    logger.addHandler(handler)
 
 
 # Initialize FastMCP server
@@ -37,23 +47,38 @@ mcp = FastMCP(
 # Helper Functions
 # ==================
 
-async def get_db() -> AsyncSession:
-    """Get async database session"""
-    async with AsyncSessionLocal() as session:
-        yield session
+def validate_uuid(value: str) -> Optional[UUID]:
+    """Validate and convert string to UUID, return None if invalid"""
+    try:
+        return UUID(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def safe_format_number(value, default: str = "N/A") -> str:
+    """Safely format number with commas, return default if None"""
+    if value is None:
+        return default
+    try:
+        return f"{value:,}"
+    except (ValueError, TypeError):
+        return str(value)
 
 
 def format_comments(comments: list) -> str:
-    """Format best comments for display"""
+    """Format best comments for display with error handling"""
     if not comments:
         return "No comments available"
     
     lines = []
     for i, c in enumerate(comments[:5], 1):
-        text = c.get("text", "")[:100]
-        likes = c.get("likes", 0)
-        lang = c.get("lang", "ko")
-        lines.append(f"{i}. [{lang}] \"{text}...\" (👍 {likes})")
+        try:
+            text = str(c.get("text", ""))[:100]
+            likes = c.get("likes", 0)
+            lang = c.get("lang", "ko")
+            lines.append(f"{i}. [{lang}] \"{text}...\" (👍 {likes})")
+        except Exception as e:
+            lines.append(f"{i}. [Error parsing comment: {e}]")
     
     return "\n".join(lines)
 
@@ -72,29 +97,40 @@ async def get_pattern(cluster_id: str) -> str:
     - Member count and average score
     - Recurrence information
     """
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(PatternCluster).where(PatternCluster.cluster_id == cluster_id)
-        )
-        cluster = result.scalar_one_or_none()
-        
-        if not cluster:
-            return f"Pattern cluster '{cluster_id}' not found"
-        
-        return f"""
+    logger.info(f"Resource request: patterns/{cluster_id}")
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(PatternCluster).where(PatternCluster.cluster_id == cluster_id)
+            )
+            cluster = result.scalar_one_or_none()
+            
+            if not cluster:
+                logger.warning(f"Pattern cluster not found: {cluster_id}")
+                return f"❌ Pattern cluster '{cluster_id}' not found"
+            
+            logger.info(f"Found pattern: {cluster.cluster_name}")
+            return f"""
 # Pattern: {cluster.cluster_name}
 
 **ID**: {cluster.cluster_id}
-**Type**: {cluster.pattern_type}
-**Members**: {cluster.member_count}
+**Type**: {cluster.pattern_type or 'N/A'}
+**Members**: {cluster.member_count or 0}
 **Avg Score**: {cluster.avg_outlier_score or 'N/A'}
 
 ## Recurrence Info
 - Ancestor: {cluster.ancestor_cluster_id or 'None (Original)'}
 - Score: {cluster.recurrence_score or 0:.2f}
-- Count: {cluster.recurrence_count}
+- Count: {cluster.recurrence_count or 0}
 - Origin: {cluster.origin_cluster_id or cluster.cluster_id}
 """
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in get_pattern: {e}")
+        return f"❌ Database error: Unable to fetch pattern. Please try again."
+    except Exception as e:
+        logger.error(f"Unexpected error in get_pattern: {e}")
+        return f"❌ Error fetching pattern: {str(e)[:100]}"
 
 
 @mcp.resource("komission://comments/{outlier_id}")
@@ -105,27 +141,44 @@ async def get_comments(outlier_id: str) -> str:
     Returns top 5 comments from the outlier video,
     sorted by likes with language tags.
     """
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(OutlierItem).where(OutlierItem.id == outlier_id)
-        )
-        outlier = result.scalar_one_or_none()
-        
-        if not outlier:
-            return f"Outlier '{outlier_id}' not found"
-        
-        comments = outlier.best_comments or []
-        
-        return f"""
+    logger.info(f"Resource request: comments/{outlier_id}")
+    
+    # Validate UUID
+    uuid_val = validate_uuid(outlier_id)
+    if not uuid_val:
+        logger.warning(f"Invalid UUID format: {outlier_id}")
+        return f"❌ Invalid outlier ID format. Expected UUID, got: '{outlier_id[:50]}...'"
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(OutlierItem).where(OutlierItem.id == uuid_val)
+            )
+            outlier = result.scalar_one_or_none()
+            
+            if not outlier:
+                logger.warning(f"Outlier not found: {outlier_id}")
+                return f"❌ Outlier '{outlier_id}' not found"
+            
+            comments = outlier.best_comments or []
+            
+            logger.info(f"Found {len(comments)} comments for outlier")
+            return f"""
 # Best Comments for: {outlier.title or 'Untitled'}
 
 **Platform**: {outlier.platform}
-**Views**: {outlier.view_count:,}
+**Views**: {safe_format_number(outlier.view_count)}
 **Tier**: {outlier.outlier_tier or 'N/A'}
 
 ## Top Comments
 {format_comments(comments)}
 """
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in get_comments: {e}")
+        return f"❌ Database error: Unable to fetch comments."
+    except Exception as e:
+        logger.error(f"Unexpected error in get_comments: {e}")
+        return f"❌ Error fetching comments: {str(e)[:100]}"
 
 
 @mcp.resource("komission://evidence/{pattern_id}")
@@ -138,39 +191,53 @@ async def get_evidence(pattern_id: str) -> str:
     - Best comments analysis
     - Growth signals
     """
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(OutlierItem).where(OutlierItem.id == pattern_id)
-        )
-        outlier = result.scalar_one_or_none()
-        
-        if not outlier:
-            return f"Pattern '{pattern_id}' not found"
-        
-        comments = outlier.best_comments or []
-        
-        # Analyze comment sentiment tags
-        tag_counts = {}
-        for c in comments:
-            tag = c.get("tag", "unknown")
-            tag_counts[tag] = tag_counts.get(tag, 0) + 1
-        
-        tag_summary = ", ".join([f"{k}: {v}" for k, v in tag_counts.items()]) or "No tags"
-        
-        return f"""
+    logger.info(f"Resource request: evidence/{pattern_id}")
+    
+    # Validate UUID
+    uuid_val = validate_uuid(pattern_id)
+    if not uuid_val:
+        logger.warning(f"Invalid UUID format: {pattern_id}")
+        return f"❌ Invalid pattern ID format. Expected UUID."
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(OutlierItem).where(OutlierItem.id == uuid_val)
+            )
+            outlier = result.scalar_one_or_none()
+            
+            if not outlier:
+                logger.warning(f"Pattern not found: {pattern_id}")
+                return f"❌ Pattern '{pattern_id}' not found"
+            
+            comments = outlier.best_comments or []
+            
+            # Analyze comment sentiment tags
+            tag_counts = {}
+            for c in comments:
+                try:
+                    tag = c.get("tag", "unknown")
+                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+                except Exception:
+                    pass
+            
+            tag_summary = ", ".join([f"{k}: {v}" for k, v in tag_counts.items()]) or "No tags"
+            
+            logger.info(f"Evidence compiled for {pattern_id}")
+            return f"""
 # Evidence Summary
 
 ## Metrics
-- **Views**: {outlier.view_count:,}
-- **Likes**: {outlier.like_count or 'N/A'}
-- **Shares**: {outlier.share_count or 'N/A'}
+- **Views**: {safe_format_number(outlier.view_count)}
+- **Likes**: {safe_format_number(outlier.like_count)}
+- **Shares**: {safe_format_number(outlier.share_count)}
 - **Growth Rate**: {outlier.growth_rate or 'N/A'}
 - **Engagement Rate**: {outlier.engagement_rate or 'N/A'}
 
 ## Outlier Analysis
 - **Tier**: {outlier.outlier_tier or 'N/A'}
 - **Score**: {outlier.outlier_score or 'N/A'}
-- **Creator Avg Views**: {outlier.creator_avg_views or 'N/A'}
+- **Creator Avg Views**: {safe_format_number(outlier.creator_avg_views)}
 
 ## Comment Signals
 - **Total Comments**: {len(comments)}
@@ -179,6 +246,12 @@ async def get_evidence(pattern_id: str) -> str:
 ## Best Comments
 {format_comments(comments)}
 """
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in get_evidence: {e}")
+        return f"❌ Database error: Unable to fetch evidence."
+    except Exception as e:
+        logger.error(f"Unexpected error in get_evidence: {e}")
+        return f"❌ Error fetching evidence: {str(e)[:100]}"
 
 
 @mcp.resource("komission://recurrence/{cluster_id}")
@@ -189,46 +262,55 @@ async def get_recurrence(cluster_id: str) -> str:
     Returns pattern recurrence history and relationships.
     Note: This is pre-computed batch data, not real-time matching.
     """
-    async with AsyncSessionLocal() as db:
-        # Get cluster info
-        cluster_result = await db.execute(
-            select(PatternCluster).where(PatternCluster.cluster_id == cluster_id)
-        )
-        cluster = cluster_result.scalar_one_or_none()
-        
-        if not cluster:
-            return f"Cluster '{cluster_id}' not found"
-        
-        # Get recurrence links (may be empty if not computed yet)
-        try:
-            links_result = await db.execute(
-                select(PatternRecurrenceLink)
-                .where(PatternRecurrenceLink.cluster_id_current == cluster_id)
-                .order_by(PatternRecurrenceLink.recurrence_score.desc())
-                .limit(10)
+    logger.info(f"Resource request: recurrence/{cluster_id}")
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            # Get cluster info
+            cluster_result = await db.execute(
+                select(PatternCluster).where(PatternCluster.cluster_id == cluster_id)
             )
-            links = links_result.scalars().all()
-        except Exception:
-            links = []
-        
-        links_text = ""
-        if links:
-            for link in links:
-                links_text += (
-                    f"- → {link.cluster_id_ancestor} "
-                    f"(score: {link.recurrence_score:.2f}, status: {link.status})\n"
+            cluster = cluster_result.scalar_one_or_none()
+            
+            if not cluster:
+                logger.warning(f"Cluster not found: {cluster_id}")
+                return f"❌ Cluster '{cluster_id}' not found"
+            
+            # Get recurrence links (may be empty if not computed yet)
+            try:
+                links_result = await db.execute(
+                    select(PatternRecurrenceLink)
+                    .where(PatternRecurrenceLink.cluster_id_current == cluster_id)
+                    .order_by(PatternRecurrenceLink.recurrence_score.desc())
+                    .limit(10)
                 )
-        else:
-            links_text = "No recurrence links found"
-        
-        return f"""
+                links = links_result.scalars().all()
+            except Exception as link_err:
+                logger.warning(f"Error fetching recurrence links: {link_err}")
+                links = []
+            
+            links_text = ""
+            if links:
+                for link in links:
+                    try:
+                        links_text += (
+                            f"- → {link.cluster_id_ancestor} "
+                            f"(score: {link.recurrence_score:.2f}, status: {link.status})\n"
+                        )
+                    except Exception:
+                        links_text += f"- → [Error parsing link]\n"
+            else:
+                links_text = "No recurrence links found"
+            
+            logger.info(f"Found {len(links)} recurrence links for {cluster_id}")
+            return f"""
 # Recurrence Lineage: {cluster_id}
 
 ## Current Cluster
 - **Name**: {cluster.cluster_name}
 - **Ancestor**: {cluster.ancestor_cluster_id or 'None (Original)'}
 - **Origin**: {cluster.origin_cluster_id or cluster_id}
-- **Recurrence Count**: {cluster.recurrence_count}
+- **Recurrence Count**: {cluster.recurrence_count or 0}
 - **Recurrence Score**: {cluster.recurrence_score or 0:.2f}
 - **Last Recurrence**: {cluster.last_recurrence_at or 'Never'}
 
@@ -237,6 +319,12 @@ async def get_recurrence(cluster_id: str) -> str:
 
 > ⚠️ This data is from batch processing. Not real-time matching.
 """
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in get_recurrence: {e}")
+        return f"❌ Database error: Unable to fetch recurrence data."
+    except Exception as e:
+        logger.error(f"Unexpected error in get_recurrence: {e}")
+        return f"❌ Error fetching recurrence: {str(e)[:100]}"
 
 
 @mcp.resource("komission://vdg/{outlier_id}")
@@ -247,38 +335,55 @@ async def get_vdg(outlier_id: str) -> str:
     Returns Video DNA Genome analysis results including
     quality scores and validation status.
     """
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(OutlierItem).where(OutlierItem.id == outlier_id)
-        )
-        outlier = result.scalar_one_or_none()
-        
-        if not outlier:
-            return f"Outlier '{outlier_id}' not found"
-        
-        return f"""
+    logger.info(f"Resource request: vdg/{outlier_id}")
+    
+    # Validate UUID
+    uuid_val = validate_uuid(outlier_id)
+    if not uuid_val:
+        logger.warning(f"Invalid UUID format: {outlier_id}")
+        return f"❌ Invalid outlier ID format. Expected UUID."
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(OutlierItem).where(OutlierItem.id == uuid_val)
+            )
+            outlier = result.scalar_one_or_none()
+            
+            if not outlier:
+                logger.warning(f"Outlier not found: {outlier_id}")
+                return f"❌ Outlier '{outlier_id}' not found"
+            
+            logger.info(f"VDG data retrieved for {outlier_id}")
+            return f"""
 # VDG Analysis: {outlier.title or 'Untitled'}
 
 ## Basic Info
-- **Platform**: {outlier.platform}
-- **Category**: {outlier.category}
-- **URL**: {outlier.video_url}
+- **Platform**: {outlier.platform or 'N/A'}
+- **Category**: {outlier.category or 'N/A'}
+- **URL**: {outlier.video_url or 'N/A'}
 
 ## Analysis Status
-- **Status**: {outlier.analysis_status}
+- **Status**: {outlier.analysis_status or 'pending'}
 - **Approved**: {outlier.approved_at or 'Not approved'}
 
 ## Quality Metrics
 - **Quality Score**: {outlier.vdg_quality_score or 'Not analyzed'}
-- **Valid**: {outlier.vdg_quality_valid or 'Unknown'}
+- **Valid**: {outlier.vdg_quality_valid if outlier.vdg_quality_valid is not None else 'Unknown'}
 - **Issues**: {outlier.vdg_quality_issues or 'None'}
 
 ## Outlier Metrics
 - **Tier**: {outlier.outlier_tier or 'N/A'}
 - **Score**: {outlier.outlier_score or 'N/A'}
-- **Views**: {outlier.view_count:,}
+- **Views**: {safe_format_number(outlier.view_count)}
 - **Growth**: {outlier.growth_rate or 'N/A'}
 """
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in get_vdg: {e}")
+        return f"❌ Database error: Unable to fetch VDG data."
+    except Exception as e:
+        logger.error(f"Unexpected error in get_vdg: {e}")
+        return f"❌ Error fetching VDG: {str(e)[:100]}"
 
 
 # ==================
@@ -308,60 +413,85 @@ async def search_patterns(
     """
     from sqlalchemy import or_, func
     
-    TIER_PRIORITY = {"S": 1, "A": 2, "B": 3, "C": 4}
+    logger.info(f"Tool call: search_patterns(query='{query}', platform='{platform}', limit={limit})")
     
-    async with AsyncSessionLocal() as db:
-        # Build query
-        stmt = select(OutlierItem).where(
-            OutlierItem.analysis_status == "completed",
-            OutlierItem.outlier_tier.isnot(None),
-        )
-        
-        # Apply text search
-        if query:
-            stmt = stmt.where(
-                or_(
-                    OutlierItem.title.ilike(f"%{query}%"),
-                    OutlierItem.category.ilike(f"%{query}%"),
+    # Input validation
+    TIER_PRIORITY = {"S": 1, "A": 2, "B": 3, "C": 4}
+    if min_tier not in TIER_PRIORITY:
+        min_tier = "C"
+    
+    # Limit bounds
+    limit = max(1, min(limit, 50))
+    
+    # Sanitize query (basic SQL injection prevention - SQLAlchemy handles this, but belt and suspenders)
+    query = (query or "")[:100]  # Limit query length
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            # Build query
+            stmt = select(OutlierItem).where(
+                OutlierItem.analysis_status == "completed",
+                OutlierItem.outlier_tier.isnot(None),
+            )
+            
+            # Apply text search
+            if query:
+                stmt = stmt.where(
+                    or_(
+                        OutlierItem.title.ilike(f"%{query}%"),
+                        OutlierItem.category.ilike(f"%{query}%"),
+                    )
                 )
-            )
-        
-        # Apply filters
-        if category:
-            stmt = stmt.where(OutlierItem.category == category)
-        if platform:
-            stmt = stmt.where(OutlierItem.platform == platform)
-        
-        # Tier filter
-        min_priority = TIER_PRIORITY.get(min_tier, 4)
-        allowed_tiers = [t for t, p in TIER_PRIORITY.items() if p <= min_priority]
-        stmt = stmt.where(OutlierItem.outlier_tier.in_(allowed_tiers))
-        
-        # Order by tier and score
-        stmt = stmt.order_by(
-            func.array_position(['S', 'A', 'B', 'C'], OutlierItem.outlier_tier),
-            OutlierItem.outlier_score.desc(),
-        ).limit(min(limit, 50))
-        
-        result = await db.execute(stmt)
-        patterns = result.scalars().all()
-        
-        if not patterns:
-            return "No patterns found matching your criteria."
-        
-        # Format results
-        lines = [f"# Search Results for: '{query or 'all'}'\n"]
-        lines.append(f"Found {len(patterns)} patterns:\n")
-        
-        for i, p in enumerate(patterns, 1):
-            lines.append(
-                f"{i}. **[{p.outlier_tier}]** {p.title or 'Untitled'}\n"
-                f"   - Platform: {p.platform} | Category: {p.category}\n"
-                f"   - Score: {p.outlier_score:.0f} | Views: {p.view_count:,}\n"
-                f"   - ID: `{p.id}`\n"
-            )
-        
-        return "\n".join(lines)
+            
+            # Apply filters
+            if category:
+                stmt = stmt.where(OutlierItem.category == category)
+            if platform:
+                stmt = stmt.where(OutlierItem.platform == platform)
+            
+            # Tier filter
+            min_priority = TIER_PRIORITY.get(min_tier, 4)
+            allowed_tiers = [t for t, p in TIER_PRIORITY.items() if p <= min_priority]
+            stmt = stmt.where(OutlierItem.outlier_tier.in_(allowed_tiers))
+            
+            # Order by tier and score
+            stmt = stmt.order_by(
+                func.array_position(['S', 'A', 'B', 'C'], OutlierItem.outlier_tier),
+                OutlierItem.outlier_score.desc(),
+            ).limit(limit)
+            
+            result = await db.execute(stmt)
+            patterns = result.scalars().all()
+            
+            if not patterns:
+                logger.info("No patterns found")
+                return "❌ No patterns found matching your criteria."
+            
+            logger.info(f"Found {len(patterns)} patterns")
+            
+            # Format results
+            lines = [f"# Search Results for: '{query or 'all'}'\n"]
+            lines.append(f"Found {len(patterns)} patterns:\n")
+            
+            for i, p in enumerate(patterns, 1):
+                try:
+                    lines.append(
+                        f"{i}. **[{p.outlier_tier}]** {p.title or 'Untitled'}\n"
+                        f"   - Platform: {p.platform or 'N/A'} | Category: {p.category or 'N/A'}\n"
+                        f"   - Score: {p.outlier_score:.0f if p.outlier_score else 0} | Views: {safe_format_number(p.view_count)}\n"
+                        f"   - ID: `{p.id}`\n"
+                    )
+                except Exception as fmt_err:
+                    lines.append(f"{i}. [Error formatting result]\n")
+            
+            return "\n".join(lines)
+            
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in search_patterns: {e}")
+        return f"❌ Database error: Unable to search patterns."
+    except Exception as e:
+        logger.error(f"Unexpected error in search_patterns: {e}")
+        return f"❌ Error searching patterns: {str(e)[:100]}"
 
 
 @mcp.tool()
@@ -386,52 +516,95 @@ async def generate_source_pack(
     from datetime import datetime
     import json
     
-    async with AsyncSessionLocal() as db:
-        # Fetch outliers
-        result = await db.execute(
-            select(OutlierItem).where(OutlierItem.id.in_(outlier_ids))
-        )
-        outliers = result.scalars().all()
-        
-        if not outliers:
-            return "Error: No valid outliers found for the provided IDs."
-        
-        # Build source pack
-        pack_data = {
-            "name": pack_name,
-            "created_at": datetime.utcnow().isoformat(),
-            "outlier_count": len(outliers),
-            "sources": []
-        }
-        
-        for outlier in outliers:
-            source = {
-                "id": str(outlier.id),
-                "title": outlier.title or "Untitled",
-                "platform": outlier.platform,
-                "category": outlier.category,
-                "tier": outlier.outlier_tier,
-                "score": outlier.outlier_score,
-                "views": outlier.view_count,
-                "growth_rate": outlier.growth_rate,
-                "video_url": outlier.video_url,
+    logger.info(f"Tool call: generate_source_pack(count={len(outlier_ids)}, name='{pack_name}')")
+    
+    # Input validation
+    if not outlier_ids or len(outlier_ids) == 0:
+        return "❌ Error: No outlier IDs provided."
+    
+    if len(outlier_ids) > 100:
+        return "❌ Error: Maximum 100 outliers per source pack."
+    
+    if not pack_name or len(pack_name.strip()) == 0:
+        return "❌ Error: Pack name is required."
+    
+    pack_name = pack_name[:100]  # Limit name length
+    
+    # Validate UUIDs
+    valid_uuids = []
+    for oid in outlier_ids:
+        uuid_val = validate_uuid(oid)
+        if uuid_val:
+            valid_uuids.append(uuid_val)
+    
+    if not valid_uuids:
+        return "❌ Error: No valid UUIDs provided."
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            # Fetch outliers
+            result = await db.execute(
+                select(OutlierItem).where(OutlierItem.id.in_(valid_uuids))
+            )
+            outliers = result.scalars().all()
+            
+            if not outliers:
+                logger.warning("No outliers found for source pack")
+                return "❌ Error: No valid outliers found for the provided IDs."
+            
+            # Build source pack
+            pack_data = {
+                "name": pack_name,
+                "created_at": datetime.utcnow().isoformat(),
+                "outlier_count": len(outliers),
+                "sources": []
             }
             
-            if include_comments and outlier.best_comments:
-                source["comments"] = outlier.best_comments[:5]
+            for outlier in outliers:
+                try:
+                    source = {
+                        "id": str(outlier.id),
+                        "title": outlier.title or "Untitled",
+                        "platform": outlier.platform or "unknown",
+                        "category": outlier.category or "unknown",
+                        "tier": outlier.outlier_tier,
+                        "score": outlier.outlier_score or 0,
+                        "views": outlier.view_count or 0,
+                        "growth_rate": outlier.growth_rate,
+                        "video_url": outlier.video_url or "",
+                    }
+                    
+                    if include_comments and outlier.best_comments:
+                        source["comments"] = outlier.best_comments[:5]
+                    
+                    if include_vdg:
+                        source["vdg"] = {
+                            "quality_score": outlier.vdg_quality_score,
+                            "quality_valid": outlier.vdg_quality_valid,
+                            "analysis_status": outlier.analysis_status,
+                        }
+                    
+                    pack_data["sources"].append(source)
+                except Exception as src_err:
+                    logger.warning(f"Error processing outlier for pack: {src_err}")
             
-            if include_vdg:
-                source["vdg"] = {
-                    "quality_score": outlier.vdg_quality_score,
-                    "quality_valid": outlier.vdg_quality_valid,
-                    "analysis_status": outlier.analysis_status,
-                }
+            logger.info(f"Generated source pack with {len(pack_data['sources'])} sources")
             
-            pack_data["sources"].append(source)
-        
-        # In a real implementation, this would save to DB/file
-        # For now, return the pack as formatted text
-        return f"""
+            # Format output
+            source_list = []
+            for i, s in enumerate(pack_data["sources"]):
+                try:
+                    source_list.append(
+                        f"### {i+1}. {s['title']}\n"
+                        f"- **Tier**: {s['tier'] or 'N/A'} | **Score**: {s['score']:.0f}\n"
+                        f"- **Platform**: {s['platform']} | **Category**: {s['category']}\n"
+                        f"- **Views**: {safe_format_number(s['views'])} | **Growth**: {s['growth_rate'] or 'N/A'}\n"
+                        f"- **URL**: {s['video_url']}\n"
+                    )
+                except Exception:
+                    source_list.append(f"### {i+1}. [Error formatting source]\n")
+            
+            return f"""
 # Source Pack Generated: {pack_name}
 
 **Created**: {pack_data['created_at']}
@@ -439,14 +612,7 @@ async def generate_source_pack(
 
 ## Included Sources
 
-""" + "\n".join([
-            f"### {i+1}. {s['title']}\n"
-            f"- **Tier**: {s['tier']} | **Score**: {s['score']:.0f}\n"
-            f"- **Platform**: {s['platform']} | **Category**: {s['category']}\n"
-            f"- **Views**: {s['views']:,} | **Growth**: {s['growth_rate'] or 'N/A'}\n"
-            f"- **URL**: {s['video_url']}\n"
-            for i, s in enumerate(pack_data["sources"])
-        ]) + f"""
+""" + "\n".join(source_list) + f"""
 
 ## Pack Data (JSON)
 
@@ -456,6 +622,12 @@ async def generate_source_pack(
 
 > ⚠️ This source pack is ready for NotebookLM import.
 """
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in generate_source_pack: {e}")
+        return f"❌ Database error: Unable to generate source pack."
+    except Exception as e:
+        logger.error(f"Unexpected error in generate_source_pack: {e}")
+        return f"❌ Error generating source pack: {str(e)[:100]}"
 
 
 @mcp.tool()
@@ -473,35 +645,46 @@ async def reanalyze_vdg(
         outlier_id: UUID of the outlier to re-analyze
         force: Force re-analysis even if already completed
     """
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(OutlierItem).where(OutlierItem.id == outlier_id)
-        )
-        outlier = result.scalar_one_or_none()
-        
-        if not outlier:
-            return f"Error: Outlier '{outlier_id}' not found."
-        
-        # Check current status
-        if outlier.analysis_status == "completed" and not force:
-            return f"""
+    logger.info(f"Tool call: reanalyze_vdg(outlier_id='{outlier_id}', force={force})")
+    
+    # Validate UUID
+    uuid_val = validate_uuid(outlier_id)
+    if not uuid_val:
+        logger.warning(f"Invalid UUID format: {outlier_id}")
+        return f"❌ Error: Invalid outlier ID format. Expected UUID."
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(OutlierItem).where(OutlierItem.id == uuid_val)
+            )
+            outlier = result.scalar_one_or_none()
+            
+            if not outlier:
+                logger.warning(f"Outlier not found: {outlier_id}")
+                return f"❌ Error: Outlier '{outlier_id}' not found."
+            
+            # Check current status
+            if outlier.analysis_status == "completed" and not force:
+                logger.info(f"Outlier already analyzed, force={force}")
+                return f"""
 # VDG Re-analysis Not Needed
 
 The outlier "{outlier.title or 'Untitled'}" already has a completed VDG analysis.
 
 **Current Status**: {outlier.analysis_status}
 **Quality Score**: {outlier.vdg_quality_score or 'N/A'}
-**Valid**: {outlier.vdg_quality_valid or 'Unknown'}
+**Valid**: {outlier.vdg_quality_valid if outlier.vdg_quality_valid is not None else 'Unknown'}
 
 To force re-analysis, set `force=True`. Note: This will incur additional API costs.
 """
-        
-        # In a real implementation, this would queue a VDG analysis job
-        # For now, we just mark it as pending
-        outlier.analysis_status = "pending"
-        await db.commit()
-        
-        return f"""
+            
+            # Queue for re-analysis
+            outlier.analysis_status = "pending"
+            await db.commit()
+            
+            logger.info(f"Queued {outlier_id} for VDG re-analysis")
+            return f"""
 # VDG Re-analysis Queued
 
 **Outlier**: {outlier.title or 'Untitled'}
@@ -513,6 +696,12 @@ Estimated completion: 5-10 minutes.
 
 > ⚠️ This action incurs API costs for Gemini video analysis.
 """
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in reanalyze_vdg: {e}")
+        return f"❌ Database error: Unable to queue re-analysis."
+    except Exception as e:
+        logger.error(f"Unexpected error in reanalyze_vdg: {e}")
+        return f"❌ Error queuing re-analysis: {str(e)[:100]}"
 
 # ==================
 # Prompts (템플릿)
