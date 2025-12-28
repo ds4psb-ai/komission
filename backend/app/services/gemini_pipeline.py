@@ -377,7 +377,6 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
             models_to_try = [self.model]
             if not self.model.startswith("models/"):
                 models_to_try.append(f"models/{self.model}")
-            models_to_try.append("models/gemini-2.0-flash")
 
             response = None
             for model_name in models_to_try:
