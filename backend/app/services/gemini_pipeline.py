@@ -328,7 +328,7 @@ class GeminiPipeline:
                 file_uri = getattr(file_obj, "uri", None)
                 logger.warning(f"📎 File uploaded name={file_obj.name} uri={file_uri}")
                 if file_uri:
-                    return types.Part.from_uri(file_uri, mime_type="video/mp4")
+                    return types.Part.from_uri(file_uri=file_uri, mime_type="video/mp4")
                 return file_obj
 
             video_part = _make_video_part(video_file)
