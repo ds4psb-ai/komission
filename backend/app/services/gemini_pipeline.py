@@ -325,8 +325,7 @@ class GeminiPipeline:
             video_part = types.Part(
                 inline_data=types.Blob(
                     data=video_bytes,
-                    mime_type="video/mp4",
-                    display_name=f"{node_id}.mp4"
+                    mime_type="video/mp4"
                 )
             )
 
