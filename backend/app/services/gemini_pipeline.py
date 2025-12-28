@@ -372,60 +372,51 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                 return "model" in msg and "not found" in msg
 
             retried_upload = False
-            retried_model = False
-            retried_alt_model = False
+            last_err: Optional[Exception] = None
 
-            try:
-                response = _generate(self.model)
-            except Exception as e:
-                msg = str(e)
-                if "NOT_FOUND" in msg:
-                    file_ok = False
-                    try:
-                        file_info = self.client.files.get(name=video_file.name)
-                        file_ok = file_info.state.name == "ACTIVE"
-                        logger.warning(f"📎 File state on NOT_FOUND: {file_info.state.name} ({video_file.name})")
-                    except Exception as file_err:
-                        logger.warning(f"📎 File lookup failed on NOT_FOUND: {file_err}")
+            models_to_try = [self.model]
+            if not self.model.startswith("models/"):
+                models_to_try.append(f"models/{self.model}")
+            models_to_try.append("models/gemini-2.0-flash")
 
-                    if not file_ok and not retried_upload:
-                        retried_upload = True
-                        logger.warning("♻️ Re-uploading video file after NOT_FOUND...")
-                        video_file = self.client.files.upload(file=temp_path)
-                        _wait_file_active(video_file.name)
-                        video_part = _make_video_part(video_file)
-                        response = _generate(self.model)
-                    elif not retried_model and not self.model.startswith("models/") and (file_ok or _looks_like_model_not_found(msg)):
-                        retried_model = True
-                        fallback_model = f"models/{self.model}"
-                        logger.warning(f"Model not found. Retrying with {fallback_model}")
+            response = None
+            for model_name in models_to_try:
+                try:
+                    response = _generate(model_name)
+                    break
+                except Exception as e:
+                    last_err = e
+                    msg = str(e)
+                    if "NOT_FOUND" in msg:
+                        file_ok = False
                         try:
-                            response = _generate(fallback_model)
-                        except Exception as retry_err:
-                            retry_msg = str(retry_err)
-                            if "NOT_FOUND" in retry_msg and not retried_upload:
-                                retried_upload = True
-                                logger.warning("♻️ Re-uploading video file after model retry NOT_FOUND...")
-                                video_file = self.client.files.upload(file=temp_path)
-                                _wait_file_active(video_file.name)
-                                video_part = _make_video_part(video_file)
-                                response = _generate(fallback_model)
-                            elif "NOT_FOUND" in retry_msg and not retried_alt_model:
-                                retried_alt_model = True
-                                alt_model = "models/gemini-2.0-flash"
-                                logger.warning(f"Model fallback to {alt_model}")
-                                response = _generate(alt_model)
-                            else:
+                            file_info = self.client.files.get(name=video_file.name)
+                            file_ok = file_info.state.name == "ACTIVE"
+                            logger.warning(f"📎 File state on NOT_FOUND: {file_info.state.name} ({video_file.name})")
+                        except Exception as file_err:
+                            logger.warning(f"📎 File lookup failed on NOT_FOUND: {file_err}")
+
+                        if not retried_upload:
+                            retried_upload = True
+                            logger.warning("♻️ Re-uploading video file after NOT_FOUND...")
+                            video_file = self.client.files.upload(file=temp_path)
+                            _wait_file_active(video_file.name)
+                            video_part = _make_video_part(video_file)
+                            try:
+                                response = _generate(model_name)
+                                break
+                            except Exception as retry_err:
+                                last_err = retry_err
+                                if "NOT_FOUND" in str(retry_err):
+                                    continue
                                 raise
-                    elif not retried_alt_model:
-                        retried_alt_model = True
-                        alt_model = "models/gemini-2.0-flash"
-                        logger.warning(f"Model fallback to {alt_model}")
-                        response = _generate(alt_model)
+                        else:
+                            continue
                     else:
                         raise
-                else:
-                    raise
+
+            if response is None and last_err is not None:
+                raise last_err
 
 
             # 4. Parse Response
