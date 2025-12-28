@@ -344,6 +344,7 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
             logger.warning(f"🧠 Analyzing {node_id} with {self.model} (VDG v3.0)...")
 
             def _generate(model_name: str):
+                logger.warning(f"📦 Generate with model={model_name} file={video_file.name}")
                 return self.client.models.generate_content(
                     model=model_name,
                     contents=[video_file, enhanced_prompt],
@@ -378,11 +379,22 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                         video_file = self.client.files.upload(file=temp_path)
                         _wait_file_active(video_file.name)
                         response = _generate(self.model)
-                    elif not retried_model and not self.model.startswith("models/") and _looks_like_model_not_found(msg):
+                    elif not retried_model and not self.model.startswith("models/") and (file_ok or _looks_like_model_not_found(msg)):
                         retried_model = True
                         fallback_model = f"models/{self.model}"
                         logger.warning(f"Model not found. Retrying with {fallback_model}")
-                        response = _generate(fallback_model)
+                        try:
+                            response = _generate(fallback_model)
+                        except Exception as retry_err:
+                            retry_msg = str(retry_err)
+                            if "NOT_FOUND" in retry_msg and not retried_upload:
+                                retried_upload = True
+                                logger.warning("♻️ Re-uploading video file after model retry NOT_FOUND...")
+                                video_file = self.client.files.upload(file=temp_path)
+                                _wait_file_active(video_file.name)
+                                response = _generate(fallback_model)
+                            else:
+                                raise
                     else:
                         raise
                 else:
