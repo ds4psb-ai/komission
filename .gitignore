@@ -55,6 +55,11 @@ frontend/out/
 *.bak
 *.tmp
 
+# Local artifacts (DO NOT COMMIT)
+**/.tiktok_profile/
+komission.db
+tiktok_bundle.tgz
+
 # Google Cloud Credentials (NEVER COMMIT)
 **/credentials.json
 **/service-account*.json
