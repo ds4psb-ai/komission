@@ -23,32 +23,41 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 ENV PORT=8080
+# Fix Playwright browser path - accessible by any user
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Install runtime dependencies (libpq for asyncpg, curl, plus Playwright deps)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        libpq-dev curl \
-        # Playwright dependencies
-        libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
-        libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
-        libxdamage1 libxfixes3 libxrandr2 libgbm1 \
-        libasound2 libpango-1.0-0 libcairo2 libfreetype6 \
-        libfontconfig1 libdbus-1-3 libx11-xcb1 libxcursor1 \
-        fonts-liberation fonts-noto-cjk xdg-utils wget && \
+    libpq-dev curl \
+    # Playwright dependencies
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+    libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+    libxdamage1 libxfixes3 libxrandr2 libgbm1 \
+    libasound2 libpango-1.0-0 libcairo2 libfreetype6 \
+    libfontconfig1 libdbus-1-3 libx11-xcb1 libxcursor1 \
+    fonts-liberation fonts-noto-cjk xdg-utils wget && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
-# Install Playwright and browser
+# Create directory for Playwright browsers and make accessible
+RUN mkdir -p /ms-playwright && chmod 777 /ms-playwright
+
+# Install Playwright and browser to shared path
 RUN pip install playwright && \
     playwright install chromium --with-deps
+
+# Ensure browser directory is accessible
+RUN chmod -R 755 /ms-playwright
 
 # Copy application code
 COPY . .
 
 # Create non-root user and set permissions
 RUN useradd -m appuser && chown -R appuser /app
+
 USER appuser
 
 # Healthcheck

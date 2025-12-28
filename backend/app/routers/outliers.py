@@ -1245,7 +1245,6 @@ async def _run_vdg_analysis_with_comments(
             # 2. Check if manual comments already exist - SKIP EXTRACTION
             best_comments = []
             existing_comments = item.best_comments if item else None
-            print(f"🔍 DEBUG: existing_comments type={type(existing_comments)}, value={str(existing_comments)[:100] if existing_comments else 'None'}...")
             
             # Handle asyncpg returning JSONB as string
             if existing_comments and isinstance(existing_comments, str):
