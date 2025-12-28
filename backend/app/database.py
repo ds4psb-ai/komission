@@ -1,6 +1,8 @@
 """
 Database configuration with async PostgreSQL (asyncpg)
 """
+import os
+
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
@@ -18,11 +20,24 @@ else:
         f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
     )
 
+# Connection pool defaults (Cloud SQL micro instances are very small)
+if settings.POSTGRES_HOST.startswith("/cloudsql/"):
+    default_pool_size = 5
+    default_max_overflow = 0
+else:
+    default_pool_size = 20
+    default_max_overflow = 10
+
+pool_size = int(os.getenv("DB_POOL_SIZE", default_pool_size))
+max_overflow = int(os.getenv("DB_MAX_OVERFLOW", default_max_overflow))
+pool_timeout = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+
 # Async Engine with connection pool
 engine = create_async_engine(
     DATABASE_URL,
-    pool_size=20,
-    max_overflow=10,
+    pool_size=pool_size,
+    max_overflow=max_overflow,
+    pool_timeout=pool_timeout,
     pool_pre_ping=True,  # Check connection health
     echo=settings.ENVIRONMENT == "development",
 )
