@@ -306,6 +306,7 @@ class TikTokUnifiedExtractor:
                     'author': item.get('author', ''),
                     'likes': likes,
                     'lang': self._detect_language(text),
+                    'source': 'tiktok_playwright',
                 })
             
             # Sort by likes and limit
@@ -457,6 +458,7 @@ class TikTokUnifiedExtractor:
                     'author': author,
                     'likes': self._parse_count(likes),
                     'lang': self._detect_language(text),
+                    'source': 'tiktok_json',
                 })
             
             # Sort by likes

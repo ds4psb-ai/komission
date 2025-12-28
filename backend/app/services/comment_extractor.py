@@ -473,7 +473,7 @@ class CommentExtractor:
                     
                     if comments:
                         comments.sort(key=lambda x: x["likes"], reverse=True)
-                        return comments[:limit]
+                        return self._prioritize_by_language(comments, limit=limit)
                 
                 if attempt < max_retries:
                     wait = (attempt + 1) * 2
