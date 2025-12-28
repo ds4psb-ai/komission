@@ -1,0 +1,17 @@
+.tiktok_profile/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.env
+.env.*
+credentials.json
+service-account*.json
+token.json
+oauth_client.json
+tiktok_cookies_auto.json
+tiktok_cookies.json
+*.db
