@@ -1245,21 +1245,46 @@ async def _run_vdg_analysis_with_comments(
             # 2. Check if manual comments already exist - SKIP EXTRACTION
             best_comments = []
             existing_comments = item.best_comments if item else None
-            
-            # Handle asyncpg returning JSONB as string
-            if existing_comments and isinstance(existing_comments, str):
-                import json as json_module
-                try:
-                    existing_comments = json_module.loads(existing_comments)
-                except:
-                    existing_comments = None
-            
-            if existing_comments and isinstance(existing_comments, list) and len(existing_comments) > 0:
-                best_comments = existing_comments
+
+            def _normalize_comments(raw):
+                if raw is None:
+                    return None
+                if isinstance(raw, list):
+                    return raw
+                if isinstance(raw, dict):
+                    nested = raw.get("comments")
+                    if isinstance(nested, list):
+                        return nested
+                if isinstance(raw, str):
+                    import json as json_module
+                    for _ in range(2):  # Handle double-encoded JSON
+                        try:
+                            raw = json_module.loads(raw)
+                        except Exception:
+                            return None
+                        if isinstance(raw, list):
+                            return raw
+                        if isinstance(raw, dict):
+                            nested = raw.get("comments")
+                            if isinstance(nested, list):
+                                return nested
+                        if not isinstance(raw, str):
+                            break
+                return None
+
+            normalized_comments = _normalize_comments(existing_comments)
+            if normalized_comments and len(normalized_comments) > 0:
+                best_comments = normalized_comments
                 print(f"✅ Using existing manual comments: {len(best_comments)} for {node_id}")
+                # Normalize stored value if needed
+                if item and normalized_comments is not existing_comments:
+                    item.best_comments = normalized_comments
+                    item.comments_missing_reason = None
+                    await db.commit()
                 # Mark as analyzing now that we confirmed comments exist
-                item.analysis_status = "analyzing"
-                await db.commit()
+                if item and item.analysis_status != "analyzing":
+                    item.analysis_status = "analyzing"
+                    await db.commit()
             else:
                 # 3. Extract best comments (YouTube/TikTok API) - REQUIRED GATE
                 try:
@@ -1579,4 +1604,3 @@ async def list_pending_comment_items(
             for item in items
         ]
     }
-

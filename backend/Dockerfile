@@ -47,7 +47,7 @@ RUN mkdir -p /ms-playwright && chmod 777 /ms-playwright
 
 # Install Playwright and browser to shared path
 RUN pip install playwright && \
-    playwright install chromium --with-deps
+    playwright install chromium chromium-headless-shell --with-deps
 
 # Ensure browser directory is accessible
 RUN chmod -R 755 /ms-playwright
