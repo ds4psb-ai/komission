@@ -112,14 +112,17 @@ class VideoDownloader:
         from app.services.tiktok_metadata import TikTokMetadataExtractor
         import httpx
 
-        extractor = TikTokMetadataExtractor()
-        html = await extractor._fetch_with_playwright(url)
-        if not html:
-            html = await extractor._fetch_with_httpx(url)
-        if not html:
-            raise RuntimeError("Failed to fetch TikTok HTML")
+        video_url = await self._capture_tiktok_video_url(url)
 
-        video_url = self._extract_tiktok_video_url(html)
+        extractor = TikTokMetadataExtractor()
+        html = None
+        if not video_url:
+            html = await extractor._fetch_with_playwright(url)
+            if not html:
+                html = await extractor._fetch_with_httpx(url)
+            if not html:
+                raise RuntimeError("Failed to fetch TikTok HTML")
+            video_url = self._extract_tiktok_video_url(html)
         if not video_url:
             raise RuntimeError("Failed to extract TikTok video URL")
 
@@ -136,18 +139,109 @@ class VideoDownloader:
 
         metadata = VideoMetadata(
             id=video_id,
-            title=self._extract_og_title(html) or "TikTok Video",
+            title=self._extract_og_title(html or "") or "TikTok Video",
             duration=0,
             view_count=0,
             like_count=0,
             uploader="unknown",
             platform="tiktok",
             description="",
-            thumbnail_url=self._extract_og_thumbnail(html),
+            thumbnail_url=self._extract_og_thumbnail(html or ""),
             audio_url=video_url,
         )
 
         return temp_path, metadata
+
+    async def _capture_tiktok_video_url(self, url: str) -> Optional[str]:
+        """
+        Capture the direct video URL from Playwright network responses.
+        """
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            return None
+
+        import random
+        from pathlib import Path
+
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        ]
+
+        cookie_file = os.getenv("TIKTOK_COOKIE_FILE")
+        if not cookie_file or not os.path.exists(cookie_file):
+            base_dir = Path(__file__).parent.parent.parent
+            auto_cookie = base_dir / "tiktok_cookies_auto.json"
+            if auto_cookie.exists():
+                cookie_file = str(auto_cookie)
+
+        video_url = None
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-blink-features=AutomationControlled",
+                ],
+            )
+
+            context = await browser.new_context(
+                user_agent=random.choice(user_agents),
+                viewport={"width": 1280, "height": 720},
+                locale="ko-KR",
+                timezone_id="Asia/Seoul",
+            )
+
+            await context.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                Object.defineProperty(navigator, 'languages', {get: () => ['ko-KR', 'ko', 'en-US', 'en']});
+                window.chrome = { runtime: {} };
+            """)
+
+            if cookie_file and os.path.exists(cookie_file):
+                try:
+                    import json as json_module
+                    with open(cookie_file, "r") as f:
+                        data = json_module.load(f)
+                    cookies = data.get("cookies", data) if isinstance(data, dict) else data
+                    if isinstance(cookies, list) and cookies:
+                        await context.add_cookies(cookies)
+                except Exception:
+                    pass
+
+            page = await context.new_page()
+
+            def handle_response(response):
+                nonlocal video_url
+                if video_url:
+                    return
+                try:
+                    ctype = response.headers.get("content-type", "")
+                    if response.request.resource_type == "media" or "video" in ctype:
+                        if "tiktok" in response.url or "video" in response.url:
+                            video_url = response.url
+                except Exception:
+                    pass
+
+            page.on("response", handle_response)
+
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                await page.wait_for_timeout(3000)
+                if not video_url:
+                    try:
+                        await page.eval_on_selector("video", "v => v.play()")
+                    except Exception:
+                        pass
+                    await page.wait_for_timeout(3000)
+            finally:
+                await browser.close()
+
+        return video_url
 
     def _extract_tiktok_video_url(self, html: str) -> Optional[str]:
         """
