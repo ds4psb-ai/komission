@@ -13,6 +13,12 @@ from typing import Optional, Dict, Any, List
 from google import genai
 from google.genai import types
 from app.config import settings
+from app.services.vdg_2pass.semantic_pass import SemanticPass
+from app.services.vdg_2pass.visual_pass import VisualPass
+from app.services.vdg_2pass.analysis_planner import AnalysisPlanner
+from app.services.vdg_2pass.merger import VDGMerger
+from app.services.vdg_2pass.director_compiler import DirectorCompiler
+from app.schemas.vdg_v4 import VDGv4
 from app.schemas.vdg import VDG
 from app.services.video_downloader import video_downloader
 from app.validators.schema_validator import validate_vdg_analysis_schema, SchemaValidationError
@@ -473,6 +479,97 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
         finally:
             if temp_path and os.path.exists(temp_path):
                 os.remove(temp_path)
+
+    async def analyze_video_v4(
+        self,
+        video_url: str,
+        node_id: str,
+        audience_comments: Optional[List[Dict[str, Any]]] = None
+    ) -> VDGv4:
+        """
+        VDG v4.0 2-Pass Pipeline Execution
+        
+        Pass 1: Semantic (Gemini 2.0 Flash) -> Meaning/Structure
+        Pass 2: Visual (Gemini 3.0 Pro) -> Precision Metrics
+        """
+        if not self.client:
+             raise Exception("Gemini API key not found")
+
+        temp_path = None
+        try:
+            # 1. Download
+            logger.info(f"📥 [v4] Downloading {video_url}...")
+            temp_path, metadata = await video_downloader.download(video_url)
+            
+            with open(temp_path, "rb") as fp:
+                video_bytes = fp.read()
+            
+            duration_sec = metadata.get("duration", 0.0)
+            if duration_sec == 0.0:
+                 # Fallback duration estimation if missing
+                 duration_sec = 60.0 
+
+            platform = "youtube" 
+            if "tiktok.com" in video_url: platform = "tiktok"
+            elif "instagram.com" in video_url: platform = "instagram_reels"
+            elif "shorts" in video_url: platform = "youtube_shorts"
+
+            # 2. Pass 1: Semantic
+            logger.info("🧠 [v4] Running Pass 1: Semantic...")
+            semantic_pass = SemanticPass(self.client)
+            semantic_result = await semantic_pass.analyze(
+                video_bytes=video_bytes, 
+                duration_sec=duration_sec,
+                comments=audience_comments or [],
+                platform=platform
+            )
+            
+            
+            # 3. Bridge: Plan (include comment evidence from mise_en_scene_signals)
+            logger.info("🌉 [v4] Generating Analysis Plan...")
+            plan = AnalysisPlanner.plan(
+                semantic=semantic_result,
+                mise_en_scene_signals=semantic_result.mise_en_scene_signals if hasattr(semantic_result, 'mise_en_scene_signals') else []
+            )
+            
+            # 4. Pass 2: Visual
+            logger.info("👁️ [v4] Running Pass 2: Visual...")
+            visual_pass = VisualPass(self.client)
+            visual_result = await visual_pass.analyze(
+                video_bytes=video_bytes,
+                plan=plan,
+                entity_hints=semantic_result.entity_hints,
+                semantic_summary=semantic_result.summary
+            )
+            
+            # 5. Merge
+            logger.info("🔄 [v4] Merging Results...")
+            merger = VDGMerger()
+            vdg = merger.merge(
+                semantic=semantic_result,
+                visual=visual_result,
+                plan=plan,
+                content_id=node_id,
+                video_url=video_url
+            )
+            
+            # 6. Compile (Director Pack Candidates)
+            # For now, we populate candidates using the Compiler logic
+            # This logic should ideally be inside Compiler, but for MVP we skip full candidates unless defined
+            # VDGv4 object is ready.
+            
+            return vdg
+
+        except Exception as e:
+            logger.error(f"❌ VDG v4 Pipeline Failed: {e}")
+            raise e
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass
+
 
     def _sanitize_vdg_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Coerce known schema edge-cases from LLM output before Pydantic validation."""

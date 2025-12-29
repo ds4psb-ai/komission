@@ -13,7 +13,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { api, OutlierItem } from "@/lib/api";
-import { AppHeader } from "@/components/AppHeader";
+import { useAuthGate, AUTH_ACTIONS } from "@/lib/useAuthGate";
 import { UnifiedOutlierCard, OutlierCardItem } from "@/components/UnifiedOutlierCard";
 import { SessionHUD } from "@/components/SessionHUD";
 import {
@@ -172,9 +172,15 @@ export default function Home() {
     A: items.filter(i => i.outlier_tier === 'A').length,
   };
 
+  // Auth gate for protected actions
+  const { requireAuth } = useAuthGate();
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!searchInput.trim() || !isLinkMode) return;
+
+    // Require auth for video analysis
+    if (!requireAuth(AUTH_ACTIONS.ANALYZE)) return;
 
     setIsSubmitting(true);
     try {
@@ -192,6 +198,9 @@ export default function Home() {
   }
 
   async function handlePromote(item: OutlierCardItem) {
+    // Require auth for promote action
+    if (!requireAuth(AUTH_ACTIONS.PROMOTE)) return;
+
     try {
       await fetch(`/api/v1/outliers/items/${item.id}/promote`, {
         method: 'POST',
@@ -205,7 +214,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans pb-20 md:pb-0">
-      <AppHeader />
 
       {/* Header + Search */}
       <section className="px-4 sm:px-6 pt-6 pb-3 max-w-7xl mx-auto">

@@ -8,7 +8,7 @@
  * - 세션 컨텍스트 기반 추천 표시
  * - MCP Tool 연동: Source Pack 생성
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from '@/contexts/SessionContext';
 import { useConsent } from '@/contexts/ConsentContext';
@@ -44,7 +44,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 const formatCategoryLabel = (value: string) => CATEGORY_LABELS[value] || value;
 const formatPlatformLabel = (value: string) => PLATFORM_LABELS[value] || value;
 
-export default function SessionResultPage() {
+function SessionResultContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { state, setSelectedPattern, markEvidenceViewed, markFeedbackSubmitted, markShootStarted } = useSession();
@@ -281,3 +281,17 @@ export default function SessionResultPage() {
         </div>
     );
 }
+
+// Wrap with Suspense for useSearchParams
+export default function SessionResultPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
+            </div>
+        }>
+            <SessionResultContent />
+        </Suspense>
+    );
+}
+

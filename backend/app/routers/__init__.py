@@ -29,6 +29,7 @@ from app.routers.monitoring import router as monitoring_router  # PEGL v1.0
 from app.routers.creator import router as creator_router  # P2 Feedback Loop
 from app.routers.usage import router as usage_router  # Week 2: Creator Usage Tracking
 from app.routers.for_you import router as for_you_router  # For You API (MCP Ready)
+from app.routers.coaching import router as coaching_router  # Audio Coach API
 
 api_router.include_router(remix_router, prefix="/remix", tags=["Remix"])
 api_router.include_router(auth_router, prefix="/auth", tags=["Auth"])
@@ -52,4 +53,5 @@ api_router.include_router(monitoring_router, tags=["Monitoring"])  # PEGL v1.0
 api_router.include_router(creator_router, tags=["Creator"])  # P2 Feedback Loop
 api_router.include_router(usage_router, tags=["Usage Tracking"])  # Week 2
 api_router.include_router(for_you_router, tags=["For You"])  # MCP Ready
+api_router.include_router(coaching_router, tags=["Coaching"])  # Audio Coach API
 

@@ -42,19 +42,19 @@ class PatternRecommendation(BaseModel):
     id: UUID
     outlier_id: UUID
     
-    # 기본 정보
+    # 기본 정보 - None 방어 (DB에 값 없을 수 있음)
     title: Optional[str] = None
-    video_url: str
+    video_url: Optional[str] = None  # 필수지만 DB 누락 대비
     thumbnail_url: Optional[str] = None
-    platform: str
-    category: str
+    platform: str = "unknown"  # tiktok/youtube/instagram
+    category: str = "general"  # beauty/meme/food...
     
     # Tier & Score
-    tier: str = "B"  # S/A/B/C
+    tier: str = "C"  # S/A/B/C - 기본값 C로 변경
     outlier_score: Optional[float] = None
     
     # Evidence
-    evidence: EvidenceSummary
+    evidence: Optional[EvidenceSummary] = None  # None 허용
     
     # Recurrence (패턴 재등장)
     recurrence: Optional[RecurrenceInfo] = None

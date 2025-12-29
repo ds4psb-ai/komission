@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Providers } from "./providers";
-import { BottomNav } from "@/components/BottomNav";
+import { AppShell } from "@/components/AppShell";
 import { SkipLink } from "@/components/ui/Accessible";
 
 const geistSans = Geist({
@@ -35,13 +35,15 @@ export default function RootLayout({
         <SkipLink targetId="main-content" />
         <ErrorBoundary>
           <Providers>
-            <main id="main-content">
-              {children}
-            </main>
-            <BottomNav />
+            <AppShell>
+              <main id="main-content">
+                {children}
+              </main>
+            </AppShell>
           </Providers>
         </ErrorBoundary>
       </body>
     </html>
   );
 }
+

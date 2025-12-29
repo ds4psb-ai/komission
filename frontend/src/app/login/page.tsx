@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useRef, Suspense } from 'react';
+import React, { useState, useRef, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { GoogleLoginButtonCustom } from '@/components/GoogleLoginButton';
 import { useAuth } from '@/lib/auth';
+import { ACTION_LABELS } from '@/lib/useAuthGate';
 
 function LoginContent() {
     const router = useRouter();
@@ -20,9 +21,12 @@ function LoginContent() {
 
     const redirectTo = searchParams.get('redirect') || '/my';
     const isSessionExpired = searchParams.get('expired') === 'true';
+    const isActionRequired = searchParams.get('required') === 'true';
+    const actionType = searchParams.get('action');
+    const actionLabel = actionType && ACTION_LABELS[actionType] ? ACTION_LABELS[actionType] : null;
 
     // Show session expired message on mount
-    React.useEffect(() => {
+    useEffect(() => {
         if (isSessionExpired) {
             setError('세션이 만료되었습니다. 다시 로그인해 주세요.');
         }
@@ -53,7 +57,17 @@ function LoginContent() {
         setError(null);
         try {
             await login(credential);
-            router.push(redirectTo);
+            // Check for stored redirect path from authGate
+            const storedRedirect = typeof window !== 'undefined'
+                ? sessionStorage.getItem('authRedirect')
+                : null;
+            if (storedRedirect) {
+                sessionStorage.removeItem('authRedirect');
+                sessionStorage.removeItem('pendingAction');
+                router.push(storedRedirect);
+            } else {
+                router.push(redirectTo);
+            }
         } catch (err) {
             console.error('Login failed:', err);
             setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
@@ -124,6 +138,16 @@ function LoginContent() {
                     {error && (
                         <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-300 text-xs font-bold text-center flex items-center justify-center gap-2 animate-shake">
                             <span>🚫</span> {error}
+                        </div>
+                    )}
+
+                    {/* Action Required Info Box */}
+                    {isActionRequired && !error && (
+                        <div className="mb-6 p-4 bg-violet-500/10 border border-violet-500/20 rounded-2xl text-violet-300 text-xs font-bold text-center flex items-center justify-center gap-2">
+                            <span>🔐</span>
+                            {actionLabel
+                                ? `"${actionLabel}" 기능을 사용하려면 로그인이 필요합니다.`
+                                : '이 기능을 사용하려면 로그인이 필요합니다.'}
                         </div>
                     )}
 

@@ -450,6 +450,50 @@ async def get_outlier_item(
                 "best_comment": item.best_comments[0] if item.best_comments else None,
             }
             
+            # L2 Integration: Try to generate DirectorPack from VDG for richer guides
+            try:
+                from app.services.vdg_2pass.director_compiler import compile_director_pack
+                from app.schemas.vdg_v4 import VDGv4
+                
+                # Check if VDG v4 schema available (has hook_genome, scenes)
+                if "hook_genome" in analysis and "scenes" in analysis:
+                    vdg_v4 = VDGv4(
+                        content_id=node.node_id,
+                        duration_sec=analysis.get("duration_sec", 0),
+                        **{k: v for k, v in analysis.items() 
+                           if k not in ["content_id", "duration_sec"]}
+                    )
+                    director_pack = compile_director_pack(vdg_v4)
+                    
+                    # Use DirectorPack for richer guide
+                    dp_guide = _extract_shooting_guide_from_director_pack(
+                        director_pack.model_dump()
+                    )
+                    
+                    # Merge with VDG v3 guide (DirectorPack takes priority)
+                    if dp_guide.get("invariant"):
+                        response["analysis"]["invariant"] = dp_guide["invariant"]
+                    if dp_guide.get("variable"):
+                        response["analysis"]["variable"] = dp_guide["variable"]
+                    if dp_guide.get("do_not"):
+                        response["analysis"]["do_not"] = dp_guide["do_not"]
+                    
+                    # Add DirectorPack extras
+                    response["analysis"]["checkpoints"] = dp_guide.get("checkpoints", [])
+                    
+                    # Add DirectorPack for coaching integration
+                    response["director_pack"] = director_pack.model_dump()
+                    
+            except Exception as e:
+                # Non-fatal: fall back to VDG v3 guide
+                import logging
+                logging.getLogger(__name__).warning(f"DirectorPack generation failed: {e}")
+            
+            # Add platform-specific tips
+            response["analysis"]["platform_tips"] = _get_platform_specific_tips(
+                item.platform or "youtube"
+            )
+            
             # Raw VDG data with Korean translation for Storyboard UI
             response["raw_vdg"] = _translate_vdg_to_korean(analysis)
     
@@ -823,6 +867,120 @@ def _extract_invariant(analysis: dict) -> Optional[List[str]]:
             invariant.append(f"🎵 편집 리듬: {_translate_term(metrics['pacing'])}")
     
     return invariant if invariant else None
+
+
+# ==================
+# DIRECTOR PACK BASED SHOOTING GUIDE (L2 Integration)
+# ==================
+
+def _extract_shooting_guide_from_director_pack(director_pack: dict) -> dict:
+    """
+    DirectorPack → 촬영 가이드 추출 (L2 Integration)
+    
+    VDG v4.0 DirectorPack의 DNAInvariant, MutationSlot, ForbiddenMutation을
+    카드 상세의 가이드로 변환
+    
+    Returns:
+        {
+            "invariant": [...],  # 필수 요소 (DNAInvariant)
+            "variable": [...],    # 변주 가능 (MutationSlot)
+            "do_not": [...],      # 금지 사항 (ForbiddenMutation)
+            "checkpoints": [...]  # 시간별 체크포인트
+        }
+    """
+    guide = {
+        "invariant": [],
+        "variable": [],
+        "do_not": [],
+        "checkpoints": [],
+    }
+    
+    # Priority emoji map
+    priority_emoji = {
+        "critical": "🔴",
+        "high": "🟠",
+        "medium": "🟡",
+        "low": "⚪",
+    }
+    
+    # Domain emoji map
+    domain_emoji = {
+        "hook": "🎣",
+        "timing": "⏱️",
+        "composition": "📷",
+        "pacing": "🎵",
+        "audio": "🎤",
+    }
+    
+    # 1. DNAInvariant → 필수 요소
+    dna_invariants = director_pack.get("dna_invariants", [])
+    for rule in dna_invariants[:5]:  # Top 5
+        emoji = priority_emoji.get(rule.get("priority", "medium"), "")
+        domain = rule.get("domain", "")
+        domain_ico = domain_emoji.get(domain, "📌")
+        
+        # Use coach_line (friendly tone) or check_hint
+        templates = rule.get("coach_line_templates", {})
+        text = (
+            templates.get("friendly") or 
+            templates.get("neutral") or 
+            rule.get("check_hint") or
+            rule.get("description", "")
+        )
+        
+        if text:
+            guide["invariant"].append(f"{emoji}{domain_ico} {text}")
+    
+    # 2. MutationSlot → 변주 가능 요소
+    mutation_slots = director_pack.get("mutation_slots", [])
+    for slot in mutation_slots[:3]:
+        slot_type = slot.get("slot_type", "")
+        slot_guide = slot.get("guide", "")
+        options = slot.get("options", [])
+        
+        if slot_guide:
+            options_str = ", ".join(options[:3]) if options else "자유롭게"
+            guide["variable"].append(f"🎨 {slot_type}: {slot_guide} ({options_str})")
+    
+    # 3. ForbiddenMutation → 금지 사항
+    forbidden = director_pack.get("forbidden_mutations", [])
+    for fm in forbidden[:3]:
+        reason = fm.get("reason", "")
+        if reason:
+            guide["do_not"].append(f"❌ {reason}")
+    
+    # 4. Checkpoints → 시간별 가이드
+    checkpoints = director_pack.get("checkpoints", [])
+    for cp in checkpoints[:5]:
+        t_window = cp.get("t_window", [0, 0])
+        note = cp.get("note", "")
+        if note and cp.get("checkpoint_id") != "overall":
+            guide["checkpoints"].append(f"⏰ {t_window[0]:.0f}-{t_window[1]:.0f}초: {note}")
+    
+    return guide
+
+
+def _get_platform_specific_tips(platform: str) -> List[str]:
+    """
+    플랫폼별 추가 팁 (Shorts vs TikTok 차이)
+    """
+    tips = {
+        "youtube": [
+            "🎬 쇼츠: 첫 1초가 생명, Thumbnail = 첫 프레임",
+            "📱 세로 9:16 필수, 60초 이내",
+        ],
+        "tiktok": [
+            "🎵 틱톡: 트렌딩 사운드 활용이 핵심",
+            "🔄 듀엣/스티치 가능한 포맷 고려",
+            "📱 세로 9:16, 15/30/60초 권장",
+        ],
+        "instagram": [
+            "📸 릴스: 첫 3초 안에 주제 명확히",
+            "🏷️ 해시태그 활용 중요",
+        ],
+    }
+    return tips.get(platform.lower(), [])
+
 
 def _extract_variable(analysis: dict) -> Optional[List[str]]:
     """Extract creative variation elements (가변 요소) - Korean"""

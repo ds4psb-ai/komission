@@ -72,7 +72,7 @@ export default function OpsConsolePage() {
                 return;
             }
 
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('access_token');
             if (!token) {
                 setError('로그인이 필요합니다');
                 setLoading(false);
@@ -123,7 +123,7 @@ export default function OpsConsolePage() {
     async function handleRetry(runId: string) {
         setRetrying(runId);
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('access_token');
             const res = await fetch(`/api/v1/ops/runs/${runId}/retry`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -195,16 +195,19 @@ export default function OpsConsolePage() {
                     </button>
                 </div>
 
-                {/* Error State */}
+                {/* Error State - Softer Design */}
                 {error && (
-                    <div className="mb-8 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-center">
-                        <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-                        <p className="text-red-400 font-bold">{error}</p>
+                    <div className="mb-8 p-6 bg-white/5 border border-white/10 rounded-2xl text-center">
+                        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-violet-500/10 flex items-center justify-center">
+                            <AlertCircle className="w-6 h-6 text-violet-400" />
+                        </div>
+                        <p className="text-white font-medium mb-2">{error}</p>
+                        <p className="text-white/50 text-sm mb-4">Ops Console은 관리자 계정으로 로그인해야 접근할 수 있습니다.</p>
                         <button
-                            onClick={() => window.location.href = '/login'}
-                            className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-red-300 text-sm"
+                            onClick={() => window.location.href = '/login?redirect=/ops'}
+                            className="px-6 py-2.5 bg-violet-500 hover:bg-violet-400 rounded-xl text-white text-sm font-bold transition-colors"
                         >
-                            로그인 페이지로 이동
+                            로그인하기
                         </button>
                     </div>
                 )}

@@ -183,13 +183,16 @@ class AnalysisPoint(BaseModel):
         "hook_punch", "hook_start", "hook_build", "hook_end",
         "scene_boundary", "sentiment_shift",
         "product_mention", "key_dialogue", "text_appear",
-        "comment_mise_en_scene"
+        "comment_mise_en_scene", "comment_evidence"  # Patch #13: 댓글 증거 기반
     ]
     source_ref: str
     target_hint_key: Optional[str] = None
     metrics_requested: List[MetricRequest] = Field(default_factory=list)
     window_policy: Literal["clamp", "split"] = "clamp"
     instruction: Optional[str] = None
+    
+    # Patch #14: CV-First, LLM-Auditor 지원
+    measurement_method: Literal["llm", "cv_geometry", "cv_tracking", "hybrid"] = "llm"
 
 
 class AnalysisPlan(BaseModel):
@@ -391,6 +394,13 @@ class AnalysisPointResult(BaseModel):
     metrics: Dict[str, MetricResult] = Field(default_factory=dict)
     best_frame_sample: Optional[Dict[str, Any]] = None
     semantic_visual_alignment: float = 0.8
+    
+    # Patch #14: LLM Auditor 결과
+    auditor_verdict: Literal["pass", "warn", "fail"] = "pass"
+    audit_reason: Optional[str] = None
+    
+    # Patch #15: 댓글 증거 연결
+    comment_evidence_refs: List[str] = Field(default_factory=list)
 
 
 class EntityTrack(BaseModel):

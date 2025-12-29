@@ -62,7 +62,7 @@ function TreeNodeCard({ node, onSelect, selectedId }: { node: TreeNode; onSelect
 
 export default function MyPage() {
     const router = useRouter();
-    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
 
     const [nodes, setNodes] = useState<RemixNode[]>([]);
     const [loading, setLoading] = useState(true);
@@ -454,6 +454,31 @@ export default function MyPage() {
                             <div className="font-bold text-lg mb-1">다음 리믹스 찾기</div>
                             <div className="text-xs text-white/50">아웃라이어로 돌아가기</div>
                         </Link>
+                    </div>
+                </div>
+
+                {/* Account Section */}
+                <div className="mt-16 pt-8 border-t border-white/10">
+                    <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest mb-6">계정</h3>
+                    <div className="flex items-center justify-between p-6 bg-white/5 border border-white/10 rounded-2xl">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                                {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                            </div>
+                            <div>
+                                <div className="font-medium text-white">{user?.name || 'User'}</div>
+                                <div className="text-sm text-white/40">{user?.email}</div>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => {
+                                logout();
+                                router.push('/');
+                            }}
+                            className="px-4 py-2 text-sm text-white/50 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                        >
+                            로그아웃
+                        </button>
                     </div>
                 </div>
             </main>

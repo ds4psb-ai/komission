@@ -27,6 +27,7 @@ import { SessionHUD } from '@/components/canvas/SessionHUD';
 import { api, Pipeline } from '@/lib/api';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useAuth } from '@/lib/auth';
+import { useAuthGate, AUTH_ACTIONS } from '@/lib/useAuthGate';
 import { OutlierSelector, type OutlierItem } from '@/components/canvas/OutlierSelector';
 import { Video, Lock, Dna, Brain, BarChart3, Scale, Clapperboard, MapPin, FileText } from 'lucide-react';
 
@@ -125,6 +126,9 @@ function CanvasFlow() {
 
     // Toast state (simple inline implementation)
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+    // Auth gate for protected actions
+    const { requireAuth } = useAuthGate();
 
     const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
         setToast({ message, type });
@@ -345,6 +349,9 @@ function CanvasFlow() {
 
     // Persistence Handlers
     const handleSave = useCallback(async () => {
+        // Require auth for saving
+        if (!requireAuth(AUTH_ACTIONS.SAVE)) return;
+
         if (!nodes.length) {
             showToast('캔버스가 비어있습니다!', 'error');
             return;
@@ -451,6 +458,9 @@ function CanvasFlow() {
 
     // Add node - with Outlier support
     const addNode = useCallback((type: string, position?: { x: number; y: number }, data?: any) => {
+        // Require auth for adding nodes
+        if (!requireAuth(AUTH_ACTIONS.ADD_NODE)) return;
+
         takeSnapshot(nodes, edges);
 
         const finalPosition = position || { x: 300 + nodes.length * 50, y: 150 + nodes.length * 50 };
