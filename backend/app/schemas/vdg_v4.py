@@ -167,7 +167,7 @@ BBOX_FORMAT = "xywh"  # [x, y, width, height] top-left + size, normalized 0~1
 
 class SamplingPolicy(BaseModel):
     """샘플링 정책"""
-    target_fps: float = 12.0
+    target_fps: float = 10.0
     min_samples: int = 8
     max_samples: int = 24
     frame_stride: Optional[int] = None
