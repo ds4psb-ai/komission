@@ -71,6 +71,72 @@ class Persona(BaseModel):
     situation_constraints: Dict[str, Any] = Field(default_factory=dict)
 
 
+# Blueprint Persona Presets (Phase 2)
+PERSONA_PRESETS: Dict[str, Dict[str, Any]] = {
+    "cynical_expert": {
+        "display_name": "시니컬 전문가",
+        "opening_tone": "시니컬",
+        "reaction_intensity": "low",
+        "camera_distance": "medium",
+        "coach_lines": {
+            "greeting": "억지로 웃지 마세요. 평소처럼 시니컬하게.",
+            "energy": "과하게 움직이지 마세요. 차분하게.",
+            "hook": "바로 본론으로 가세요. 인사 생략."
+        }
+    },
+    "home_cook": {
+        "display_name": "홈쿡 크리에이터",
+        "opening_tone": "친근한",
+        "reaction_intensity": "medium",
+        "props": "주방용품",
+        "setting": "집 주방",
+        "coach_lines": {
+            "prop": "프라이팬을 더 높이 드세요!",
+            "angle": "요리가 잘 보이게 카메라 각도 조정!",
+            "hook": "맛있는 냄새가 나는 것처럼 표정 지어보세요~"
+        }
+    },
+    "energetic_host": {
+        "display_name": "에너지 넘치는 MC",
+        "opening_tone": "활기찬",
+        "reaction_intensity": "high",
+        "camera_distance": "close",
+        "coach_lines": {
+            "energy": "더 에너지 넘치게! 텐션 UP!",
+            "hook": "와! 하고 크게 시작하세요!",
+            "gesture": "제스처를 더 크게!"
+        }
+    },
+    "serious_pro": {
+        "display_name": "진지한 전문가",
+        "opening_tone": "진지함",
+        "reaction_intensity": "low",
+        "camera_distance": "wide",
+        "coach_lines": {
+            "tone": "전문가답게 차분하게 설명하세요.",
+            "hook": "핵심 포인트부터 말씀하세요.",
+            "credibility": "자신감 있는 목소리로!"
+        }
+    },
+    "friendly_neighbor": {
+        "display_name": "친근한 이웃",
+        "opening_tone": "친구같은",
+        "reaction_intensity": "medium",
+        "camera_distance": "medium",
+        "coach_lines": {
+            "tone": "친구한테 말하듯이 편하게!",
+            "hook": "안녕~ 하고 자연스럽게 시작해요.",
+            "energy": "너무 힘 빼지 말고 자연스럽게~"
+        }
+    }
+}
+
+
+def get_persona_config(preset_name: str) -> Optional[Dict[str, Any]]:
+    """프리셋 이름으로 Persona 설정 가져오기"""
+    return PERSONA_PRESETS.get(preset_name)
+
+
 # ====================
 # 6. SCORING
 # ====================

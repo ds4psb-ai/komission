@@ -534,14 +534,89 @@ class AudioCoach:
         return self._violation_log.copy()
     
     def get_session_stats(self) -> Dict[str, Any]:
-        """세션 통계"""
+        """
+        세션 통계 + R_ES Score 계산 (Phase 2: Blueprint GI Formula)
+        
+        Blueprint: GI = D_NA × 50% + P_E × 35% + R_ES × 15%
+        R_ES = (rules_followed / rules_total) × response_factor
+        """
+        commands = len(self._coaching_log)
+        violations = len(self._violation_log)
+        rules_covered = len(self._delivered_rule_ids)
+        total_rules = len(self._director_pack.dna_invariants) if self._director_pack else 0
+        duration = time.time() - self._session_start_time if self._session_start_time else 0
+        
+        # R_ES Score Calculation (Phase 2)
+        res_score = self._calculate_res_score()
+        
         return {
-            "commands_delivered": len(self._coaching_log),
-            "violations_detected": len(self._violation_log),
-            "rules_covered": len(self._delivered_rule_ids),
-            "total_rules": len(self._director_pack.dna_invariants) if self._director_pack else 0,
-            "session_duration_sec": time.time() - self._session_start_time if self._session_start_time else 0
+            "commands_delivered": commands,
+            "violations_detected": violations,
+            "rules_covered": rules_covered,
+            "total_rules": total_rules,
+            "session_duration_sec": duration,
+            # Phase 2: R_ES Score
+            "res_score": res_score,
+            "res_grade": self._get_res_grade(res_score),
         }
+    
+    def _calculate_res_score(self) -> float:
+        """
+        R_ES (Real-time Execution Score) 계산
+        
+        공식: R_ES = (followed_ratio) × (1 - violation_penalty) × response_speed_factor
+        
+        - followed_ratio: 전달된 규칙 비율 (rules_covered / total_rules)
+        - violation_penalty: 위반 비율 (violations / commands)
+        - response_speed_factor: 평균 반응 시간 기반 (생략: Phase 3)
+        """
+        if not self._director_pack:
+            return 0.0
+        
+        total_rules = len(self._director_pack.dna_invariants)
+        if total_rules == 0:
+            return 1.0  # No rules = perfect score
+        
+        # 1. Rule Coverage (50% weight)
+        rules_covered = len(self._delivered_rule_ids)
+        coverage_ratio = min(rules_covered / total_rules, 1.0)
+        
+        # 2. Violation Penalty (30% weight)
+        commands = len(self._coaching_log)
+        violations = len(self._violation_log)
+        if commands > 0:
+            violation_ratio = violations / commands
+            violation_score = max(0.0, 1.0 - violation_ratio * 2)  # 50% violation = 0 score
+        else:
+            violation_score = 1.0  # No commands = no violations
+        
+        # 3. Session Completion (20% weight)
+        # Did user complete the expected duration?
+        expected_duration = self._director_pack.policy.cooldown_sec * total_rules if self._director_pack.policy else 30
+        actual_duration = time.time() - (self._session_start_time or time.time())
+        completion_ratio = min(actual_duration / max(expected_duration, 1), 1.0)
+        
+        # Final R_ES Score
+        res_score = (
+            coverage_ratio * 0.5 +
+            violation_score * 0.3 +
+            completion_ratio * 0.2
+        )
+        
+        return round(res_score, 3)
+    
+    def _get_res_grade(self, score: float) -> str:
+        """R_ES 점수 → 등급"""
+        if score >= 0.9:
+            return "S"
+        elif score >= 0.7:
+            return "A"
+        elif score >= 0.5:
+            return "B"
+        elif score >= 0.3:
+            return "C"
+        else:
+            return "D"
     
     def reset_session(self):
         """세션 상태 리셋 (H0-6 dedup 포함)"""
