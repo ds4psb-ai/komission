@@ -1,16 +1,15 @@
 """
-Director Pack v1.0.1 Pydantic Schemas
+Director Pack v1.0.2 Pydantic Schemas
 
 Real-time coaching rules compiled from VDG v4.0.
 Used by Gemini Live for 1-second interval coaching.
 
-v1.0.1 Patches Applied:
-1. RuleSpec.metric → metric_id (MetricRegistry 참조)
-7. evidence_refs → List[str] 통일
+v1.0.2 Protocol Freeze Patches:
+- metric_id uses domain.name.v1 format
+- evidence_refs unified to List[str]
 """
 from typing import List, Literal, Optional, Dict, Any
 from pydantic import BaseModel, Field
-from datetime import datetime
 
 
 # ====================
@@ -22,7 +21,7 @@ class SourceRef(BaseModel):
     vdg_content_id: Optional[str] = None
     vdg_version: Optional[str] = None
     cluster_id: Optional[str] = None
-    evidence_refs: List[str] = Field(default_factory=list)  # Patch #7: str only
+    evidence_refs: List[str] = Field(default_factory=list)
 
 
 # ====================
@@ -88,7 +87,7 @@ class Scoring(BaseModel):
 # ====================
 
 class CoachLineTemplates(BaseModel):
-    """코칭 대사 템플릿 (톤별/언어별)"""
+    """코칭 대사 템플릿"""
     strict: Optional[str] = None
     friendly: Optional[str] = None
     neutral: Optional[str] = None
@@ -97,29 +96,29 @@ class CoachLineTemplates(BaseModel):
 
 
 # ====================
-# 8. RULE SPEC (Patch #1 적용)
+# 8. RULE SPEC
 # ====================
 
 class TimeScope(BaseModel):
     """시간 범위"""
-    t_window: List[float]  # [start, end]
-    relative_to: Optional[str] = None  # "start", "hook_start", "scene_id"
+    t_window: List[float]
+    relative_to: Optional[str] = None
 
 
 class RuleSpec(BaseModel):
     """머신 체크 가능한 규칙 스펙"""
-    metric_id: str  # Patch #1: 반드시 MetricRegistry 참조
+    metric_id: str  # domain.name.v1 형식
     op: Literal["<=", "<", ">=", ">", "between", "equals", "exists"]
     target: Optional[Any] = None
     range: Optional[List[float]] = None
     unit: Optional[str] = None
-    aggregation: Optional[str] = None  # "median", "max" 등
-    selector: Optional[str] = None  # vector2면 "x"/"y"
+    aggregation: Optional[str] = None
+    selector: Optional[str] = None
     required_inputs: List[Literal["audio", "video_1fps", "text"]] = Field(default_factory=list)
 
 
 class DNAInvariant(BaseModel):
-    """DNA 불변 규칙 (절대 타협 불가)"""
+    """DNA 불변 규칙"""
     rule_id: str
     domain: Literal["composition", "timing", "audio", "performance", "text", "safety"]
     priority: Literal["critical", "high", "medium", "low"]
@@ -131,7 +130,7 @@ class DNAInvariant(BaseModel):
     check_hint: Optional[str] = None
     
     coach_line_templates: CoachLineTemplates = Field(default_factory=CoachLineTemplates)
-    evidence_refs: List[str] = Field(default_factory=list)  # Patch #7
+    evidence_refs: List[str] = Field(default_factory=list)
     fallback: Optional[Literal["ask_user", "do_nothing", "generic_tip"]] = None
 
 
@@ -157,11 +156,11 @@ class MutationSlot(BaseModel):
 # ====================
 
 class ForbiddenMutation(BaseModel):
-    """금기 (하지 말 것)"""
+    """금기"""
     mutation_id: str
     reason: str
     severity: Optional[Literal["critical", "high", "medium", "low"]] = None
-    evidence_refs: List[str] = Field(default_factory=list)  # Patch #7
+    evidence_refs: List[str] = Field(default_factory=list)
 
 
 # ====================
@@ -199,62 +198,45 @@ class LoggingSpec(BaseModel):
 
 
 # ====================
-# 14. DIRECTOR PACK v1.0.1
+# 14. DIRECTOR PACK v1.0.2
 # ====================
 
 class DirectorPack(BaseModel):
-    """Director Pack v1.0.1 - 실시간 코칭 지령서 (패치 적용)"""
-    pack_version: str = "1.0.1"
+    """Director Pack v1.0.2 - Protocol Freeze 완료"""
+    pack_version: str = "1.0.2"
     pattern_id: str
     goal: Optional[str] = None
     
-    # Metadata
     pack_meta: PackMeta
-    
-    # Target
     target: TargetSpec = Field(default_factory=TargetSpec)
-    
-    # Runtime Contract
     runtime_contract: RuntimeContract
-    
-    # Persona
     persona: Persona = Field(default_factory=Persona)
-    
-    # Scoring
     scoring: Scoring = Field(default_factory=Scoring)
     
-    # Rules
     dna_invariants: List[DNAInvariant]
     mutation_slots: List[MutationSlot] = Field(default_factory=list)
     forbidden_mutations: List[ForbiddenMutation] = Field(default_factory=list)
-    
-    # Checkpoints
     checkpoints: List[Checkpoint] = Field(default_factory=list)
     
-    # Policy
     policy: Policy
-    
-    # Logging
     logging_spec: LoggingSpec = Field(default_factory=LoggingSpec)
-    
-    # Extensions
     extensions: Dict[str, Any] = Field(default_factory=dict)
 
 
 # ====================
-# 15. EXAMPLE PACK (Patch #1 반영)
+# 15. EXAMPLE PACK
 # ====================
 
 EXAMPLE_DIRECTOR_PACK = {
-    "pack_version": "1.0.1",
+    "pack_version": "1.0.2",
     "pattern_id": "hook_subversion_v1",
     "goal": "훅 펀치 순간 피사체 중앙 유지",
     "pack_meta": {
         "pack_id": "dp_20251229_001",
-        "generated_at": "2025-12-29T11:06:00Z",
-        "compiler_version": "1.0.1",
+        "generated_at": "2025-12-29T11:10:00Z",
+        "compiler_version": "1.0.2",
         "source_refs": [
-            {"vdg_content_id": "vdg_xxx", "vdg_version": "4.0.1", "evidence_refs": ["ev_001"]}
+            {"vdg_content_id": "vdg_xxx", "vdg_version": "4.0.2", "evidence_refs": ["ev_001"]}
         ]
     },
     "runtime_contract": {
@@ -273,7 +255,7 @@ EXAMPLE_DIRECTOR_PACK = {
                 "relative_to": "start"
             },
             "spec": {
-                "metric_id": "stability_score",  # Patch #1: MetricRegistry 참조
+                "metric_id": "cmp.stability_score.v1",  # domain.name.v1 형식
                 "op": ">=",
                 "target": 0.85,
                 "aggregation": "mean",
@@ -285,7 +267,7 @@ EXAMPLE_DIRECTOR_PACK = {
                 "friendly": "피사체를 중앙에 잡아주세요~",
                 "neutral": "중앙 배치를 유지하세요."
             },
-            "evidence_refs": ["ev_001", "ev_002"]  # Patch #7: str only
+            "evidence_refs": ["ev_001", "ev_002"]
         }
     ],
     "checkpoints": [
@@ -293,7 +275,7 @@ EXAMPLE_DIRECTOR_PACK = {
             "checkpoint_id": "hook_punch",
             "t_window": [0.2, 0.8],
             "active_rules": ["hook_center_anchor"],
-            "note": "훅 펀치 순간 - 중앙 배치 검증"
+            "note": "훅 펀치 순간"
         }
     ],
     "policy": {
