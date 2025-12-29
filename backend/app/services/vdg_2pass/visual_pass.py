@@ -1,7 +1,7 @@
 """
 Visual Pass (VDG v4.0 Pass 2)
 
-P0-2: Uses Metric Registry for authoritative measurement contracts
+P0-2: Uses Plan-based frame extraction (not full mp4)
 P0-4: Uses robust_generate_content for retry/fallback/JSON repair
 """
 from typing import Dict, Any, List
@@ -22,6 +22,7 @@ from app.services.vdg_2pass.prompts.visual_prompt import (
     get_metric_registry_json
 )
 from app.services.vdg_2pass.gemini_utils import robust_generate_content
+from app.services.vdg_2pass.frame_extractor import FrameExtractor
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -37,8 +38,9 @@ class VisualPass:
     - Metric Extraction (with Registry definitions)
     
     P0-2 Hardening:
-    - Metric Registry injected into prompt
-    - Measurement contracts are authoritative
+    - Plan-based frame extraction (not full mp4)
+    - Cost reduction: ~1/5 of full video tokens
+    - Falls back to full video if ffmpeg unavailable
     
     P0-4 Hardening:
     - Retry with exponential backoff
@@ -53,6 +55,13 @@ class VisualPass:
         
         # Use config or default to 1.5 Pro
         self.model_name = getattr(settings, "GEMINI_MODEL_PRO", "gemini-1.5-pro-latest")
+        
+        # P0-2: Check if frame extraction is available
+        self._use_frames = FrameExtractor.is_available()
+        if self._use_frames:
+            logger.info("📷 P0-2: Frame extraction enabled (ffmpeg available)")
+        else:
+            logger.warning("⚠️ P0-2: Frame extraction disabled, using full video fallback")
 
     async def analyze(
         self,
@@ -63,6 +72,9 @@ class VisualPass:
     ) -> VisualPassResult:
         """
         Execute visual analysis pass based on the plan.
+        
+        P0-2: Uses plan-based frame extraction instead of full mp4.
+        Falls back to full video if ffmpeg not available.
         
         Args:
             video_bytes: Raw video data
@@ -98,13 +110,31 @@ class VisualPass:
             analysis_plan_json=plan_json
         )
         
-        # 3. Prepare Video Part
-        video_part = types.Part(
-            inline_data=types.Blob(
-                data=video_bytes,
-                mime_type="video/mp4"
+        # 3. P0-2: Prepare Video Input (frames or full video)
+        if self._use_frames and len(plan.points) > 0:
+            # Extract frames from plan t_windows
+            frames = FrameExtractor.extract_for_plan(
+                video_bytes, 
+                plan, 
+                target_fps=plan.sampling.target_fps if plan.sampling else 2.0
             )
-        )
+            
+            if frames:
+                # Use frames as input
+                video_parts = FrameExtractor.to_model_parts(frames)
+                input_mode = f"frames ({len(frames)} extracted)"
+            else:
+                # Fallback to full video if extraction failed
+                video_parts = [types.Part(
+                    inline_data=types.Blob(data=video_bytes, mime_type="video/mp4")
+                )]
+                input_mode = "full_video (frame extraction failed)"
+        else:
+            # Fallback: Use full video
+            video_parts = [types.Part(
+                inline_data=types.Blob(data=video_bytes, mime_type="video/mp4")
+            )]
+            input_mode = "full_video (fallback)"
         
         # 4. Generate Content with P0-4 hardening
         model = genai.GenerativeModel(
@@ -118,13 +148,15 @@ class VisualPass:
             )
         )
         
-        logger.info(f"🎥 Starting Visual Pass (Model: {self.model_name}) with {len(plan.points)} points")
+        logger.info(f"🎥 Starting Visual Pass (Model: {self.model_name})")
+        logger.info(f"   └─ Input mode: {input_mode}")
+        logger.info(f"   └─ Plan points: {len(plan.points)}")
         logger.info(f"   └─ Metrics requested: {len(requested_metrics)}")
         
         # P0-4: Use robust generation with retry/fallback/repair
         result = await robust_generate_content(
             model=model,
-            contents=[video_part, user_prompt],
+            contents=video_parts + [user_prompt],
             result_schema=VisualPassResult,
             max_retries=3,
             initial_backoff=2.0  # Visual pass is heavier, longer initial backoff
@@ -139,3 +171,4 @@ class VisualPass:
         logger.info(f"   └─ Analysis Results: {len(result.analysis_results)}")
         
         return result
+
