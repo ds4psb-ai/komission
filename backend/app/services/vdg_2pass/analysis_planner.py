@@ -35,7 +35,40 @@ class AnalysisPlanner:
     - Scene boundaries (high)
     - Entity hints (high)
     - Mise-en-scene signals from comments (medium/high) ← Core Evidence
+    
+    P0-3 Hardening:
+    - All metric_ids validated against METRIC_REGISTRY
+    - Unknown metrics mapped to standard alternatives
     """
+    
+    # P0-3: Authoritative Metric Registry (domain.name.v1 format)
+    METRIC_REGISTRY = {
+        # Composition (cmp)
+        "cmp.center_offset_xy.v1": {"unit": "norm_0_1", "desc": "주피사체 중앙 이탈도"},
+        "cmp.stability_score.v1": {"unit": "norm_0_1", "desc": "안정성 점수"},
+        "cmp.composition_grid.v1": {"unit": "enum", "desc": "구도 그리드 준수"},
+        # Lighting (lit)
+        "lit.brightness_ratio.v1": {"unit": "ratio", "desc": "밝기 비율"},
+        "lit.contrast.v1": {"unit": "norm_0_1", "desc": "대비"},
+        # Entity (ent)
+        "ent.face_size_ratio.v1": {"unit": "ratio", "desc": "얼굴 크기 비율"},
+        "ent.expression_arouse.v1": {"unit": "norm_0_1", "desc": "표정 각성도"},
+        "ent.eye_contact.v1": {"unit": "bool", "desc": "아이컨택 여부"},
+        # Visual (vis)
+        "vis.dominant_color.v1": {"unit": "enum", "desc": "지배 색상"},
+        "vis.motion_intensity.v1": {"unit": "norm_0_1", "desc": "움직임 강도"},
+        # Timing (timing)
+        "timing.hook_punch.v1": {"unit": "sec", "desc": "훅 펀치 타이밍"},
+        # Mise-en-scene (mise)
+        "mise.lighting.v1": {"unit": "enum", "desc": "조명 스타일"},
+        "mise.props.v1": {"unit": "enum", "desc": "소품 유형"},
+    }
+    
+    # P0-3: Metric ID aliases (map non-standard to standard)
+    METRIC_ALIASES = {
+        "lit.brightness_lux.v1": "lit.brightness_ratio.v1",  # lux → ratio (no sensor data)
+        "cmp.rule_of_thirds.v1": "cmp.composition_grid.v1",
+    }
     
     # Metric mappings for different analysis reasons
     METRIC_PRESETS = {
@@ -63,6 +96,19 @@ class AnalysisPlanner:
             MetricRequest(metric_id="lit.brightness_ratio.v1")
         ]
     }
+    
+    @classmethod
+    def _validate_metric_id(cls, metric_id: str) -> str:
+        """P0-3: Validate and normalize metric_id against registry."""
+        # Check aliases first
+        if metric_id in cls.METRIC_ALIASES:
+            return cls.METRIC_ALIASES[metric_id]
+        # Check registry
+        if metric_id in cls.METRIC_REGISTRY:
+            return metric_id
+        # Unknown metric - log warning and return as-is (soft fail)
+        logger.warning(f"⚠️ Unknown metric_id: {metric_id} (not in registry)")
+        return metric_id
     
     @classmethod
     def plan(
@@ -239,6 +285,12 @@ class AnalysisPlanner:
         
         # P0-1: NO renumbering - IDs are content-based and stable
         # Execution order is just for efficiency, not identity
+
+        # P0-3: Validate all metric_ids against registry
+        for point in points:
+            if point.metrics_requested:
+                for metric in point.metrics_requested:
+                    metric.metric_id = cls._validate_metric_id(metric.metric_id)
 
         logger.info(f"📋 AnalysisPlan generated: {len(points)} points")
         
