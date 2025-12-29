@@ -62,13 +62,16 @@ class VDGMerger:
         quality = cls._calculate_quality(semantic, visual, plan, duration_sec)
         
         # 2. Build VDG with nested structure (P0-6)
-        # Note: semantic data goes to root level for backward compat
+        # H2 Hardening Note: Root-level copies are DEPRECATED (backward compat only)
+        # Future: Remove root copies, use vdg.semantic.* only
+        # Views should use get_flat_view() for API serving
         vdg = VDGv4(
-            vdg_version="4.0.3",  # Bump version for hardening
+            vdg_version="4.0.4",  # Bump version for H2 hardening
             content_id=content_id,
             video_url=video_url,
             duration_sec=duration_sec or 0.0,
-            # Semantic Layer (at root for compat)
+            # [DEPRECATED] Semantic Layer at root - for backward compat only
+            # TODO: Remove in v4.1, use vdg.semantic.* instead
             scenes=semantic.scenes,
             hook_genome=semantic.hook_genome,
             intent_layer=semantic.intent_layer,
@@ -79,10 +82,10 @@ class VDGMerger:
             mise_en_scene_signals=semantic.mise_en_scene_signals,
             entity_hints=semantic.entity_hints,
             summary=semantic.summary or "",
-            # Nested references
-            semantic=semantic,  # P0-6: Full semantic object
-            visual=visual,      # P0-6: Full visual object  
-            analysis_plan=plan, # P0-6: Plan reference
+            # [CANONICAL] Nested references - SoR (Source of Record)
+            semantic=semantic,  # P0-6: Full semantic object (CANONICAL)
+            visual=visual,      # P0-6: Full visual object (CANONICAL)
+            analysis_plan=plan, # P0-6: Plan reference (CANONICAL)
             # Quality
             merger_quality=quality,
             # Provenance

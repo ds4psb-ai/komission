@@ -12,6 +12,7 @@ Key Responsibilities:
 """
 from typing import List, Dict, Any, Optional
 import math
+import hashlib
 from app.schemas.vdg_v4 import (
     AnalysisPlan, 
     AnalysisPoint, 
@@ -98,11 +99,12 @@ class AnalysisPlanner:
             # Clamp t to positive
             t = max(0.0, t)
             
-            # P0-1: Stable ID based on content (not execution order)
-            # Format: ap_{reason}_{t_ms}_{hint}
+            # H1 Hardening: SHA1-based deterministic ID for RL join key stability
+            # Same input → same ID (재분석해도 동일한 ID 보장)
             t_ms = int(t * 1000)
-            hint_suffix = f"_{hint_key}" if hint_key else ""
-            stable_id = f"ap_{reason}_{t_ms:06d}{hint_suffix}"
+            id_seed = f"{reason}|{source_ref}|{t_ms}|{hint_key or ''}"
+            id_hash = hashlib.sha1(id_seed.encode()).hexdigest()[:8]
+            stable_id = f"ap_{reason}_{t_ms:06d}_{id_hash}"
             
             # Select metrics based on reason
             if metrics is None:
@@ -221,6 +223,10 @@ class AnalysisPlanner:
         if comment_points > 0:
             logger.info(f"   └─ Comment evidence points: {comment_points}")
 
+        # H4 Hardening: Overlap Merge (same t_window → combine)
+        points = cls._merge_overlapping_points(points, threshold_sec=0.5)
+        logger.info(f"   └─ After overlap merge: {len(points)} points")
+
         # 5. Budget Enforcement
         if len(points) > max_points:
             prio_map = {"critical": 0, "high": 1, "medium": 2, "low": 3}
@@ -241,6 +247,67 @@ class AnalysisPlanner:
             sampling=SamplingPolicy(target_fps=target_fps),
             points=points
         )
+    
+    @classmethod
+    def _merge_overlapping_points(
+        cls,
+        points: List[AnalysisPoint],
+        threshold_sec: float = 0.5
+    ) -> List[AnalysisPoint]:
+        """
+        H4 Hardening: Merge overlapping analysis points.
+        
+        Points within threshold_sec of each other:
+        - Metrics: union
+        - Priority: max (critical > high > medium > low)
+        - Source refs: combine
+        """
+        if not points:
+            return points
+        
+        # Sort by t_center for merge
+        sorted_pts = sorted(points, key=lambda x: x.t_center)
+        merged: List[AnalysisPoint] = []
+        current = sorted_pts[0]
+        
+        prio_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+        
+        for next_pt in sorted_pts[1:]:
+            if abs(next_pt.t_center - current.t_center) <= threshold_sec:
+                # Merge: combine metrics, take higher priority
+                combined_metrics = list({m.metric_id: m for m in 
+                    (current.metrics_requested or []) + (next_pt.metrics_requested or [])
+                }.values())
+                
+                # Take higher priority
+                curr_prio = prio_order.get(current.priority, 99)
+                next_prio = prio_order.get(next_pt.priority, 99)
+                best_priority = current.priority if curr_prio <= next_prio else next_pt.priority
+                
+                # Create merged point with new ID
+                t_ms = int(current.t_center * 1000)
+                merged_id = f"ap_merged_{t_ms:06d}_{hashlib.sha1(f'{current.id}|{next_pt.id}'.encode()).hexdigest()[:6]}"
+                
+                current = AnalysisPoint(
+                    id=merged_id,
+                    t_center=current.t_center,
+                    t_window=[
+                        min(current.t_window[0], next_pt.t_window[0]),
+                        max(current.t_window[1], next_pt.t_window[1])
+                    ],
+                    priority=best_priority,
+                    reason=f"{current.reason}+{next_pt.reason}",
+                    source_ref=f"{current.source_ref}|{next_pt.source_ref}",
+                    target_hint_key=current.target_hint_key or next_pt.target_hint_key,
+                    metrics_requested=combined_metrics,
+                    measurement_method=current.measurement_method
+                )
+            else:
+                merged.append(current)
+                current = next_pt
+        
+        merged.append(current)
+        return merged
 
 
 # Legacy function for backward compatibility

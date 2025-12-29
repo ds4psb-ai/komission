@@ -119,25 +119,38 @@ class DirectorCompiler:
         logger.info(f"🔧 Compiling DirectorPack for pattern: {actual_pattern_id}")
         
         try:
-            # 1. Extract DNA Invariants (heuristic + contract_candidates)
-            invariants = cls._extract_dna_invariants(vdg)
-            invariants.extend(cls._extract_from_contract_candidates(vdg.contract_candidates))
+            # H3 Hardening: contract_candidates is PRIMARY source
+            # Heuristics are FALLBACK only when no candidates available
+            
+            # 1. Extract DNA Invariants - CONTRACT FIRST
+            candidates = vdg.contract_candidates
+            if candidates:
+                invariants = cls._extract_from_contract_candidates(candidates)
+                logger.info(f"   └─ Using contract_candidates as primary source")
+            else:
+                # Fallback to heuristic extraction if no candidates
+                invariants = cls._extract_dna_invariants(vdg)
+                logger.warning(f"   └─ No contract_candidates, using heuristic fallback")
             
             # 2. Dedupe invariants by rule_id
             invariants = cls._dedupe_invariants(invariants)
             logger.info(f"   └─ DNA Invariants: {len(invariants)}")
             
-            # 3. Generate Mutation Slots
-            slots = cls._generate_mutation_slots(vdg, persona_preset)
-            slots.extend(cls._extract_slots_from_contract_candidates(vdg.contract_candidates))
+            # 3. Generate Mutation Slots - CONTRACT FIRST
+            if candidates:
+                slots = cls._extract_slots_from_contract_candidates(candidates)
+            else:
+                slots = cls._generate_mutation_slots(vdg, persona_preset)
             logger.info(f"   └─ Mutation Slots: {len(slots)}")
             
-            # 4. Extract Forbidden Mutations
-            forbidden = cls._extract_forbidden_mutations(vdg)
-            forbidden.extend(cls._extract_forbidden_from_contract_candidates(vdg.contract_candidates))
+            # 4. Extract Forbidden Mutations - CONTRACT FIRST
+            if candidates:
+                forbidden = cls._extract_forbidden_from_contract_candidates(candidates)
+            else:
+                forbidden = cls._extract_forbidden_mutations(vdg)
             logger.info(f"   └─ Forbidden Mutations: {len(forbidden)}")
             
-            # 5. Generate Checkpoints
+            # 5. Generate Checkpoints (always needs VDG duration info)
             checkpoints = cls._generate_checkpoints(vdg, invariants)
             logger.info(f"   └─ Checkpoints: {len(checkpoints)}")
             
