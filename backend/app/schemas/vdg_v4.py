@@ -5,12 +5,15 @@ VDG (Video Data Graph) v4.0 Pydantic Schemas
 - Pass 1: Semantic (의미/구조/의도)
 - Pass 2: Visual (시각/객체/구도)
 
-Features:
-- Metric Registry (단위/좌표계 명확화)
-- Entity Hints (후보/검증/폴백)
-- Analysis Plan (예산/병합/클램프)
-- Evidence 통합 규격
-- Contract Candidates (Pack 컴파일 입력)
+v4.0.1 Patches Applied:
+1. Metric ID 통일 (MetricRequest + metric_id 참조)
+2. Unit/Range 일관성 (norm_-1_1 추가)
+3. stability_score 정의 명확화 (score = 1 - normalized_std)
+4. target_entity_id → target_hint_key
+5. aggregation per metric (MetricRequest로 이동)
+6. MetricResult.samples Union 타입
+7. evidence_refs → List[str] 통일
+8. MeasurementProvenance 추가
 """
 from typing import List, Literal, Optional, Dict, Any, Union
 from pydantic import BaseModel, Field
@@ -44,7 +47,7 @@ class EvidenceItem(BaseModel):
 
 class EvidenceLink(BaseModel):
     """증거 연결 (모든 산출물에 첨부)"""
-    evidence_refs: List[str] = Field(default_factory=list)
+    evidence_refs: List[str] = Field(default_factory=list)  # Patch #7: str only
     confidence: float = 0.8
     method: Literal["llm", "cv", "asr", "ocr", "hybrid"] = "hybrid"
     model_info: Optional[Dict[str, Any]] = None
@@ -54,25 +57,67 @@ class EvidenceLink(BaseModel):
 # 1. METRIC REGISTRY
 # ====================
 
+# Patch #2: unit 확장 (norm_-1_1 추가)
+MetricUnit = Literal[
+    "norm_0_1",    # 0~1 정규화
+    "norm_-1_1",   # -1~1 정규화 (signed)
+    "deg",         # 각도
+    "ratio",       # 비율
+    "bool",        # 불리언
+    "enum",        # 열거형
+    "px"           # 픽셀
+]
+
+
 class MetricDefinition(BaseModel):
     """측정 지표 정의 (미래에도 명확하게 유지)"""
     metric_id: str
     description: str
-    unit: Literal["norm_0_1", "deg", "ratio", "bool", "enum", "px"]
+    unit: MetricUnit
     coordinate_frame: Literal[
         "raw_frame",
         "safe_area_adjusted",
         "cropped_primary_subject"
     ] = "raw_frame"
     aggregation_allowed: List[Literal[
-        "mean", "median", "trimmed_mean", "mode", "p10_p90", "variance"
+        "mean", "median", "trimmed_mean", "mode", "p10_p90", "variance", "max", "min"
     ]] = Field(default_factory=lambda: ["mean", "median"])
     expected_range: Optional[List[float]] = None
+    
+    # Patch #3: score 정의 명확화
+    score_formula: Optional[str] = None  # e.g. "1 - normalized_std"
     notes: Optional[str] = None
 
 
 # ====================
-# 2. ENTITY HINTS
+# 2. METRIC REQUEST (Patch #1, #5)
+# ====================
+
+class MetricRequest(BaseModel):
+    """측정 요청 (metric_id 중심 통일)"""
+    metric_id: str  # 반드시 MetricRegistry에 존재
+    aggregation: Optional[Literal[
+        "mean", "median", "max", "min", "mode", "variance", "trimmed_mean"
+    ]] = None
+    selector: Optional[str] = None  # vector2면 "x"/"y"/"l2"/"abs_x"
+    params: Dict[str, Any] = Field(default_factory=dict)
+
+
+# ====================
+# 3. MEASUREMENT PROVENANCE (Patch #8)
+# ====================
+
+class MeasurementProvenance(BaseModel):
+    """측정 방법/모델 버전 (과거 데이터 재현 가능성)"""
+    method: Literal["cv", "llm", "hybrid"]
+    detector: Optional[str] = None  # "YOLO-World", "Grounding-DINO"
+    detector_version: Optional[str] = None
+    params: Dict[str, Any] = Field(default_factory=dict)
+    params_sha256: Optional[str] = None
+
+
+# ====================
+# 4. ENTITY HINTS
 # ====================
 
 class EntityHint(BaseModel):
@@ -81,9 +126,9 @@ class EntityHint(BaseModel):
     entity_type: Literal["person", "product", "text", "hand", "other"]
     label: str  # human-readable "yellow shirt woman"
     attributes: Dict[str, Any] = Field(default_factory=dict)
-    candidates: List[str] = Field(default_factory=list)  # fallback 후보
+    candidates: List[str] = Field(default_factory=list)
     confidence: float = 0.7
-    evidence_refs: List[str] = Field(default_factory=list)
+    evidence_refs: List[str] = Field(default_factory=list)  # Patch #7
 
 
 class EntityResolution(BaseModel):
@@ -92,10 +137,11 @@ class EntityResolution(BaseModel):
     resolved_entity_id: Optional[str] = None
     resolution_method: Literal["direct", "fallback_largest", "fallback_speaker", "failed"]
     confidence: float
+    provenance: Optional[MeasurementProvenance] = None  # Patch #8
 
 
 # ====================
-# 3. ANALYSIS PLAN
+# 5. ANALYSIS PLAN
 # ====================
 
 class SamplingPolicy(BaseModel):
@@ -116,23 +162,15 @@ class AnalysisPoint(BaseModel):
         "hook_punch", "hook_start", "hook_build", "hook_end",
         "scene_boundary", "sentiment_shift",
         "product_mention", "key_dialogue", "text_appear",
-        "comment_mise_en_scene"  # 댓글 기반 미장센
+        "comment_mise_en_scene"
     ]
-    source_ref: str  # 1차 필드 참조
+    source_ref: str
     
-    # 추적 대상
-    target_entity_id: Optional[str] = None
+    # Patch #4: target_entity_id → target_hint_key
+    target_hint_key: Optional[str] = None  # semantic.entity_hints key
     
-    # 측정 목표
-    metrics_requested: List[Literal[
-        "center_offset", "headroom", "subject_stability",
-        "visibility_ratio", "brightness_contrast",
-        "text_safe_area", "camera_move", "composition_change",
-        "dominant_color", "outfit_visibility"
-    ]]
-    
-    # 집계 전략
-    aggregation_method: Literal["mean", "median", "max", "variance"] = "median"
+    # Patch #1, #5: metrics_requested → List[MetricRequest]
+    metrics_requested: List[MetricRequest] = Field(default_factory=list)
     
     # 씬 경계 처리
     window_policy: Literal["clamp", "split"] = "clamp"
@@ -155,7 +193,7 @@ class AnalysisPlan(BaseModel):
 
 
 # ====================
-# 4. SEMANTIC PASS (1차)
+# 6. SEMANTIC PASS (1차)
 # ====================
 
 class Microbeat(BaseModel):
@@ -202,7 +240,7 @@ class MiseEnSceneSignal(BaseModel):
     sentiment: Literal["positive", "negative", "neutral"]
     source_comment: str
     likes: int
-    evidence_refs: List[str] = Field(default_factory=list)
+    evidence_refs: List[str] = Field(default_factory=list)  # Patch #7
 
 
 class AudienceReaction(BaseModel):
@@ -222,6 +260,14 @@ class CapsuleBrief(BaseModel):
     do_not: List[str] = Field(default_factory=list)
 
 
+class SemanticPassProvenance(BaseModel):
+    """1차 패스 출처 정보"""
+    model_id: Optional[str] = None
+    model_version: Optional[str] = None
+    prompt_version: Optional[str] = None
+    run_at: Optional[str] = None
+
+
 class SemanticPassResult(BaseModel):
     """1차 분석 결과: 텍스트/오디오/구조 중심"""
     scenes: List[Scene] = Field(default_factory=list)
@@ -234,35 +280,82 @@ class SemanticPassResult(BaseModel):
     commerce: Dict[str, Any] = Field(default_factory=dict)
     entity_hints: Dict[str, EntityHint] = Field(default_factory=dict)
     summary: str = ""
+    provenance: SemanticPassProvenance = Field(default_factory=SemanticPassProvenance)  # Patch #8
 
 
 # ====================
-# 5. VISUAL PASS (2차)
+# 7. VISUAL PASS (2차)
 # ====================
 
-class MeasurementStats(BaseModel):
-    """측정 통계 (분포 포함)"""
+# Patch #6: Union 타입 샘플 값
+SampleValue = Union[float, int, bool, str, List[float]]
+
+
+class ScalarStats(BaseModel):
+    """스칼라 측정 통계"""
     mean: Optional[float] = None
     median: Optional[float] = None
     std: Optional[float] = None
     p10: Optional[float] = None
     p90: Optional[float] = None
-    stability_score: Optional[float] = None  # 0~1
+    min: Optional[float] = None
+    max: Optional[float] = None
+
+
+class Vector2Stats(BaseModel):
+    """벡터2 측정 통계"""
+    mean_x: Optional[float] = None
+    mean_y: Optional[float] = None
+    l2_norm_mean: Optional[float] = None
+    std_x: Optional[float] = None
+    std_y: Optional[float] = None
+
+
+class EnumStats(BaseModel):
+    """열거형 측정 통계"""
+    mode: Optional[str] = None
+    distribution: Dict[str, int] = Field(default_factory=dict)
+
+
+# Patch #3: stability_score는 score로 저장 (1 - normalized_std)
+class StabilityResult(BaseModel):
+    """안정성 결과 (분산 기반)"""
+    score: float  # 0~1, 높을수록 안정적
+    raw_std: float
+    normalized_std: float
+    formula: str = "1 - normalized_std"
 
 
 class MetricResult(BaseModel):
     """개별 측정 결과"""
-    metric_id: str
+    metric_id: str  # Patch #1: registry 참조
     value_type: Literal["scalar", "vector2", "ratio", "bool", "enum"]
-    value: Optional[Any] = None
-    raw_values: List[float] = Field(default_factory=list)
-    stats: Optional[MeasurementStats] = None
+    aggregated_value: Optional[SampleValue] = None
+    
+    # Patch #6: Union 타입 샘플
+    samples: List[SampleValue] = Field(default_factory=list)
+    sample_count: int = 0
+    
+    # 타입별 통계
+    scalar_stats: Optional[ScalarStats] = None
+    vector2_stats: Optional[Vector2Stats] = None
+    enum_stats: Optional[EnumStats] = None
+    stability: Optional[StabilityResult] = None
+    
     missing_reason: Optional[str] = None
+    confidence: float = 0.8
+    
+    # Patch #8: 측정 출처
+    provenance: Optional[MeasurementProvenance] = None
 
 
 class AnalysisPointResult(BaseModel):
     """지령 이행 결과"""
     ap_id: str
+    
+    # Patch #4: resolved entity ID 별도 필드
+    resolved_entity_id: Optional[str] = None
+    
     metrics: Dict[str, MetricResult] = Field(default_factory=dict)
     best_frame_sample: Optional[Dict[str, Any]] = None
     semantic_visual_alignment: float = Field(
@@ -276,13 +369,14 @@ class EntityTrack(BaseModel):
     track_id: str
     entity_id: str
     samples: List[Dict[str, Any]] = Field(default_factory=list)
+    provenance: Optional[MeasurementProvenance] = None  # Patch #8
 
 
 class TextGeometry(BaseModel):
     """텍스트 위치/기하학"""
     text: str
     t_window: Optional[List[float]] = None
-    bbox_norm: Optional[List[float]] = None  # [x, y, w, h]
+    bbox_norm: Optional[List[float]] = None
     role: Optional[str] = None
     lang: Optional[str] = None
 
@@ -297,7 +391,7 @@ class VisualPassResult(BaseModel):
 
 
 # ====================
-# 6. MERGER
+# 8. MERGER
 # ====================
 
 class MergerQuality(BaseModel):
@@ -317,12 +411,12 @@ class ContractCandidates(BaseModel):
 
 
 # ====================
-# 7. VDG v4.0 FULL
+# 9. VDG v4.0 FULL
 # ====================
 
 class VDGv4(BaseModel):
-    """VDG (Video Data Graph) v4.0 - 최종 스키마"""
-    vdg_version: str = "4.0.0"
+    """VDG (Video Data Graph) v4.0.1 - 패치 적용된 최종 스키마"""
+    vdg_version: str = "4.0.1"
     
     # Identity
     content_id: str
@@ -368,14 +462,30 @@ class VDGv4(BaseModel):
 
 
 # ====================
-# 8. STANDARD METRICS
+# 10. STANDARD METRICS (Patch #2, #3 반영)
 # ====================
 
 STANDARD_METRIC_DEFINITIONS = {
     "center_offset_xy": MetricDefinition(
         metric_id="center_offset_xy",
-        description="주 피사체의 화면 중앙 대비 오프셋",
-        unit="norm_0_1",
+        description="주 피사체의 화면 중앙 대비 오프셋 (signed)",
+        unit="norm_-1_1",  # Patch #2
+        coordinate_frame="safe_area_adjusted",
+        aggregation_allowed=["median", "mean"],
+        expected_range=[-1.0, 1.0]
+    ),
+    "center_offset_x": MetricDefinition(
+        metric_id="center_offset_x",
+        description="X축 중앙 대비 오프셋",
+        unit="norm_-1_1",
+        coordinate_frame="safe_area_adjusted",
+        aggregation_allowed=["median", "mean"],
+        expected_range=[-1.0, 1.0]
+    ),
+    "center_offset_y": MetricDefinition(
+        metric_id="center_offset_y",
+        description="Y축 중앙 대비 오프셋",
+        unit="norm_-1_1",
         coordinate_frame="safe_area_adjusted",
         aggregation_allowed=["median", "mean"],
         expected_range=[-1.0, 1.0]
@@ -401,8 +511,9 @@ STANDARD_METRIC_DEFINITIONS = {
         description="구간 내 측정값 안정성 (1.0=부동)",
         unit="norm_0_1",
         coordinate_frame="raw_frame",
-        aggregation_allowed=["variance"],
-        expected_range=[0.0, 1.0]
+        aggregation_allowed=["mean"],  # Patch #3: score 자체는 mean
+        expected_range=[0.0, 1.0],
+        score_formula="1 - (std / expected_range_span)"  # Patch #3
     ),
     "visibility_ratio": MetricDefinition(
         metric_id="visibility_ratio",
@@ -414,9 +525,24 @@ STANDARD_METRIC_DEFINITIONS = {
     ),
     "dominant_color": MetricDefinition(
         metric_id="dominant_color",
-        description="주요 색상",
+        description="주요 색상 (HEX or name)",
         unit="enum",
         coordinate_frame="raw_frame",
+        aggregation_allowed=["mode"]
+    ),
+    "brightness_ratio": MetricDefinition(
+        metric_id="brightness_ratio",
+        description="평균 밝기 비율",
+        unit="ratio",
+        coordinate_frame="raw_frame",
+        aggregation_allowed=["mean"],
+        expected_range=[0.0, 1.0]
+    ),
+    "text_safe_area_clear": MetricDefinition(
+        metric_id="text_safe_area_clear",
+        description="텍스트 안전영역 침범 여부",
+        unit="bool",
+        coordinate_frame="safe_area_adjusted",
         aggregation_allowed=["mode"]
     )
 }

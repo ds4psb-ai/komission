@@ -1,15 +1,12 @@
 """
-Director Pack v1.0 Pydantic Schemas
+Director Pack v1.0.1 Pydantic Schemas
 
 Real-time coaching rules compiled from VDG v4.0.
 Used by Gemini Live for 1-second interval coaching.
 
-Features:
-- DNA Invariants (불변 규칙)
-- Mutation Slots (가변 영역)
-- Forbidden Mutations (금기)
-- Checkpoints (시간 기반 규칙 활성화)
-- Policy (코칭 정책)
+v1.0.1 Patches Applied:
+1. RuleSpec.metric → metric_id (MetricRegistry 참조)
+7. evidence_refs → List[str] 통일
 """
 from typing import List, Literal, Optional, Dict, Any
 from pydantic import BaseModel, Field
@@ -25,7 +22,7 @@ class SourceRef(BaseModel):
     vdg_content_id: Optional[str] = None
     vdg_version: Optional[str] = None
     cluster_id: Optional[str] = None
-    evidence_refs: List[Dict[str, Any]] = Field(default_factory=list)
+    evidence_refs: List[str] = Field(default_factory=list)  # Patch #7: str only
 
 
 # ====================
@@ -70,7 +67,7 @@ class RuntimeContract(BaseModel):
 
 class Persona(BaseModel):
     """사용자 페르소나"""
-    persona_preset: Optional[str] = None  # "cynical_expert", "friendly_neighbor"
+    persona_preset: Optional[str] = None
     persona_vector: Dict[str, Any] = Field(default_factory=dict)
     situation_constraints: Dict[str, Any] = Field(default_factory=dict)
 
@@ -91,16 +88,16 @@ class Scoring(BaseModel):
 # ====================
 
 class CoachLineTemplates(BaseModel):
-    """코칭 대사 템플릿 (톤별)"""
+    """코칭 대사 템플릿 (톤별/언어별)"""
     strict: Optional[str] = None
     friendly: Optional[str] = None
     neutral: Optional[str] = None
-    ko: Optional[Dict[str, str]] = None  # 한국어 버전
-    en: Optional[Dict[str, str]] = None  # 영어 버전
+    ko: Optional[Dict[str, str]] = None
+    en: Optional[Dict[str, str]] = None
 
 
 # ====================
-# 8. RULE SPEC
+# 8. RULE SPEC (Patch #1 적용)
 # ====================
 
 class TimeScope(BaseModel):
@@ -111,11 +108,13 @@ class TimeScope(BaseModel):
 
 class RuleSpec(BaseModel):
     """머신 체크 가능한 규칙 스펙"""
-    metric: str  # "center_offset", "hook_timing"
+    metric_id: str  # Patch #1: 반드시 MetricRegistry 참조
     op: Literal["<=", "<", ">=", ">", "between", "equals", "exists"]
     target: Optional[Any] = None
-    range: Optional[List[float]] = None  # for "between"
+    range: Optional[List[float]] = None
     unit: Optional[str] = None
+    aggregation: Optional[str] = None  # "median", "max" 등
+    selector: Optional[str] = None  # vector2면 "x"/"y"
     required_inputs: List[Literal["audio", "video_1fps", "text"]] = Field(default_factory=list)
 
 
@@ -132,7 +131,7 @@ class DNAInvariant(BaseModel):
     check_hint: Optional[str] = None
     
     coach_line_templates: CoachLineTemplates = Field(default_factory=CoachLineTemplates)
-    evidence_refs: List[Dict[str, Any]] = Field(default_factory=list)
+    evidence_refs: List[str] = Field(default_factory=list)  # Patch #7
     fallback: Optional[Literal["ask_user", "do_nothing", "generic_tip"]] = None
 
 
@@ -162,7 +161,7 @@ class ForbiddenMutation(BaseModel):
     mutation_id: str
     reason: str
     severity: Optional[Literal["critical", "high", "medium", "low"]] = None
-    evidence_refs: List[Dict[str, Any]] = Field(default_factory=list)
+    evidence_refs: List[str] = Field(default_factory=list)  # Patch #7
 
 
 # ====================
@@ -172,8 +171,8 @@ class ForbiddenMutation(BaseModel):
 class Checkpoint(BaseModel):
     """시간 기반 규칙 활성화"""
     checkpoint_id: str
-    t_window: List[float]  # [start, end]
-    active_rules: List[str]  # rule_id 목록
+    t_window: List[float]
+    active_rules: List[str]
     note: Optional[str] = None
 
 
@@ -200,12 +199,12 @@ class LoggingSpec(BaseModel):
 
 
 # ====================
-# 14. DIRECTOR PACK v1.0
+# 14. DIRECTOR PACK v1.0.1
 # ====================
 
 class DirectorPack(BaseModel):
-    """Director Pack v1.0 - 실시간 코칭 지령서"""
-    pack_version: str = "1.0.0"
+    """Director Pack v1.0.1 - 실시간 코칭 지령서 (패치 적용)"""
+    pack_version: str = "1.0.1"
     pattern_id: str
     goal: Optional[str] = None
     
@@ -243,19 +242,19 @@ class DirectorPack(BaseModel):
 
 
 # ====================
-# 15. EXAMPLE PACK
+# 15. EXAMPLE PACK (Patch #1 반영)
 # ====================
 
 EXAMPLE_DIRECTOR_PACK = {
-    "pack_version": "1.0.0",
+    "pack_version": "1.0.1",
     "pattern_id": "hook_subversion_v1",
     "goal": "훅 펀치 순간 피사체 중앙 유지",
     "pack_meta": {
         "pack_id": "dp_20251229_001",
-        "generated_at": "2025-12-29T10:45:00Z",
-        "compiler_version": "1.0.0",
+        "generated_at": "2025-12-29T11:06:00Z",
+        "compiler_version": "1.0.1",
         "source_refs": [
-            {"vdg_content_id": "vdg_xxx", "vdg_version": "4.0.0"}
+            {"vdg_content_id": "vdg_xxx", "vdg_version": "4.0.1", "evidence_refs": ["ev_001"]}
         ]
     },
     "runtime_contract": {
@@ -274,9 +273,10 @@ EXAMPLE_DIRECTOR_PACK = {
                 "relative_to": "start"
             },
             "spec": {
-                "metric": "center_offset_stability",
+                "metric_id": "stability_score",  # Patch #1: MetricRegistry 참조
                 "op": ">=",
                 "target": 0.85,
+                "aggregation": "mean",
                 "required_inputs": ["video_1fps"]
             },
             "check_hint": "훅 펀치 구간 피사체 중앙 안정성 ≥ 0.85",
@@ -285,9 +285,7 @@ EXAMPLE_DIRECTOR_PACK = {
                 "friendly": "피사체를 중앙에 잡아주세요~",
                 "neutral": "중앙 배치를 유지하세요."
             },
-            "evidence_refs": [
-                {"source": "composition_metrics.ap_001", "value": 0.92}
-            ]
+            "evidence_refs": ["ev_001", "ev_002"]  # Patch #7: str only
         }
     ],
     "checkpoints": [
