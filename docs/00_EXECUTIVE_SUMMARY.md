@@ -1,80 +1,96 @@
-# Executive Summary: Evidence Loop 플랫폼 (최신)
+# Executive Summary: Komission (2025-12-30)
 
-**작성**: 2026-01-07
-**대상**: CEO / 창업팀
-**핵심**: VDG(Parent→Depth1/2) + Evidence Table + Progress가 제품의 엔진
+**Updated**: 2025-12-30  
+**대상**: CEO / 투자자 / 컨설턴트  
+**핵심**: VDG 2-Pass + Director Pack + AI Audio Coaching = 바이럴 성공률 증명
 
 ---
 
 ## 1) 한 문장 요약
-Komission은 **Outlier → Parent → 변주 → Pattern Lift → Evidence → 다음 실험**의 루프를 자동화하여, 바이럴 성공 확률을 데이터로 증명하는 플랫폼입니다.
+
+Komission은 **바이럴 영상의 DNA를 추출하고, AI가 실시간으로 촬영을 코칭**하여 크리에이터의 성공 확률을 데이터로 증명하는 플랫폼입니다.
 
 ---
 
-## 2) 핵심 전략 (최선의 선택)
-- **Evidence Loop 우선 완성**: 토론보다 실험/데이터가 먼저
-- **Debate는 옵션**: 설명 레이어로만 사용 (필요할 때만)
-- **DB가 SoR, Sheets는 버스**: 운영/공유는 Sheets, 기록은 DB
-- **영상 해석은 코드 기반**: 스키마/클러스터는 파이프라인이 생성
-- **NotebookLM/Opal은 가속 장치**: Pattern Engine + 설명 레이어로 활용, 결과는 **DB로 래핑**
-- **Opal은 템플릿 시드 생성기**: 노드 템플릿 초안을 빠르게 만든다
-- **Pattern Library/Trace는 엔진**: 바이럴 공식은 DB/규칙 기반으로 증명
-- **Capsule/Template 실행 레이어**: 내부 체인은 감추고 입력/출력 계약만 공개
+## 2) 핵심 기술 스택
+
+```
+영상 URL
+    ↓
+┌─────────────────────────────┐
+│  VDG 2-Pass Pipeline        │  ← Gemini 2.5 Pro
+│  (Semantic + Visual)        │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│  Director Pack Compiler     │  ← 규칙 컴파일
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│  Audio Coach                │  ← Gemini 2.5 Flash
+│  (실시간 음성 피드백)        │
+└─────────────────────────────┘
+```
 
 ---
 
-## 3) 3층 구조 (실행 중심)
+## 3) 차별화 포인트
 
-### Layer A: Viral Depth Genealogy (데이터층)
-Parent → Depth1 → Depth2 구조를 기록하고, 변주의 성과와 **Pattern Trace**를 추적합니다.
-
-**Pattern Library/Trace**
-- Pattern = 훅/씬 리듬/자막 구조/오디오 반복 같은 재사용 단위
-- 변주별 Pattern 적용 여부를 기록해 **Lift(증거)**로 누적
-
-### Layer B: Evidence Loop (의사결정층)
-Evidence Table, Progress, Decision Summary를 매주 갱신합니다.
-
-### Layer C: Canvas Template (실행층)
-결과를 **노드 템플릿**으로 보여주고, 창작자 실행으로 연결합니다.
-내부 체인은 Capsule로 감추고, 결과/로그는 DB에 남깁니다.
+| 기존 방식 | Komission |
+|-----------|-----------|
+| 장문 가이드 읽기 | 🎙️ 실시간 AI 음성 코칭 |
+| 주관적 판단 | 📊 데이터 기반 규칙 |
+| 모방만 가능 | ✨ 불변/가변 구분으로 창의성 발휘 |
 
 ---
 
-## 4) 운영 플로우 (최소형)
-관리자 수동 수집 → 영상 해석(코드) → 유사도 클러스터링 → NotebookLM(Pattern Engine)
-→ Parent 승격 → 변주/실험 → Evidence/Decision → Opal 템플릿 시드 → Capsule 템플릿 실행
+## 4) Creator Journey
+
+```
+[Outlier 발견] → [카드 상세] → [🎬 촬영 시작] 
+                                    ↓
+                        [모드 선택: 오마쥬/변주/체험단]
+                                    ↓
+                        [AI 코칭 촬영]
+                        ├─ 카메라 프리뷰
+                        ├─ 🎙️ 음성 피드백
+                        └─ 규칙 체크리스트
+                                    ↓
+                        [결과 + 제출]
+```
 
 ---
 
-## 5) 사용자 흐름 (요약)
-- **Curator/Admin**: 수동 링크 입력 → Parent 승격 → 분석/요약 → Evidence/Decision 생성
-- **Creator**: Outlier 탐색 → Shoot 실행 → 제출 → 성과 트래킹
-- **O2O**: 즉시/방문/배송 타입에 따라 신청/촬영 흐름 게이팅
+## 5) 비즈니스 모델
+
+- **Pack이 핵심 자산**: 모델 발전해도 Pack의 가치는 더 비싸짐
+- **O2O 체험단**: 검증된 구조에만 브랜드 투자
+- **Data Flywheel**: RL로 계속 학습 → Pack 품질 상승
 
 ---
 
-## 5.1) Legacy 대비 차별점
-- **장문 가이드 → 숏폼 브리프**: 텍스트 대신 훅/샷/템포 중심
-- **페이지 분리 → Role Switch**: Creator/Business 전환에도 컨텍스트 유지
-- **포인트 중심 → Evidence 중심**: 패턴/근거 데이터가 KPI
+## 6) 현재 상태
+
+| 항목 | 상태 |
+|------|------|
+| VDG 2-Pass | ✅ 완료 |
+| Director Pack | ✅ 완료 |
+| Audio Coach | ✅ 완료 |
+| Frontend 연동 | ✅ 완료 |
+| NotebookLM 통합 | 🟡 Ready (미실행) |
 
 ---
 
-## 6) 비즈니스 모델 핵심
-- **바이럴 Depth 데이터가 핵심 자산**
-- **O2O 체험단(즉시/방문/배송)**으로 수익화 연결
-- 브랜드가 **검증된 구조에만 투자**하게 만드는 구조
+## 7) 다음 단계
+
+1. **Cluster 생성** (10개 Parent-Kids)
+2. **DistillRun 실행** (주간)
+3. **실사용자 테스트**
 
 ---
 
-## 7) 성공 지표 (MVP 기준)
-- Evidence → Decision 생성 시간: 24시간 이내
-- Depth1/2 실험 회전율: 주 1회 이상
-- 캠페인 타입 게이팅(즉시/방문/배송) UI 정상 작동
+## 8) Reference
 
----
-
-## 8) 결론
-**최선은 토론이 아니라 Evidence Loop**입니다.
-NotebookLM/Opal은 루프 속도를 올리는 **가속 레이어**이고, 핵심은 데이터/실험 루프입니다.
+- [ARCHITECTURE_FINAL.md](ARCHITECTURE_FINAL.md) - 최종 아키텍처
+- [CHANGELOG.md](CHANGELOG.md) - 개발 이력
+- [01_VDG_SYSTEM.md](01_VDG_SYSTEM.md) - VDG v4.0 상세

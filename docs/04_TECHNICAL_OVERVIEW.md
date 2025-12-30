@@ -1,208 +1,195 @@
-# Technical Overview (최신)
+# Technical Overview (2025-12-30)
 
-**작성**: 2026-01-07
+**Updated**: 2025-12-30  
+**목표**: VDG v4.0 2-Pass + Director Pack + Audio Coaching 기술 스택 문서
 
 ---
 
 ## 1) 시스템 구성
-- Backend: FastAPI
-- DB: PostgreSQL + Neo4j
-- Cache: Redis (옵션)
-- Frontend: Next.js
-- Automation: n8n or cron
-- Capsule: Opal/NotebookLM/Sheets 래핑 실행 노드 (분석은 별도 파이프라인)
-- Analysis: Gemini 3.0 Pro 기반 코드 파이프라인
-- Output: JSON Schema 강제 (Structured Output)
 
-**핵심 DB 테이블(확장)**
-- `notebook_library` (분석 스키마/클러스터 + NotebookLM 요약 저장)
-- `template_seeds` (Opal 템플릿 시드 저장)
-- `template_versions`, `template_feedback`, `template_policy` (템플릿 학습)
-- `pattern_recurrence_links` (Temporal Recurrence / Lineage)
+| Layer | Technology |
+|-------|------------|
+| **Backend** | FastAPI + Python 3.11 |
+| **DB** | PostgreSQL + Neo4j |
+| **AI** | Gemini 2.5 Pro (VDG), Gemini 2.5 Flash (Coaching) |
+| **Frontend** | Next.js 14 + TypeScript |
+| **Infra** | Docker Compose |
+
+### 핵심 AI 파이프라인
+```
+VDG 2-Pass Pipeline
+├─ Semantic Pass: Gemini 2.5 Pro (Structured Output)
+├─ Visual Pass: Gemini 2.5 Pro (frame extraction)
+└─ Audio Coach: Gemini 2.5 Flash (native-audio-latest)
+```
 
 ---
 
 ## 2) 핵심 데이터 흐름
+
 ```
-Outlier Source(수동/크롤링) → 댓글 추출(best_comments) → 영상 해석(코드)
-  → 유사도 클러스터링 → notebook_library(DB)
-  → Pattern Library(DB) → L1/L2 Retrieval(Answer-First (For You))
-  → remix_nodes(Parent/Variants) + metric_daily
-  → evidence_snapshots → Evidence Sheet → Decision Sheet → Template Seeds(Opal)
-  → Capsule/Template → Canvas UI
+영상 URL 입력
+     ↓
+┌─────────────────────────────────────┐
+│  VDG 2-Pass Pipeline                │
+│  ├─ Semantic Pass (30초)            │
+│  ├─ Analysis Planner                │
+│  └─ Visual Pass (2분)               │
+└────────────────┬────────────────────┘
+                 ↓
+┌─────────────────────────────────────┐
+│  VDG Merger → VDGv4                 │
+│  └─ contract_candidates 생성        │
+└────────────────┬────────────────────┘
+                 ↓
+┌─────────────────────────────────────┐
+│  Director Pack Compiler             │
+│  └─ DirectorPack v1.0.2             │
+└────────────────┬────────────────────┘
+                 ↓
+┌─────────────────────────────────────┐
+│  Audio Coach (실시간 코칭)          │
+│  └─ Pack 기반 One-Command 정책      │
+└─────────────────────────────────────┘
 ```
-
-**클러스터링 핵심**
-- VDG v3.2 `microbeats` 기반 **sequence similarity**를 포함
-- 패턴 set 유사도(훅/씬/오디오/타이밍)와 결합해 최종 점수 산출
-
-## 2.1 Comment Evidence (HITL)
-- 댓글은 **증거 레이어**로 취급한다.
-- `best_comments`는 Outlier에 저장 후 VDG `audience_reaction`에 병합된다.
-- Pack에는 `comment_samples.md`로 포함되어 NotebookLM에 함께 투입된다.
-- `comment_count`는 실제 수치만 기록한다 (샘플 수와 분리).
-
-## 2.2 Pattern Retrieval + Temporal Recurrence
-- **L1 하이브리드 검색**: 키워드(BM25) + 벡터로 후보 풀 생성
-- **L2 리랭커**: fit/evidence/quality/recency/risk 피처로 정밀 재정렬
-- **Temporal Recurrence**: `pattern_recurrence_links`에 배치 매칭 결과 저장
-- 재등장 확정에는 `comment_signature_sim`을 사용한다.
-
-## 2.3 MCP 통합 (선택)
-- **Resources는 읽기 전용**, Tools는 사용자 동의 후 실행
-- MCP는 DB SoR를 대체하지 않으며, UI/운영에 “접근 레이어”로만 사용
 
 ---
 
-## 3) Creator Persona Signals (Phase 3)
-**목표**: 자기선택 없이 **암묵 신호 기반**으로 크리에이터 스타일을 추정한다.
+## 3) 파일 구조
 
-**핵심 원칙**
-- 자기보고(“내 톤은?”) 대신 **행동/콘텐츠 기반 추론**
-- 저장은 DB(SoR), Sheet는 공유 버스
-- 추론 결과는 `persona_context_json`으로 캡슐 입력에 주입
+### Backend
+```
+backend/app/
+├── schemas/
+│   ├── vdg_v4.py             # VDG v4.0 (881 lines)
+│   ├── director_pack.py      # Pack (355 lines)
+│   └── metric_registry.py    # Metric SSoT (180 lines)
+│
+├── services/
+│   ├── gemini_pipeline.py    # Main pipeline
+│   ├── audio_coach.py        # Live coaching
+│   └── evidence_updater.py   # RL weight update
+│
+├── services/vdg_2pass/
+│   ├── semantic_pass.py      # Pass 1
+│   ├── analysis_planner.py   # Plan
+│   ├── visual_pass.py        # Pass 2
+│   ├── vdg_merger.py         # Merge
+│   ├── director_compiler.py  # Compile (810 lines)
+│   └── frame_extractor.py    # Frames
+│
+└── routers/
+    ├── outliers.py           # Outlier CRUD
+    └── coaching.py           # Coaching API
+```
 
-**핵심 테이블(초기 스키마 제안)**
-1) `creator_behavior_events`
-   - `event_id` (uuid)
-   - `creator_id` (uuid)
-   - `event_type` (enum)
-   - `node_id` (uuid, optional)
-   - `template_id` (uuid, optional)
-   - `payload_json` (jsonb)
-   - `created_at` (timestamptz)
-
-   **event_type 예시**
-   - `template_open`, `slot_change`, `run_start`, `run_complete`
-   - `rewatch`, `abandon`, `export`, `quest_apply`
-
-2) `creator_style_fingerprint`
-   - `creator_id` (uuid, pk)
-   - `style_vector` (jsonb)  
-   - `signal_summary` (jsonb)  (최근 30일 행동/성과 요약)
-   - `updated_at` (timestamptz)
-   - `version` (text)
-
-3) `creator_calibration_choices` (Taste Calibration)
-   - `choice_id` (uuid)
-   - `creator_id` (uuid)
-   - `pair_id` (text)
-   - `option_a_id` (text)
-   - `option_b_id` (text)
-   - `selected` (enum: A/B)
-   - `created_at` (timestamptz)
-
-**도출 결과**
-- `persona_context_json` (예: 톤/페이스/훅/자막 밀도/샷 구성)
-- Template Seed/ Capsule 입력으로 사용 (Optional)
+### Frontend
+```
+frontend/src/
+├── components/
+│   ├── CoachingSession.tsx   # 실시간 코칭 (350 lines)
+│   ├── FilmingGuide.tsx      # Ghost overlay
+│   └── ViralGuideCard.tsx    # Guide display
+│
+└── app/video/[id]/
+    └── page.tsx              # Card detail + coaching
+```
 
 ---
 
-## 4) 실행 (로컬)
+## 4) API Endpoints
+
+### Coaching API (NEW)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/coaching/sessions` | POST | 세션 생성 |
+| `/coaching/sessions/{id}` | GET | 상태 조회 |
+| `/coaching/sessions/{id}` | DELETE | 세션 종료 |
+| `/coaching/sessions/{id}/feedback` | POST | 피드백 제출 |
+
+### Outlier API
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/outliers/items` | POST | 아웃라이어 추가 |
+| `/outliers/items/{id}` | GET | 상세 조회 |
+| `/outliers/items/{id}/guide` | GET | Director Pack 가이드 |
+
+---
+
+## 5) 환경변수
+
 ```bash
-# infra
+# AI
+GEMINI_API_KEY=xxx
+GOOGLE_AI_STUDIO_API_KEY=xxx  # for native audio
+
+# DB
+DATABASE_URL=postgresql://user:pass@localhost:5432/komission
+NEO4J_URI=bolt://localhost:7687
+
+# Auth
+JWT_SECRET=xxx
+```
+
+---
+
+## 6) 실행 (로컬)
+
+```bash
+# Infra
 docker-compose up -d
 
-# backend
+# Backend
 cd backend
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 
-# frontend
+# Frontend
 cd frontend
-bun install
-bun run dev
-```
-
-## 5) Evidence Loop Runner (Sheets + Opal)
-환경변수는 `backend/.env`에서 로드됩니다.
-
-필수:
-- `KOMISSION_SHARE_EMAIL`
-- `GOOGLE_APPLICATION_CREDENTIALS` (서비스 계정 JSON 경로, 없으면 `backend/credentials.json` 시도)
-
-옵션:
-- `KOMISSION_FOLDER_ID`
-- `KOMISSION_PRIMARY_PLATFORMS` (기본: tiktok,instagram)
-- `KOMISSION_PRIMARY_VIEW_THRESHOLD`
-- `KOMISSION_PRIMARY_GROWTH_THRESHOLD`
-- `KOMISSION_SECONDARY_VIEW_THRESHOLD`
-- `KOMISSION_SECONDARY_GROWTH_THRESHOLD`
-- `GEMINI_MODEL` (고정: gemini-3.0-pro, 다른 값은 차단)
-
-실행:
-```bash
-python backend/scripts/run_real_evidence_loop.py
+npm install
+npm run dev
 ```
 
 ---
 
-## 6) CSV 수동 수집 (초기 운영용)
-```bash
-python backend/scripts/ingest_outlier_csv_db.py --csv /path/to/outliers.csv --source-name "ProviderName"
-python backend/scripts/ingest_outlier_csv.py --csv /path/to/outliers.csv --source-name "ProviderName"
-python backend/scripts/ingest_progress_csv.py --csv /path/to/progress.csv
+## 7) 핵심 스키마
+
+### VDGv4 (요약)
+```python
+class VDGv4(BaseModel):
+    vdg_version: str = "4.0.2"
+    content_id: str
+    semantic: SemanticPassResult
+    analysis_plan: AnalysisPlan
+    visual: VisualPassResult
+    contract_candidates: ContractCandidates
 ```
 
-## 6.1) DB → Sheet 동기화 (수동 입력 연동)
-API로 들어온 Outlier를 Evidence Loop 시트에 반영:
-```bash
-python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,selected
+### DirectorPack (요약)
+```python
+class DirectorPack(BaseModel):
+    pack_version: str = "1.0.2"
+    dna_invariants: List[DNAInvariant]
+    mutation_slots: List[MutationSlot]
+    checkpoints: List[Checkpoint]
 ```
-
-## 6.2) Notebook Library → DB → Insights Sheet
-Notebook Library 요약/클러스터 결과를 DB에 적재 후 공유용 시트로 동기화:
-```bash
-python backend/scripts/ingest_notebook_library.py --json /path/to/notebooklm.json
-python backend/scripts/ingest_notebook_library_sheet.py --sheet VDG_Insights
-python backend/scripts/sync_notebook_library_to_sheet.py --limit 200
-```
-
-## 6.3) Opal Template Seeds → DB → Sheet (planned)
-Opal이 생성한 템플릿 시드를 DB에 적재 후 공유용 시트로 동기화 (구현 예정).
-
----
-
-## 7) 핵심 API (요약)
-- Outliers
-  - POST /api/v1/outliers/sources
-  - GET /api/v1/outliers/sources
-  - POST /api/v1/outliers/items
-  - POST /api/v1/outliers/items/manual
-  - GET /api/v1/outliers/candidates
-  - PATCH /api/v1/outliers/items/{item_id}/status
-  - POST /api/v1/outliers/items/{item_id}/promote
-
-- Remix
-  - GET /api/v1/remix
-  - GET /api/v1/remix/{node_id}
-  - POST /api/v1/remix/{node_id}/analyze
-  - POST /api/v1/remix/{node_id}/fork
-  - POST /api/v1/remix/{node_id}/matching
-
-- Pipelines
-  - GET /api/v1/pipelines/public
-  - GET /api/v1/pipelines/
-  - POST /api/v1/pipelines/
-  - GET /api/v1/pipelines/{id}
-  - PATCH /api/v1/pipelines/{id}
-  - DELETE /api/v1/pipelines/{id}
-
-- O2O
-  - GET /api/v1/o2o/locations
-  - GET /api/v1/o2o/campaigns
-  - POST /api/v1/o2o/campaigns/{id}/apply
-  - GET /api/v1/o2o/applications/me
-  - POST /api/v1/o2o/verify
 
 ---
 
 ## 8) 통합 원칙
-- **DB는 SoR**
-- **Sheets는 공유/운영 버스**
-- **NotebookLM 요약은 DB로 래핑**
-- **NotebookLM 소스는 정적 스냅샷**이며, 클러스터 분할 전략으로 운영
-- **Pattern Library/Trace는 엔진**
-- **Capsule은 실행 레이어**
-- **Canvas는 템플릿 UI**
+
+| 원칙 | 설명 |
+|------|------|
+| **SSoT** | DB = 진실의 단일원천 |
+| **Contract-First** | Heuristic < Contract |
+| **Metric Registry** | 메트릭 드리프트 방지 |
+| **Deterministic ID** | RL 조인키 안정성 |
+
+---
+
+## 9) Reference
+
+- [01_VDG_SYSTEM.md](01_VDG_SYSTEM.md) - VDG v4.0 상세
+- [ARCHITECTURE_FINAL.md](ARCHITECTURE_FINAL.md) - 최종 아키텍처
+- [vdg_v4_2pass_protocol.md](vdg_v4_2pass_protocol.md) - 프로토콜 상세
