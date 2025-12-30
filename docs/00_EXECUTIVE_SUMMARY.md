@@ -1,8 +1,8 @@
-# Executive Summary: Komission (2025-12-30)
+# Executive Summary: Komission (2025-12-31)
 
-**Updated**: 2025-12-30  
+**Updated**: 2025-12-31  
 **대상**: CEO / 투자자 / 컨설턴트  
-**핵심**: VDG 2-Pass + Director Pack + AI Audio Coaching = 바이럴 성공률 증명
+**핵심**: VDG 2-Pass + Director Pack + AI Coaching = 바이럴 성공률 증명
 
 ---
 
@@ -15,21 +15,12 @@ Komission은 **바이럴 영상의 DNA를 추출하고, AI가 실시간으로 �
 ## 2) 핵심 기술 스택
 
 ```
-영상 URL
-    ↓
-┌─────────────────────────────┐
-│  VDG 2-Pass Pipeline        │  ← Gemini 2.5 Pro
-│  (Semantic + Visual)        │
-└──────────────┬──────────────┘
-               ↓
-┌─────────────────────────────┐
-│  Director Pack Compiler     │  ← 규칙 컴파일
-└──────────────┬──────────────┘
-               ↓
-┌─────────────────────────────┐
-│  Audio Coach                │  ← Gemini 2.5 Flash
-│  (실시간 음성 피드백)        │
-└─────────────────────────────┘
+                   [Chat Agent UI]        ← Creator 대화형 인터페이스
+                         ↓
+영상 URL → [VDG 2-Pass Pipeline] → [Director Pack] → [Audio Coach]
+                 (Semantic + Visual)        (규칙 컴파일)     (실시간 피드백)
+                                                  ↓
+                                       [Session Log DB]   ← 코칭 증거 저장
 ```
 
 ---
@@ -38,25 +29,28 @@ Komission은 **바이럴 영상의 DNA를 추출하고, AI가 실시간으로 �
 
 | 기존 방식 | Komission |
 |-----------|-----------|
-| 장문 가이드 읽기 | 🎙️ 실시간 AI 음성 코칭 |
+| 장문 가이드 읽기 | 🤖 대화형 Agent + 🎙️ 실시간 코칭 |
 | 주관적 판단 | 📊 데이터 기반 규칙 |
 | 모방만 가능 | ✨ 불변/가변 구분으로 창의성 발휘 |
+| 결과만 측정 | 🎯 코칭 효과 증명 (Lift 계산) |
 
 ---
 
 ## 4) Creator Journey
 
 ```
-[Outlier 발견] → [카드 상세] → [🎬 촬영 시작] 
-                                    ↓
-                        [모드 선택: 오마쥬/변주/체험단]
-                                    ↓
-                        [AI 코칭 촬영]
-                        ├─ 카메라 프리뷰
-                        ├─ 🎙️ 음성 피드백
-                        └─ 규칙 체크리스트
-                                    ↓
-                        [결과 + 제출]
+[Chat Agent 질문] → "이번 주 뷰티 트렌드 훅 알려줘"
+        ↓
+[패턴 추천] → Director Pack 생성
+        ↓
+[🎬 촬영 시작] → 모드 선택 (오마쥬/변주/체험단)
+        ↓
+[AI 코칭 촬영] 
+├─ 카메라 프리뷰
+├─ 🎙️ 음성 피드백
+└─ 규칙 체크리스트
+        ↓
+[결과 + 제출 + 성과 추적]
 ```
 
 ---
@@ -69,15 +63,18 @@ Komission은 **바이럴 영상의 DNA를 추출하고, AI가 실시간으로 �
 
 ---
 
-## 6) 현재 상태
+## 6) 현재 상태 (2025-12-31)
 
-| 항목 | 상태 |
-|------|------|
-| VDG 2-Pass | ✅ 완료 |
-| Director Pack | ✅ 완료 |
-| Audio Coach | ✅ 완료 |
-| Frontend 연동 | ✅ 완료 |
-| NotebookLM 통합 | 🟡 Ready (미실행) |
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| VDG 2-Pass | ✅ 완료 | Semantic + Visual |
+| Director Pack | ✅ 완료 | 규칙 컴파일 |
+| Audio Coach | ✅ 완료 | Gemini 2.5 Flash |
+| **Chat Agent** | ✅ 완료 | 7가지 인텐트 분류 |
+| **Session Log DB** | ✅ 완료 | 4개 테이블 |
+| **CoachingRepository** | ✅ v2.0 | 하드닝 완료 |
+| Frontend 연동 | ✅ 완료 | 빌드 성공 |
+| NotebookLM 통합 | 🟡 Ready | 클러스터 10개 필요 |
 
 ---
 
@@ -85,7 +82,7 @@ Komission은 **바이럴 영상의 DNA를 추출하고, AI가 실시간으로 �
 
 1. **Cluster 생성** (10개 Parent-Kids)
 2. **DistillRun 실행** (주간)
-3. **실사용자 테스트**
+3. **크리에이터 베타 테스트** (3-5명)
 
 ---
 
@@ -93,4 +90,6 @@ Komission은 **바이럴 영상의 DNA를 추출하고, AI가 실시간으로 �
 
 - [ARCHITECTURE_FINAL.md](ARCHITECTURE_FINAL.md) - 최종 아키텍처
 - [CHANGELOG.md](CHANGELOG.md) - 개발 이력
+- [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) - 출시 체크리스트
 - [01_VDG_SYSTEM.md](01_VDG_SYSTEM.md) - VDG v4.0 상세
+

@@ -4,6 +4,56 @@
 
 ---
 
+## 2024-12-31 (Major Release)
+
+### 🤖 Chat Agent UI MVP + Hardening
+- **agent.py** (470줄): 자연어 인터페이스 백엔드
+  - 7가지 IntentClassifier (`ANALYZE_TREND`, `CREATE_HOOK`, `GET_COACHING` 등)
+  - ChatContext: 대화 컨텍스트 관리
+  - ActionExecutor: 액션 생성/실행
+- **page.tsx** 하드닝: localStorage 저장, 재시도 로직, 에러 핸들링
+
+### 🗄️ Session Log DB Schema (Coaching Proof)
+- **SQLAlchemy 모델** 4개 추가:
+  - `CoachingSession`: 세션 메타 + 통계
+  - `CoachingIntervention`: 개입 기록
+  - `CoachingOutcome`: 결과 기록
+  - `CoachingUploadOutcome`: 업로드 결과
+- **Alembic 마이그레이션**: `c4d78e9f1a2b_add_coaching_session_log_tables.py`
+
+### 🛡️ CoachingRepository v2.0 Hardening  
+- **Pydantic 입력 스키마** 4개: `CreateSessionInput`, `AddInterventionInput` 등
+- **커스텀 예외** 4개: `SessionNotFoundError`, `SessionAlreadyExistsError` 등
+- **CoachingConstants**: `MAX_INTERVENTIONS=100`, `COOLDOWN=4s`
+- **신규 메서드**: `get_session_or_raise()`, `count_sessions()`, `get_aggregated_stats()`
+
+### 🎯 Cluster Determinism (Consultant Feedback)
+- **cluster_determinism.py** (220줄): 결정론 유틸리티
+  - `generate_cluster_id()`: `cl.{pattern}.{niche}.{week}.{hash8}`
+  - `compute_signature_hash()`: `sig.{hash12}` 정규화
+  - `dedupe_sort_kids()`: 중복 제거 + 정렬
+- **ContentCluster 하드닝**: 
+  - `signature_hash` 필드 추가
+  - `@field_validator`: kid_vdg_ids 자동 dedup
+  - `min_kids_required`: 3 → 6
+
+### 📋 Launch Infrastructure
+- **LAUNCH_CHECKLIST.md** (179줄): Phase 0-5 체크리스트
+- **Alembic Heads Merge**: `0ed31a82d1aa_merge_heads.py`
+- **Coaching Router 등록**: main.py 404 해결
+
+### Git Commits (8개)
+- `a16012f` Chat Agent UI Hardening
+- `8109834` Session Log DB Schema
+- `2208719` CoachingRepository v1.0
+- `ef35123` CoachingRepository v2.0 Hardening
+- `0a7be4b` Cluster Determinism Hardening
+- `9539787` Launch Checklist
+- `d162952` Alembic Heads Merge
+- `5bdfe85` Coaching Router Fix
+
+---
+
 ## 2024-12-30 (Evening Session)
 
 ### 🎯 Campaign Eligible Feature (O2O Integration)
