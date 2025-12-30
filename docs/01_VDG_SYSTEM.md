@@ -180,17 +180,33 @@ backend/app/
 
 ---
 
-## 6) Data Flywheel
+## 6) Data Flywheel (A→B Migration)
 
-```
-Phase A: Signal → MutationSlot (즉시 코칭)
-    ↓ 10 sessions + 70% 성공률
-Phase B: InvariantCandidate (pending)
-    ↓ 50 sessions + DistillRun 검증
-Phase C: DNA Invariant (promoted)
-```
+**핵심**: 코드 변경 없이 데이터만 쌓이면 자동 승격되는 메커니즘
 
-**핵심**: 코드 변경 없이 데이터만 쌓이면 자동 승격
+### 6.1 Signal → Invariant 승격 임계값 (Configurable)
+
+| 승격 단계 | 조건 | 설명 |
+|-----------|------|------|
+| **Slot → Candidate** | 10 sessions + 70% success | 초기 신호 포착. `InvariantCandidate` 생성 |
+| **Candidate → DNA** | 50 sessions + 80% success | 강력한 패턴 증명. `DNAInvariant` 승격 (Distill 검증 필수) |
+
+**용어 정의**
+- **Sessions**: 해당 Slot/Signal이 제안된 코칭 세션 수
+- **Success**: 사용자가 가이드를 따랐고(Outcome.compliance=True), 메트릭이 개선됨
+
+### 6.2 Cluster SoR & Distill
+
+**ContentCluster (Parent-Kids)**
+- **Parent**: 원본 영상 (VDG Source)
+- **Kids**: 해당 Parent를 보고 만든 변주들 (VDG Variants)
+- **Cluster Signature**: 훅/오디오/인텐트 유사도로 묶임
+
+**Distill Pipeline**
+1. Cluster 내 Parent + Kids의 VDG 모음
+2. NotebookLM에 투입
+3. **공통 성공 요인** 추출 → `DistillRun` 결과로 저장
+4. Candidate의 `distill_validated=True` 마킹 → DNA 승격
 
 ---
 

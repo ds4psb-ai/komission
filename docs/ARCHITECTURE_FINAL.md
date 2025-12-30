@@ -164,13 +164,17 @@ app/video/[id]/
 
 ```
 Phase A: Signal → MutationSlot (즉시 코칭)
-    ↓ 10 sessions + 70% 성공률
-Phase B: InvariantCandidate (pending)
-    ↓ 50 sessions + DistillRun 검증
-Phase C: DNA Invariant (promoted)
+    ↓ 10 sessions + 70% 성공률 (Candidate 승격)
+Phase B: InvariantCandidate (Distill 검증 대기)
+    ↓ 50 sessions + 80% 성공률 + DistillRun 완료
+Phase C: DNA Invariant (Pack 불변 규칙)
 ```
 
-**Auto-promotion**: 코드 변경 없이 데이터만 쌓이면 자동 승격
+**Auto-promotion**: 코드 변경 없이 데이터(Intervention Outcome)만 쌓이면 자동 승격
+
+### Promotion Criteria (Snapshot)
+- **Slot → Candidate**: 신호 포착 (최소 10회, 7할 승률)
+- **Candidate → DNA**: 법칙 확정 (최소 50회, 8할 승률, 교차증명)
 
 ---
 
