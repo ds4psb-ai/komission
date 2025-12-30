@@ -652,7 +652,7 @@ class InvariantCandidate(BaseModel):
     proposed_priority: str = "medium"
     
     # Status
-    status: str = "pending"  # pending, approved, promoted, rejected
+    status: str = "pending"  # pending, canary, approved, promoted, rejected, rolled_back
     created_at: Optional[str] = None
     reviewed_at: Optional[str] = None
     reviewed_by: Optional[str] = None
@@ -661,6 +661,23 @@ class InvariantCandidate(BaseModel):
     # Distill validation
     distill_validated: bool = False
     distill_run_id: Optional[str] = None
+    
+    # (B) Promotion Safety: Canary + Rollback + Cluster Diversity
+    canary_enabled: bool = False  # Run in canary mode before full promotion
+    canary_session_ratio: float = 0.1  # Apply to 10% of sessions only
+    canary_started_at: Optional[str] = None
+    canary_sessions_count: int = 0
+    canary_success_rate: float = 0.0
+    
+    # Cluster diversity requirement (must reproduce across clusters)
+    cluster_ids_verified: List[str] = Field(default_factory=list)  # Clusters where signal succeeded
+    min_clusters_required: int = 2  # Require 2+ cluster verification before DNA
+    
+    # Rollback capability
+    rollback_eligible: bool = True  # Can downgrade if performance drops
+    promoted_at: Optional[str] = None
+    rolled_back_at: Optional[str] = None
+    rollback_reason: Optional[str] = None
 
 
 # ====================
@@ -759,11 +776,15 @@ class CoachingOutcome(BaseModel):
     """
     Observed result after intervention.
     
+    Two-stage outcome for causal data:
+    - Stage 1: Session outcome (compliance, metrics)
+    - Stage 2: Upload outcome (viral performance proxy)
+    
     Joins with CoachingIntervention via intervention_id.
     """
     intervention_id: str  # FK to intervention
     
-    # Immediate (within 5s)
+    # Stage 1: Immediate (within 5s of coaching)
     user_response: str = "unknown"  # complied, ignored, questioned, retake
     compliance_detected: bool = False
     
@@ -777,6 +798,16 @@ class CoachingOutcome(BaseModel):
     retake_count: int = 0
     session_completed: bool = True
     observed_at: Optional[str] = None
+    
+    # Stage 2: Upload outcome (user-reported or scraped)
+    # Critical for causal inference: "compliance → viral success"
+    upload_outcome_proxy: Optional[str] = None  # "uploaded", "good_response", "no_upload", "unknown"
+    reported_views: Optional[int] = None  # User self-report or scrape
+    reported_likes: Optional[int] = None
+    reported_saves: Optional[int] = None
+    reported_comments: Optional[int] = None
+    upload_url: Optional[str] = None  # For verification (optional)
+    outcome_reported_at: Optional[str] = None
 
 
 # Forward reference resolution
