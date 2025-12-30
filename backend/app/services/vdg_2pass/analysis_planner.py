@@ -9,6 +9,8 @@ Key Responsibilities:
 3. Extract points from entity hints
 4. [NEW] Extract points from mise_en_scene_signals (comment evidence)
 5. Budget and prioritize points
+
+H-1 Hardening: Imports from centralized metric_registry.py (Single SoR)
 """
 from typing import List, Dict, Any, Optional
 import math
@@ -20,6 +22,13 @@ from app.schemas.vdg_v4 import (
     MetricRequest,
     SamplingPolicy,
     MiseEnSceneSignal
+)
+# H-1: Import from Single Source of Record
+from app.schemas.metric_registry import (
+    validate_metric_id,
+    get_preset_metrics,
+    METRIC_DEFINITIONS,
+    METRIC_ALIASES
 )
 import logging
 
@@ -36,79 +45,22 @@ class AnalysisPlanner:
     - Entity hints (high)
     - Mise-en-scene signals from comments (medium/high) ← Core Evidence
     
-    P0-3 Hardening:
-    - All metric_ids validated against METRIC_REGISTRY
-    - Unknown metrics mapped to standard alternatives
+    H-1 Hardening:
+    - Imports metric definitions from centralized metric_registry.py
+    - No local copies of registry (SSoT)
     """
     
-    # P0-3: Authoritative Metric Registry (domain.name.v1 format)
-    METRIC_REGISTRY = {
-        # Composition (cmp)
-        "cmp.center_offset_xy.v1": {"unit": "norm_0_1", "desc": "주피사체 중앙 이탈도"},
-        "cmp.stability_score.v1": {"unit": "norm_0_1", "desc": "안정성 점수"},
-        "cmp.composition_grid.v1": {"unit": "enum", "desc": "구도 그리드 준수"},
-        # Lighting (lit)
-        "lit.brightness_ratio.v1": {"unit": "ratio", "desc": "밝기 비율"},
-        "lit.contrast.v1": {"unit": "norm_0_1", "desc": "대비"},
-        # Entity (ent)
-        "ent.face_size_ratio.v1": {"unit": "ratio", "desc": "얼굴 크기 비율"},
-        "ent.expression_arouse.v1": {"unit": "norm_0_1", "desc": "표정 각성도"},
-        "ent.eye_contact.v1": {"unit": "bool", "desc": "아이컨택 여부"},
-        # Visual (vis)
-        "vis.dominant_color.v1": {"unit": "enum", "desc": "지배 색상"},
-        "vis.motion_intensity.v1": {"unit": "norm_0_1", "desc": "움직임 강도"},
-        # Timing (timing)
-        "timing.hook_punch.v1": {"unit": "sec", "desc": "훅 펀치 타이밍"},
-        # Mise-en-scene (mise)
-        "mise.lighting.v1": {"unit": "enum", "desc": "조명 스타일"},
-        "mise.props.v1": {"unit": "enum", "desc": "소품 유형"},
-    }
-    
-    # P0-3: Metric ID aliases (map non-standard to standard)
-    METRIC_ALIASES = {
-        "lit.brightness_lux.v1": "lit.brightness_ratio.v1",  # lux → ratio (no sensor data)
-        "cmp.rule_of_thirds.v1": "cmp.composition_grid.v1",
-    }
-    
-    # Metric mappings for different analysis reasons
-    METRIC_PRESETS = {
-        "hook": [
-            MetricRequest(metric_id="cmp.center_offset_xy.v1"),
-            MetricRequest(metric_id="cmp.stability_score.v1"),
-            MetricRequest(metric_id="lit.brightness_ratio.v1")
-        ],
-        "scene_boundary": [
-            MetricRequest(metric_id="cmp.stability_score.v1"),
-            MetricRequest(metric_id="cmp.composition_grid.v1")
-        ],
-        "entity": [
-            MetricRequest(metric_id="ent.face_size_ratio.v1"),
-            MetricRequest(metric_id="ent.expression_arouse.v1"),
-            MetricRequest(metric_id="cmp.center_offset_xy.v1")
-        ],
-        "mise_en_scene": [
-            MetricRequest(metric_id="cmp.composition_grid.v1"),
-            MetricRequest(metric_id="vis.dominant_color.v1"),
-            MetricRequest(metric_id="lit.brightness_ratio.v1")
-        ],
-        "default": [
-            MetricRequest(metric_id="cmp.composition_grid.v1"),
-            MetricRequest(metric_id="lit.brightness_ratio.v1")
-        ]
-    }
+    # Metric presets use the centralized registry
+    @classmethod
+    def _get_metrics_for_reason(cls, reason: str) -> List[MetricRequest]:
+        """Get MetricRequests for a given analysis reason."""
+        preset_ids = get_preset_metrics(reason)
+        return [MetricRequest(metric_id=mid) for mid in preset_ids]
     
     @classmethod
     def _validate_metric_id(cls, metric_id: str) -> str:
-        """P0-3: Validate and normalize metric_id against registry."""
-        # Check aliases first
-        if metric_id in cls.METRIC_ALIASES:
-            return cls.METRIC_ALIASES[metric_id]
-        # Check registry
-        if metric_id in cls.METRIC_REGISTRY:
-            return metric_id
-        # Unknown metric - log warning and return as-is (soft fail)
-        logger.warning(f"⚠️ Unknown metric_id: {metric_id} (not in registry)")
-        return metric_id
+        """Validate metric_id using centralized registry."""
+        return validate_metric_id(metric_id)
     
     @classmethod
     def plan(
@@ -155,15 +107,15 @@ class AnalysisPlanner:
             # Select metrics based on reason
             if metrics is None:
                 if "hook" in reason:
-                    metrics = cls.METRIC_PRESETS["hook"]
+                    metrics = cls._get_metrics_for_reason("hook")
                 elif reason == "scene_boundary":
-                    metrics = cls.METRIC_PRESETS["scene_boundary"]
+                    metrics = cls._get_metrics_for_reason("scene_boundary")
                 elif reason in ["comment_mise_en_scene", "comment_evidence"]:
-                    metrics = cls.METRIC_PRESETS["mise_en_scene"]
+                    metrics = cls._get_metrics_for_reason("mise_en_scene")
                 elif hint_key:
-                    metrics = cls.METRIC_PRESETS["entity"]
+                    metrics = cls._get_metrics_for_reason("entity")
                 else:
-                    metrics = cls.METRIC_PRESETS["default"]
+                    metrics = cls._get_metrics_for_reason("default")
             
             p = AnalysisPoint(
                 id=stable_id,  # P0-1: Stable ID

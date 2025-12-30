@@ -315,6 +315,8 @@ class SemanticPassResult(BaseModel):
     capsule_brief: CapsuleBrief = Field(default_factory=CapsuleBrief)
     commerce: Dict[str, Any] = Field(default_factory=dict)
     entity_hints: Dict[str, EntityHint] = Field(default_factory=dict)
+    # H5 SSoT: mise_en_scene_signals is CANONICAL here (comment-based visual signals)
+    mise_en_scene_signals: List[MiseEnSceneSignal] = Field(default_factory=list)
     summary: str = ""
     provenance: SemanticPassProvenance = Field(default_factory=SemanticPassProvenance)
 

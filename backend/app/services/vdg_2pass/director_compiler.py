@@ -134,6 +134,13 @@ class DirectorCompiler:
             
             # 2. Dedupe invariants by rule_id
             invariants = cls._dedupe_invariants(invariants)
+            
+            # H9: Minimum rules fallback (prevent silent director)
+            if len(invariants) < 2:
+                logger.warning(f"⚠️ Only {len(invariants)} invariant(s), adding fallback rules")
+                invariants.extend(cls._get_fallback_invariants(vdg.duration_sec))
+                invariants = cls._dedupe_invariants(invariants)
+            
             logger.info(f"   └─ DNA Invariants: {len(invariants)}")
             
             # 3. Generate Mutation Slots - CONTRACT FIRST
@@ -428,6 +435,78 @@ class DirectorCompiler:
                 continue
         
         return invariants
+    
+    @classmethod
+    def _get_fallback_invariants(cls, duration_sec: float = 60.0) -> List[DNAInvariant]:
+        """
+        H9: Fallback rules when invariants < 2 (prevent silent director).
+        
+        Generic rules that apply to most short-form content:
+        1. Hook timing (first 2 seconds)
+        2. Center composition
+        3. Brightness check
+        """
+        return [
+            DNAInvariant(
+                rule_id="fallback_hook_timing",
+                domain="timing",
+                priority="critical",
+                tolerance="normal",
+                time_scope=TimeScope(t_window=[0.0, 3.0], relative_to="start"),
+                spec=RuleSpec(
+                    metric_id="timing.hook_punch.v1",
+                    op="<=",
+                    target=2.0,
+                    unit="sec"
+                ),
+                check_hint="처음 2초 안에 시선을 잡으세요",
+                coach_line_templates=CoachLineTemplates(
+                    strict="시작이 늦어요! 바로 치고 나가세요!",
+                    friendly="조금 더 빨리 시작해볼까요~",
+                    neutral="훅 타이밍을 앞당겨주세요."
+                ),
+                fallback="generic_tip"
+            ),
+            DNAInvariant(
+                rule_id="fallback_center_composition",
+                domain="composition",
+                priority="high",
+                tolerance="normal",
+                time_scope=TimeScope(t_window=[0.0, min(duration_sec, 10.0)], relative_to="start"),
+                spec=RuleSpec(
+                    metric_id="cmp.center_offset_xy.v1",
+                    op="<=",
+                    target=0.3,
+                    aggregation="median"
+                ),
+                check_hint="주 피사체를 중앙에 배치하세요",
+                coach_line_templates=CoachLineTemplates(
+                    strict="중앙에 고정하세요!",
+                    friendly="조금 더 가운데로~",
+                    neutral="구도를 중앙으로 조정하세요."
+                ),
+                fallback="ask_user"
+            ),
+            DNAInvariant(
+                rule_id="fallback_brightness",
+                domain="composition",
+                priority="medium",
+                tolerance="loose",
+                time_scope=TimeScope(t_window=[0.0, duration_sec], relative_to="start"),
+                spec=RuleSpec(
+                    metric_id="lit.brightness_ratio.v1",
+                    op=">=",
+                    target=0.7
+                ),
+                check_hint="조명이 충분한지 확인하세요",
+                coach_line_templates=CoachLineTemplates(
+                    strict="너무 어두워요! 조명 확인!",
+                    friendly="살짝 더 밝게 해볼까요?",
+                    neutral="조명을 조정해주세요."
+                ),
+                fallback="generic_tip"
+            )
+        ]
     
     @classmethod
     def _extract_slots_from_contract_candidates(
