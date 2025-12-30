@@ -693,30 +693,75 @@ class ClusterSignature(BaseModel):
     key_elements: List[str] = Field(default_factory=list)
 
 
+class ClusterKid(BaseModel):
+    """Single kid in a cluster with success/failure metadata."""
+    vdg_id: str
+    content_id: str
+    variation_type: str = "variation"  # "homage", "variation", "adaptation"
+    success: bool = True  # For success/failure contrast
+    similarity_score: float = 0.0  # 0-1, cluster_signature matching
+    created_at: Optional[str] = None
+
+
 class ContentCluster(BaseModel):
     """
-    Phase 3: Content Cluster for Parent-Kids relationships.
+    Phase 3 + P2 Roadmap: Content Cluster for Parent-Kids relationships.
     
     Enables NotebookLM-integrated pipeline:
     - DistillRun operates on clusters, not single videos
     - Pack quality improves with cluster-validated rules
+    
+    P2 Requirements:
+    - Parent: Tier S/A, merger_quality=gold, kids>=3
+    - Kids: similarity>=70%, success+failure included
     """
     cluster_id: str
     cluster_name: str  # Human readable
     
-    # Parent-Kids structure
+    # Parent info (with selection criteria)
     parent_vdg_id: str
     parent_content_id: str
+    parent_tier: str = "A"  # S, A, B (S/A required for distill)
+    parent_merger_quality: str = "gold"  # gold, silver, bronze
+    
+    # Kids structure (P2 enhanced)
+    kids: List[ClusterKid] = Field(default_factory=list)
+    
+    # Legacy fields (for backward compat)
     kid_vdg_ids: List[str] = Field(default_factory=list)
     kid_content_ids: List[str] = Field(default_factory=list)
     
     # Cluster signature
     signature: ClusterSignature = Field(default_factory=ClusterSignature)
     
+    # P2 Selection criteria
+    min_kids_required: int = 3  # Statistical validity
+    min_similarity_threshold: float = 0.70  # 70% match required
+    requires_success_failure_contrast: bool = True
+    
+    # Distill status
+    distill_ready: bool = False  # Set True when criteria met
+    distill_run_ids: List[str] = Field(default_factory=list)  # Linked DistillRuns
+    
     # Provenance
     created_by: str = "manual"  # manual, auto_similarity, auto_time
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+    
+    def is_distill_ready(self) -> bool:
+        """Check if cluster meets P2 distill criteria."""
+        if len(self.kids) < self.min_kids_required:
+            return False
+        if self.parent_tier not in ["S", "A"]:
+            return False
+        if self.parent_merger_quality != "gold":
+            return False
+        if self.requires_success_failure_contrast:
+            has_success = any(k.success for k in self.kids)
+            has_failure = any(not k.success for k in self.kids)
+            if not (has_success and has_failure):
+                return False
+        return True
 
 
 # ====================
