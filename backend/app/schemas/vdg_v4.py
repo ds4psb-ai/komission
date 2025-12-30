@@ -787,6 +787,7 @@ class CoachingOutcome(BaseModel):
     # Stage 1: Immediate (within 5s of coaching)
     user_response: str = "unknown"  # complied, ignored, questioned, retake
     compliance_detected: bool = False
+    compliance_unknown_reason: Optional[str] = None  # "occluded", "out_of_frame", "no_audio", "ambiguous"
     
     # Measurement (if applicable)
     metric_id: Optional[str] = None
