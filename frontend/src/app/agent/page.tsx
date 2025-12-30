@@ -271,7 +271,7 @@ export default function AgentPage() {
                     timestamp: new Date(m.timestamp)
                 }));
                 setMessages(restored);
-            } catch (e) {
+            } catch {
                 console.log('Could not restore messages');
             }
         }

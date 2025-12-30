@@ -32,6 +32,7 @@ export default function TasteCalibrationPage() {
     }, [router]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadPairs();
     }, [loadPairs]);
 

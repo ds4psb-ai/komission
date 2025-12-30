@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, EvidenceGuideResponse, EvidenceGuide } from '@/lib/api';
+import { api, EvidenceGuide } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { BookOpen, Target, TrendingUp, ArrowRight, Play } from 'lucide-react';
 import Link from 'next/link';

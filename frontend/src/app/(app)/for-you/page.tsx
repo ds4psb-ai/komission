@@ -10,7 +10,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, Filter, Sparkles, ChevronRight, Play, X } from 'lucide-react';
+import { RefreshCw, Filter, Sparkles, ChevronRight, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PatternAnswerCard, { PatternAnswerCardProps } from '@/components/PatternAnswerCard';
 import EvidenceBar, { BestComment, RecurrenceEvidence, RiskTag } from '@/components/EvidenceBar';

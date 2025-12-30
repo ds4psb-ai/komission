@@ -35,6 +35,7 @@ export default function LeaderboardPage() {
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async function handleCompleteMission(missionType: string) {
         try {
             await api.completeMission(missionType);
@@ -88,12 +89,12 @@ export default function LeaderboardPage() {
                             <div
                                 key={entry.user_id}
                                 className={`p-4 rounded-2xl border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg cursor-pointer group ${idx === 0
-                                        ? "bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/30 hover:border-yellow-500/50"
-                                        : idx === 1
-                                            ? "bg-gradient-to-r from-slate-400/10 to-slate-300/10 border-slate-400/30 hover:border-slate-400/50"
-                                            : idx === 2
-                                                ? "bg-gradient-to-r from-amber-700/10 to-amber-600/10 border-amber-600/30 hover:border-amber-600/50"
-                                                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+                                    ? "bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/30 hover:border-yellow-500/50"
+                                    : idx === 1
+                                        ? "bg-gradient-to-r from-slate-400/10 to-slate-300/10 border-slate-400/30 hover:border-slate-400/50"
+                                        : idx === 2
+                                            ? "bg-gradient-to-r from-amber-700/10 to-amber-600/10 border-amber-600/30 hover:border-amber-600/50"
+                                            : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
                                     }`}
                             >
                                 <div className="flex items-center justify-between">

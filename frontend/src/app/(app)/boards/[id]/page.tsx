@@ -35,20 +35,19 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        const loadBoard = async () => {
+            try {
+                const data = await api.getBoard(unwrappedParams.id);
+                setBoard(data);
+            } catch (e) {
+                console.warn("Board API failed, using mock:", e);
+                setBoard({ ...MOCK_BOARD, id: unwrappedParams.id });
+            } finally {
+                setLoading(false);
+            }
+        };
         loadBoard();
-    }, []);
-
-    const loadBoard = async () => {
-        try {
-            const data = await api.getBoard(unwrappedParams.id);
-            setBoard(data);
-        } catch (e) {
-            console.warn("Board API failed, using mock:", e);
-            setBoard({ ...MOCK_BOARD, id: unwrappedParams.id });
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [unwrappedParams.id]);
 
     if (loading) return <div className="min-h-screen flex items-center justify-center text-white/50">로딩중...</div>;
     if (!board) return <div className="min-h-screen flex items-center justify-center text-white/50">보드를 찾을 수 없습니다</div>;
@@ -174,8 +173,8 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
                                 </div>
 
                                 {item.notes && (
-                                    <div className="bg-black/20 p-3 rounded text-sm text-gray-400">
-                                        "{item.notes}"
+                                    <div className="bg-black/20 p-3 rounded text-sm text-gray-400 italic">
+                                        {item.notes}
                                     </div>
                                 )}
                             </motion.div>

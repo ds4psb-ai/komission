@@ -4,8 +4,8 @@
  * ConsentDemo - 동의 UI 테스트 페이지
  */
 import React, { useState } from 'react';
-import { useConsent, MCP_TOOLS } from '@/contexts/ConsentContext';
-import { Sparkles, Database, RefreshCw, AlertCircle } from 'lucide-react';
+import { useConsent } from '@/contexts/ConsentContext';
+import { Database, RefreshCw, AlertCircle } from 'lucide-react';
 
 export default function ConsentDemoPage() {
     const { requestConsent, executeWithConsent, consentHistory, isPending } = useConsent();

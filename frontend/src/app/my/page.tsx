@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
-import { api, RemixNode, RoyaltySummary, EarningNode, UserStats, GenealogyResponse } from '@/lib/api';
+import { api, RemixNode, RoyaltySummary, UserStats, GenealogyResponse } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useRealTimeMetrics } from '@/hooks/useRealTimeMetrics';
 
@@ -80,7 +80,8 @@ export default function MyPage() {
     const [stats, setStats] = useState<UserStats | null>(null);
 
     // 🔴 Real-time WebSocket Metrics (Expert Recommendation)
-    const { metrics: realTimeMetrics, isConnected: wsConnected, lastUpdate } = useRealTimeMetrics({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { metrics: _realTimeMetrics, isConnected: wsConnected, lastUpdate: _lastUpdate } = useRealTimeMetrics({
         userId: user?.id || null,
         enabled: isAuthenticated && !!user?.id,
     });
@@ -106,6 +107,7 @@ export default function MyPage() {
             // Select first node by default if none selected
             setSelectedNode(nodes[0].node_id);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedNode, nodes]);
 
     async function loadMyNodes() {

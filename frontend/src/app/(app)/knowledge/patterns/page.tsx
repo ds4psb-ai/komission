@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { api, PatternLibraryItem, PatternLibraryResponse } from '@/lib/api';
-import { BookOpen, Layers, GitBranch, Clock, ArrowRight, Lightbulb, Repeat } from 'lucide-react';
+import { BookOpen, Clock, ArrowRight, Lightbulb, Repeat } from 'lucide-react';
 import Link from 'next/link';
 
 // Mock data for fallback

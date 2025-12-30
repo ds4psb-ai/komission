@@ -26,6 +26,7 @@ export default function RoyaltyHistoryPage() {
         if (isAuthenticated) {
             loadData();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [authLoading, isAuthenticated, filter]);
 
     async function loadData() {
