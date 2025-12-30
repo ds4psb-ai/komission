@@ -4,10 +4,13 @@ Audio Coach API Router
 DirectorPack 기반 실시간 오디오 코칭 세션 관리
 
 Endpoints:
-- POST /coaching/sessions - 새 코칭 세션 생성
+- POST /coaching/sessions - 새 코칭 세션 생성 (with control group assignment)
 - GET /coaching/sessions/{session_id} - 세션 상태 조회
 - DELETE /coaching/sessions/{session_id} - 세션 종료
 - POST /coaching/sessions/{session_id}/feedback - 사용자 피드백
+- POST /coaching/sessions/{session_id}/events - 이벤트 로깅 (P1)
+- GET /coaching/sessions/{session_id}/events - 이벤트 조회 (P1)
+- GET /coaching/sessions/{session_id}/summary - 세션 요약 (P1)
 """
 import logging
 import uuid
@@ -18,7 +21,16 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from app.schemas.director_pack import DirectorPack
+from app.schemas.session_events import (
+    RuleEvaluatedEvent,
+    InterventionEvent,
+    OutcomeEvent,
+    SessionEventSummary,
+)
+from app.schemas.vdg_v4 import CoachingIntervention, CoachingOutcome
 from app.services.audio_coach import AudioCoach
+from app.services.coaching_router import get_coaching_router
+from app.services.session_logger import get_session_logger
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/coaching", tags=["coaching"])
@@ -44,6 +56,10 @@ class SessionResponse(BaseModel):
     expires_at: str
     pattern_id: str
     goal: Optional[str] = None
+    
+    # P1: Control Group info
+    assignment: str = "coached"  # "coached" | "control"
+    holdout_group: bool = False
 
 
 class SessionListResponse(BaseModel):
@@ -93,7 +109,7 @@ async def create_session(
     새 코칭 세션 생성
     
     DirectorPack을 기반으로 Gemini Live 세션을 준비합니다.
-    실제 연결은 WebSocket을 통해 이루어집니다.
+    P1: Control Group (10%) + Holdout (5%) 자동 할당
     """
     session_id = str(uuid.uuid4())
     now = datetime.utcnow()
@@ -101,6 +117,19 @@ async def create_session(
     
     # DirectorPack에서 코칭 컨텍스트 생성
     pack = request.director_pack
+    
+    # P1: Control Group 할당 (10% control, 5% holdout)
+    coaching_router = get_coaching_router()
+    assignment_result = coaching_router.assign_group(session_id)
+    
+    # P1: SessionLogger에 세션 등록
+    session_logger = get_session_logger()
+    session_logger.start_session(
+        session_id=session_id,
+        pack_id=pack.pack_meta.pack_id if pack.pack_meta else "unknown",
+        assignment=assignment_result.assignment,
+        holdout_group=assignment_result.holdout_group,
+    )
     
     # 세션 저장
     _sessions[session_id] = {
@@ -114,9 +143,15 @@ async def create_session(
         "pattern_id": pack.pattern_id,
         "goal": pack.goal,
         "feedbacks": [],
+        # P1: Control group fields
+        "assignment": assignment_result.assignment,
+        "holdout_group": assignment_result.holdout_group,
     }
     
-    logger.info(f"Created coaching session: {session_id} for pattern: {pack.pattern_id}")
+    logger.info(
+        f"Created coaching session: {session_id} for pattern: {pack.pattern_id} "
+        f"(assignment={assignment_result.assignment}, holdout={assignment_result.holdout_group})"
+    )
     
     # WebSocket URL 생성 (실제 환경에서는 도메인 설정 필요)
     websocket_url = f"wss://api.komission.ai/v1/coaching/sessions/{session_id}/ws"
@@ -129,6 +164,8 @@ async def create_session(
         expires_at=expires_at.isoformat() + "Z",
         pattern_id=pack.pattern_id,
         goal=pack.goal,
+        assignment=assignment_result.assignment,
+        holdout_group=assignment_result.holdout_group,
     )
 
 
@@ -215,6 +252,177 @@ async def list_sessions(
         ],
         total=len(_sessions),
     )
+
+
+# ====================
+# P1: EVENT LOGGING ENDPOINTS
+# ====================
+
+class LogRuleEvaluatedRequest(BaseModel):
+    """규칙 평가 로그 요청"""
+    rule_id: str
+    ap_id: str
+    checkpoint_id: str
+    result: Literal["passed", "violated", "unknown"] = "unknown"
+    result_reason: Optional[str] = None
+    t_video: float = 0.0
+    metric_id: Optional[str] = None
+    metric_value: Optional[float] = None
+    evidence_id: Optional[str] = None
+    intervention_triggered: bool = False
+
+
+class LogInterventionRequest(BaseModel):
+    """개입 로그 요청"""
+    intervention_id: str
+    rule_id: str
+    ap_id: Optional[str] = None
+    checkpoint_id: str
+    t_video: float = 0.0
+    command_text: str = ""
+    evidence_id: Optional[str] = None
+
+
+class LogOutcomeRequest(BaseModel):
+    """결과 로그 요청"""
+    intervention_id: str
+    compliance_detected: bool = False
+    compliance_unknown_reason: Optional[str] = None
+    user_response: str = "unknown"
+    metric_id: Optional[str] = None
+    metric_before: Optional[float] = None
+    metric_after: Optional[float] = None
+    upload_outcome_proxy: Optional[str] = None
+    reported_views: Optional[int] = None
+    reported_likes: Optional[int] = None
+    reported_saves: Optional[int] = None
+    outcome_unknown_reason: Optional[str] = None
+
+
+@router.post("/sessions/{session_id}/events/rule-evaluated")
+async def log_rule_evaluated(session_id: str, request: LogRuleEvaluatedRequest):
+    """
+    P1: 규칙 평가 이벤트 로깅
+    
+    CRITICAL: 개입 없는 구간도 로깅해야 반사실 학습 가능
+    """
+    get_session(session_id)  # Verify session exists
+    session_logger = get_session_logger()
+    
+    event = session_logger.log_rule_evaluated(
+        session_id=session_id,
+        rule_id=request.rule_id,
+        ap_id=request.ap_id,
+        checkpoint_id=request.checkpoint_id,
+        result=request.result,
+        result_reason=request.result_reason,
+        t_video=request.t_video,
+        metric_id=request.metric_id,
+        metric_value=request.metric_value,
+        evidence_id=request.evidence_id,
+        intervention_triggered=request.intervention_triggered,
+    )
+    
+    return {"logged": True, "event_id": event.event_id}
+
+
+@router.post("/sessions/{session_id}/events/intervention")
+async def log_intervention(session_id: str, request: LogInterventionRequest):
+    """P1: 코칭 개입 이벤트 로깅"""
+    session = get_session(session_id)
+    session_logger = get_session_logger()
+    
+    # Build CoachingIntervention
+    intervention = CoachingIntervention(
+        intervention_id=request.intervention_id,
+        session_id=session_id,
+        pack_id=session.get("director_pack", {}).get("pack_meta", {}).get("pack_id", "unknown"),
+        rule_id=request.rule_id,
+        ap_id=request.ap_id,
+        checkpoint_id=request.checkpoint_id,
+        evidence_id=request.evidence_id,
+        delivered_at=datetime.utcnow().isoformat(),
+        t_video=request.t_video,
+        command_text=request.command_text,
+        assignment=session.get("assignment", "coached"),
+        holdout_group=session.get("holdout_group", False),
+    )
+    
+    event = session_logger.log_intervention(intervention)
+    
+    return {"logged": True, "event_id": event.event_id}
+
+
+@router.post("/sessions/{session_id}/events/outcome")
+async def log_outcome(session_id: str, request: LogOutcomeRequest):
+    """P1: 결과 관측 이벤트 로깅 (자동 Negative Evidence 판단)"""
+    get_session(session_id)  # Verify session exists
+    session_logger = get_session_logger()
+    
+    # Build CoachingOutcome
+    improvement = None
+    if request.metric_before is not None and request.metric_after is not None:
+        improvement = request.metric_after - request.metric_before
+    
+    outcome = CoachingOutcome(
+        intervention_id=request.intervention_id,
+        user_response=request.user_response,
+        compliance_detected=request.compliance_detected,
+        compliance_unknown_reason=request.compliance_unknown_reason,
+        metric_id=request.metric_id,
+        metric_before=request.metric_before,
+        metric_after=request.metric_after,
+        improvement=improvement,
+        upload_outcome_proxy=request.upload_outcome_proxy,
+        reported_views=request.reported_views,
+        reported_likes=request.reported_likes,
+        reported_saves=request.reported_saves,
+        outcome_unknown_reason=request.outcome_unknown_reason,
+    )
+    
+    event = session_logger.log_outcome(outcome)
+    
+    return {
+        "logged": True,
+        "event_id": event.event_id,
+        "is_negative_evidence": event.is_negative_evidence,
+        "negative_reason": event.negative_reason,
+    }
+
+
+@router.get("/sessions/{session_id}/events")
+async def get_session_events(session_id: str):
+    """P1: 세션의 모든 이벤트 조회"""
+    get_session(session_id)  # Verify session exists
+    session_logger = get_session_logger()
+    
+    events = session_logger.get_session_events(session_id)
+    
+    return {
+        "session_id": session_id,
+        "total_events": len(events),
+        "events": [e.model_dump() for e in events],
+    }
+
+
+@router.get("/sessions/{session_id}/summary", response_model=SessionEventSummary)
+async def get_session_summary(session_id: str):
+    """P1: 세션 요약 통계 조회"""
+    get_session(session_id)  # Verify session exists
+    session_logger = get_session_logger()
+    
+    summary = session_logger.get_session_summary(session_id)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Session summary not found")
+    
+    return summary
+
+
+@router.get("/stats/all-sessions")
+async def get_all_sessions_stats():
+    """P1: 전체 세션 통계 (Control Group 비율 검증용)"""
+    session_logger = get_session_logger()
+    return session_logger.get_all_sessions_summary()
 
 
 # ====================
