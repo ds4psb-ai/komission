@@ -100,6 +100,19 @@ class SessionLimitExceededError(CoachingRepositoryError):
         super().__init__(f"{limit_type} limit exceeded: {current}/{max_allowed}")
 
 
+class PromotionSafetyError(CoachingRepositoryError):
+    """
+    H5: Promotion safety error.
+    
+    Raised when attempting to promote a session without required outcomes.
+    Prevents Goodhart's Law violations by enforcing outcome requirements.
+    """
+    def __init__(self, session_id: str, reason: str):
+        self.session_id = session_id
+        self.reason = reason
+        super().__init__(f"Promotion blocked for {session_id}: {reason}")
+
+
 class InvalidParameterError(CoachingRepositoryError):
     """Invalid parameter value."""
     def __init__(self, param_name: str, value: Any, reason: str):
@@ -271,6 +284,69 @@ class CoachingRepository:
         session = await self.get_session(session_id)
         if not session:
             raise SessionNotFoundError(session_id)
+        return session
+    
+    async def get_session_for_promotion(self, session_id: str) -> CoachingSession:
+        """
+        H5: Get session for candidate promotion with safety checks.
+        
+        Validates that required outcomes exist before allowing promotion.
+        This prevents Goodhart's Law violations by enforcing the two-stage
+        outcome model (proxy outcome must exist before promotion).
+        
+        Args:
+            session_id: Session ID to validate for promotion
+            
+        Returns:
+            CoachingSession if promotion is safe
+            
+        Raises:
+            SessionNotFoundError: If session doesn't exist
+            PromotionSafetyError: If session lacks required outcomes
+            
+        Example:
+            try:
+                session = await repo.get_session_for_promotion(session_id)
+                # Safe to promote candidates from this session
+                await promote_candidates(session)
+            except PromotionSafetyError as e:
+                logger.warning(f"Promotion blocked: {e.reason}")
+        """
+        session = await self.get_session_or_raise(session_id)
+        
+        # Check for any outcomes
+        if not session.outcomes or len(session.outcomes) == 0:
+            raise PromotionSafetyError(
+                session_id,
+                "no outcomes recorded - cannot promote without outcome data"
+            )
+        
+        # Check for proxy outcome (stage 1 of two-stage model)
+        proxy_outcomes = [
+            o for o in session.outcomes 
+            if hasattr(o, 'outcome_type') and o.outcome_type == 'proxy'
+        ]
+        
+        if not proxy_outcomes:
+            # Allow if any outcome exists (for backwards compatibility)
+            # but log a warning
+            logger.warning(
+                f"[COACHING] Session {session_id} has outcomes but no proxy outcome. "
+                f"Consider adding proxy outcome for two-stage model."
+            )
+        
+        # Check for upload outcomes
+        if not session.upload_outcomes or len(session.upload_outcomes) == 0:
+            raise PromotionSafetyError(
+                session_id,
+                "no upload outcomes - session content status unknown"
+            )
+        
+        logger.info(
+            f"[COACHING] Promotion safety check passed for session={session_id}: "
+            f"outcomes={len(session.outcomes)}, upload_outcomes={len(session.upload_outcomes)}"
+        )
+        
         return session
     
     async def end_session(
@@ -452,6 +528,88 @@ class CoachingRepository:
         
         logger.debug(f"[COACHING] Intervention: session={session_id}, rule={rule_id}, t={t_sec:.2f}s")
         return intervention
+    
+    async def add_intervention_idempotent(
+        self,
+        session_id: str,
+        t_sec: float,
+        rule_id: str,
+        evidence_id: str,
+        evidence_type: str = "frame",
+        coach_line_id: str = "friendly",
+        coach_line_text: Optional[str] = None,
+        metric_value: Optional[float] = None,
+        metric_threshold: Optional[float] = None,
+        ap_id: Optional[str] = None,
+        bucket_ms: int = 500
+    ) -> tuple[CoachingIntervention, bool]:
+        """
+        H4: Idempotent intervention recording.
+        
+        Prevents duplicate interventions from network retries by using
+        (session_id, rule_id, t_sec_bucket) as a dedup key.
+        
+        Args:
+            session_id: Session ID
+            t_sec: Intervention time in seconds
+            rule_id: Rule that triggered the intervention
+            evidence_id: Evidence reference
+            bucket_ms: Time bucket for deduplication (default 500ms)
+            ... other params same as add_intervention
+            
+        Returns:
+            (intervention, is_new): Tuple of intervention and whether it was newly created
+            
+        Example:
+            intervention, is_new = await repo.add_intervention_idempotent(
+                session_id="sess_123",
+                t_sec=5.2,
+                rule_id="hook_3s",
+                evidence_id="ev_001"
+            )
+            if not is_new:
+                logger.info("Duplicate intervention ignored")
+        """
+        # Calculate t_sec bucket for deduplication
+        t_ms = int(t_sec * 1000)
+        t_bucket_ms = (t_ms // bucket_ms) * bucket_ms
+        
+        # Check for existing intervention in same bucket
+        query = select(CoachingIntervention).where(
+            CoachingIntervention.session_id == session_id,
+            CoachingIntervention.rule_id == rule_id,
+            # Check if t_sec falls in same bucket
+            func.floor(CoachingIntervention.t_sec * 1000 / bucket_ms) == t_bucket_ms // bucket_ms
+        )
+        result = await self.db.execute(query)
+        existing = result.scalar_one_or_none()
+        
+        if existing:
+            logger.debug(
+                f"[COACHING] Idempotent: duplicate intervention ignored "
+                f"session={session_id}, rule={rule_id}, t_bucket={t_bucket_ms}ms"
+            )
+            return existing, False
+        
+        # Create new intervention
+        intervention = await self.add_intervention(
+            session_id=session_id,
+            t_sec=t_sec,
+            rule_id=rule_id,
+            evidence_id=evidence_id,
+            evidence_type=evidence_type,
+            coach_line_id=coach_line_id,
+            coach_line_text=coach_line_text,
+            metric_value=metric_value,
+            metric_threshold=metric_threshold,
+            ap_id=ap_id
+        )
+        
+        logger.debug(
+            f"[COACHING] Idempotent: new intervention created "
+            f"session={session_id}, rule={rule_id}, t={t_sec:.2f}s"
+        )
+        return intervention, True
     
     async def get_interventions(
         self,

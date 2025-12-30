@@ -52,6 +52,40 @@ class Intent(str, Enum):
     GENERAL_CHAT = "general_chat"        # 일반 대화
 
 
+# ====================
+# H6: ABUSE HARDENING
+# ====================
+
+# Token budget per intent (limits cost per request)
+INTENT_TOKEN_BUDGET = {
+    Intent.ANALYZE_TREND: 2000,
+    Intent.CREATE_HOOK: 4000,
+    Intent.GET_COACHING: 3000,
+    Intent.EXPLAIN_RULE: 1500,
+    Intent.REMIX_GUIDE: 2000,
+    Intent.CAMPAIGN_HELP: 1500,
+    Intent.GENERAL_CHAT: 1000,
+}
+
+# Allowed actions per intent (whitelist for security)
+INTENT_ALLOWED_ACTIONS = {
+    Intent.ANALYZE_TREND: ["view_trends", "explain_pattern", "get_stats"],
+    Intent.CREATE_HOOK: ["generate_hook", "suggest_variation", "get_examples"],
+    Intent.GET_COACHING: ["start_coaching", "get_tips", "show_rules"],
+    Intent.EXPLAIN_RULE: ["explain_rule", "show_evidence", "get_definition"],
+    Intent.REMIX_GUIDE: ["show_remix_guide", "get_variations"],
+    Intent.CAMPAIGN_HELP: ["list_campaigns", "get_campaign_info"],
+    Intent.GENERAL_CHAT: [],  # LLM conversation only, no actions
+}
+
+# Rate limits (requests per minute per user)
+AGENT_RATE_LIMITS = {
+    "chat": 20,        # 20 messages per minute
+    "action": 10,      # 10 actions per minute
+    "suggestions": 30, # 30 suggestion requests per minute
+}
+
+
 @dataclass
 class ClassifiedIntent:
     """분류된 인텐트 결과"""

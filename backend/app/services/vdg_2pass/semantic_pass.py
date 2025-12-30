@@ -17,6 +17,10 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# H3: Provenance Tracking
+PROMPT_VERSION = "semantic_v4.1"
+PIPELINE_VERSION = "vdg_2pass_v4.0"
+
 
 class SemanticPass:
     """
@@ -113,5 +117,11 @@ class SemanticPass:
         logger.info(f"   └─ Scenes: {len(result.scenes)}")
         logger.info(f"   └─ Entity Hints: {list(result.entity_hints.keys())}")
         logger.info(f"   └─ Mise-en-scene Signals: {len(result.mise_en_scene_signals) if hasattr(result, 'mise_en_scene_signals') else 0}")
+        
+        # H3: Set provenance for tracking
+        result.provenance.prompt_version = PROMPT_VERSION
+        result.provenance.model_id = self.model_name
+        result.provenance.model_version = PIPELINE_VERSION
+        result.provenance.run_at = end_time.isoformat()
         
         return result

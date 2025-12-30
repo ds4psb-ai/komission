@@ -27,6 +27,10 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# H3: Provenance Tracking
+PROMPT_VERSION = "visual_v4.1"
+PIPELINE_VERSION = "vdg_2pass_v4.0"
+
 
 class VisualPass:
     """
@@ -170,6 +174,9 @@ class VisualPass:
         logger.info(f"✅ Visual Pass completed in {elapsed_sec:.1f}s")
         logger.info(f"   └─ Entity Resolutions: {len(result.entity_resolutions)}")
         logger.info(f"   └─ Analysis Results: {len(result.analysis_results)}")
+        
+        # H3: Log provenance for tracking (schema doesn't have provenance field)
+        logger.info(f"   └─ Provenance: prompt={PROMPT_VERSION}, model={self.model_name}, pipeline={PIPELINE_VERSION}")
         
         return result
     
