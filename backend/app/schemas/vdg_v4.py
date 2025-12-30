@@ -509,12 +509,51 @@ class VDGv4(BaseModel):
     # Contract Candidates
     contract_candidates: ContractCandidates = Field(default_factory=ContractCandidates)
     
+    # Flywheel: NotebookLM Distill Runs (Phase 3)
+    distill_runs: List["DistillRun"] = Field(default_factory=list)
+    
     # Feature Vectors
     feature_store_version: str = "0.1"
     feature_vectors: Dict[str, Any] = Field(default_factory=dict)
     
     # v3.3 Compatibility
     legacy_flat_view: Optional[Dict[str, Any]] = None
+
+
+# ====================
+# NOTEBOOKLM DISTILL (Flywheel Phase 3)
+# ====================
+
+class DistillRun(BaseModel):
+    """
+    NotebookLM Distill Run record.
+    
+    Stores results from parent-kids cluster distillation.
+    Enables "NotebookLM-integrated" pipeline when distill job runs.
+    
+    Philosophy:
+    - 지금: NotebookLM-ready (스키마 준비)
+    - 다음: NotebookLM-integrated (잡 자동화)
+    """
+    distill_id: str  # Unique run ID
+    cluster_id: str  # Parent-kids cluster
+    source_refs: List[str] = Field(default_factory=list)  # VDG IDs
+    prompt_version: str = "v1"
+    run_at: Optional[str] = None
+    
+    # Output candidates
+    dna_invariants_candidates: List[Dict[str, Any]] = Field(default_factory=list)
+    mutation_slots_candidates: List[Dict[str, Any]] = Field(default_factory=list)
+    forbidden_mutations_candidates: List[Dict[str, Any]] = Field(default_factory=list)
+    weights_candidates: Dict[str, float] = Field(default_factory=dict)
+    
+    # Provenance
+    evidence_refs: List[str] = Field(default_factory=list)
+    model_id: Optional[str] = None
+
+
+# Forward reference resolution
+VDGv4.model_rebuild()
 
 
 # ====================

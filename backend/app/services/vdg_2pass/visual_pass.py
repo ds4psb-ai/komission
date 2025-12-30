@@ -162,6 +162,9 @@ class VisualPass:
             initial_backoff=2.0  # Visual pass is heavier, longer initial backoff
         )
         
+        # Phase 2: Validate metric_ids in results against registry
+        result = self._validate_result_metrics(result)
+        
         # 5. Add provenance
         end_time = datetime.utcnow()
         elapsed_sec = (end_time - start_time).total_seconds()
@@ -171,4 +174,44 @@ class VisualPass:
         logger.info(f"   └─ Analysis Results: {len(result.analysis_results)}")
         
         return result
-
+    
+    def _validate_result_metrics(self, result: VisualPassResult) -> VisualPassResult:
+        """
+        Phase 2 Flywheel: Validate metric_ids in VisualPass results.
+        
+        - Normalizes aliases to canonical IDs
+        - Marks unknown metrics with missing_reason
+        - Prevents metric drift (same ID = same meaning over time)
+        """
+        from app.schemas.metric_registry import validate_metric_id, METRIC_DEFINITIONS
+        
+        validated_count = 0
+        unknown_count = 0
+        
+        if result.analysis_results:
+            for ap_id, ap_result in result.analysis_results.items():
+                if hasattr(ap_result, 'metrics') and ap_result.metrics:
+                    for metric_id, metric_result in list(ap_result.metrics.items()):
+                        # Validate and normalize
+                        canonical = validate_metric_id(metric_id)
+                        
+                        # If alias, update the key
+                        if canonical != metric_id:
+                            ap_result.metrics[canonical] = metric_result
+                            del ap_result.metrics[metric_id]
+                            metric_result.original_metric_id = metric_id
+                            metric_id = canonical
+                        
+                        # If unknown (not in registry after alias resolution)
+                        if canonical not in METRIC_DEFINITIONS:
+                            if hasattr(metric_result, 'missing_reason'):
+                                metric_result.missing_reason = "unknown_metric_id"
+                            unknown_count += 1
+                        else:
+                            validated_count += 1
+        
+        if unknown_count > 0:
+            logger.warning(f"⚠️ VisualPass: {unknown_count} unknown metric_ids (marked)")
+        
+        logger.info(f"   └─ Metrics validated: {validated_count}, unknown: {unknown_count}")
+        return result
