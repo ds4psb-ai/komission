@@ -1,6 +1,6 @@
 # Docs Index: Structure + Dependencies + SoR Rules
 
-**작성**: 2025-12-28  
+**작성**: 2025-12-28 (Updated: 2025-12-30)  
 **목표**: 문서 체계/범주/의존관계/SoR 규칙을 단일 인덱스로 고정
 
 ---
@@ -9,6 +9,8 @@
 ### A. 전략/비전
 - `docs/00_SINGLE_SOURCE_OF_TRUTH.md`
 - `docs/00_EXECUTIVE_SUMMARY.md`
+- `docs/ARCHITECTURE_FINAL.md` ← **NEW: 컨설팅용 최종 아키텍처**
+- `docs/CHANGELOG.md` ← **NEW: 개발 이력**
 - `docs/16_PDR.md`
 - `docs/15_FINAL_ARCHITECTURE.md`
 - `docs/11_VIRLO_BENCHMARK.md`
@@ -17,6 +19,7 @@
 - `docs/20_UI_COMPONENT_SPEC.md`
 - `docs/21_PAGE_IA_REDESIGN.md`
 - `docs/22_FRONTEND_FILE_AUDIT.md`
+- `docs/vdg_v4_2pass_protocol.md` ← **VDG v4.0 2-Pass Protocol**
 
 ### B. 아키텍처/데이터
 - `docs/01_VDG_SYSTEM.md`
