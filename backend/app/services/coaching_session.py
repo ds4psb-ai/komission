@@ -1,32 +1,34 @@
 """
-Coaching Session Service
+Coaching Session Service v1.1
 
 Integrates proof patterns with audio coaching sessions.
 
+v1.1 Hardening:
+- MetricEvaluator integration
+- Cooldown tracking
+- Finalize session with per-rule stats
+- Error handling
+
 Usage:
-    session = await coaching_service.start_session(
+    service = get_coaching_service()
+    session = service.start_session(
         user_id_hash="abc123",
-        mode="homage",
-        pattern_id="hook_start_within_2s_v1"
+        mode="homage"
     )
     
-    # Evaluate rules in real-time
-    intervention = await coaching_service.evaluate_rule(
+    # Evaluate using MetricEvaluator
+    result = service.evaluate_with_evaluator(
         session_id=session.session_id,
         rule_id="hook_start_within_2s_v1",
         t_sec=1.5,
-        metric_value=2.5  # 2.5초에 시작 -> 실패
+        metric_value=2.5
     )
     
-    # Record outcome
-    await coaching_service.record_outcome(
-        session_id=session.session_id,
-        rule_id="hook_start_within_2s_v1",
-        t_sec=3.0,
-        compliance=True
-    )
+    if result.needs_intervention:
+        print(result.coach_line)
 """
 import uuid
+import logging
 from datetime import datetime
 from typing import Dict, Optional, List, Literal
 
@@ -36,25 +38,55 @@ from app.schemas.session_log import (
 )
 from app.services.proof_patterns import (
     TOP_3_PROOF_PATTERNS, get_pattern_by_id, 
-    get_coach_line, create_proof_pack, PATTERN_IDS
+    get_coach_line, create_proof_pack, PATTERN_IDS,
+    MetricEvaluator, get_metric_evaluator, EvaluationResult, EvaluationStatus,
+    PatternValidator
 )
 from app.services.coaching_router import get_coaching_router
+
+logger = logging.getLogger(__name__)
 
 
 class CoachingSessionService:
     """
     Manages coaching sessions with proof patterns.
     
+    v1.1: Uses MetricEvaluator for standardized rule evaluation.
+    
     Responsibilities:
     - Session lifecycle
     - Rule evaluation and intervention
     - Outcome recording
-    - Lift calculation (TODO)
+    - Cooldown enforcement
     """
+    
+    DEFAULT_COOLDOWN_SEC = 4.0
     
     def __init__(self):
         self._sessions: Dict[str, SessionCompleteLog] = {}
         self._router = get_coaching_router()
+        self._evaluator = get_metric_evaluator()
+        
+        # Cooldown tracking: {session_id: {rule_id: last_intervention_time}}
+        self._cooldowns: Dict[str, Dict[str, float]] = {}
+    
+    def _can_intervene(self, session_id: str, rule_id: str, t_sec: float) -> bool:
+        """Check if cooldown has passed for this rule."""
+        if session_id not in self._cooldowns:
+            return True
+        
+        session_cooldowns = self._cooldowns[session_id]
+        if rule_id not in session_cooldowns:
+            return True
+        
+        last_time = session_cooldowns[rule_id]
+        return (t_sec - last_time) >= self.DEFAULT_COOLDOWN_SEC
+    
+    def _update_cooldown(self, session_id: str, rule_id: str, t_sec: float):
+        """Update cooldown tracking."""
+        if session_id not in self._cooldowns:
+            self._cooldowns[session_id] = {}
+        self._cooldowns[session_id][rule_id] = t_sec
     
     # ====================
     # SESSION LIFECYCLE

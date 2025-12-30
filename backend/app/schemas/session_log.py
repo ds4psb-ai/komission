@@ -1,11 +1,17 @@
 """
-Session Log Schemas for Audio Coaching
+Session Log Schemas for Audio Coaching v1.1
 
 Based on Proof Playbook v1.0 minimum required fields:
 - Session: 한 촬영 세션
 - InterventionEvent: 코칭 개입 발생
 - OutcomeEvent: 행동 변화 관찰
 - UploadOutcome: 업로드 결과 프록시
+
+v1.1 Hardening:
+- Field validators for t_sec, compliance
+- Enhanced aggregation methods
+- LiftCalculator utility class
+- Per-rule statistics
 
 Used for:
 1. RL 조인키 구성
@@ -14,8 +20,9 @@ Used for:
 4. Goodhart 방지 승격 판단
 """
 from datetime import datetime
-from typing import Literal, Optional, List
-from pydantic import BaseModel, Field
+from typing import Literal, Optional, List, Dict
+from pydantic import BaseModel, Field, field_validator, model_validator
+import hashlib
 
 
 # ====================
@@ -193,6 +200,96 @@ class SessionCompleteLog(BaseModel):
         
         unknown = sum(1 for o in self.outcomes if o.compliance is None)
         return unknown / len(self.outcomes)
+    
+    def get_per_rule_stats(self) -> Dict[str, Dict[str, float]]:
+        """
+        규칙별 통계
+        
+        Returns:
+            {
+                "hook_start_within_2s_v1": {
+                    "intervention_count": 3,
+                    "compliance_rate": 0.67,
+                    "mean_latency_sec": 2.5,
+                    "mean_delta": 0.15
+                },
+                ...
+            }
+        """
+        stats: Dict[str, Dict[str, float]] = {}
+        
+        # 규칙별 개입 수 집계
+        for intervention in self.interventions:
+            rule_id = intervention.rule_id
+            if rule_id not in stats:
+                stats[rule_id] = {
+                    "intervention_count": 0,
+                    "compliant_count": 0,
+                    "non_compliant_count": 0,
+                    "unknown_count": 0,
+                    "latency_sum": 0.0,
+                    "delta_sum": 0.0,
+                    "delta_count": 0
+                }
+            stats[rule_id]["intervention_count"] += 1
+        
+        # 규칙별 결과 집계
+        for outcome in self.outcomes:
+            rule_id = outcome.rule_id
+            if rule_id not in stats:
+                continue
+            
+            if outcome.compliance is True:
+                stats[rule_id]["compliant_count"] += 1
+            elif outcome.compliance is False:
+                stats[rule_id]["non_compliant_count"] += 1
+            else:
+                stats[rule_id]["unknown_count"] += 1
+            
+            if outcome.latency_sec is not None:
+                stats[rule_id]["latency_sum"] += outcome.latency_sec
+            
+            if outcome.metric_delta is not None:
+                stats[rule_id]["delta_sum"] += outcome.metric_delta
+                stats[rule_id]["delta_count"] += 1
+        
+        # 최종 통계 계산
+        result = {}
+        for rule_id, raw_stats in stats.items():
+            intervention_count = raw_stats["intervention_count"]
+            known_count = raw_stats["compliant_count"] + raw_stats["non_compliant_count"]
+            
+            result[rule_id] = {
+                "intervention_count": intervention_count,
+                "compliance_rate": (
+                    raw_stats["compliant_count"] / known_count 
+                    if known_count > 0 else None
+                ),
+                "mean_latency_sec": (
+                    raw_stats["latency_sum"] / known_count 
+                    if known_count > 0 else None
+                ),
+                "mean_delta": (
+                    raw_stats["delta_sum"] / raw_stats["delta_count"] 
+                    if raw_stats["delta_count"] > 0 else None
+                )
+            }
+        
+        return result
+    
+    def get_intervention_response_time(self) -> Optional[float]:
+        """평균 개입 후 반응 시간 (초)"""
+        latencies = [o.latency_sec for o in self.outcomes if o.latency_sec is not None]
+        if not latencies:
+            return None
+        return sum(latencies) / len(latencies)
+    
+    def finalize(self) -> "SessionCompleteLog":
+        """세션 종료 시 모든 지표 계산"""
+        self.intervention_count = len(self.interventions)
+        self.compliance_rate = self.calculate_compliance_rate()
+        self.unknown_rate = self.calculate_unknown_rate()
+        return self
 
 
 # ====================

@@ -1,5 +1,5 @@
 """
-Proof Patterns v1.0
+Proof Patterns v1.1
 
 TOP 3 증명용 패턴 - 오디오 코칭 효과 검증
 
@@ -12,15 +12,330 @@ Patterns:
 1. hook_start_within_2s_v1 - 2초 훅 스타트 (Semantic-only)
 2. hook_center_anchor_v1 - 훅 중앙 앵커 (Visual cheap)
 3. exposure_floor_v1 - 밝기 바닥선 (Visual cheapest)
+
+v1.1 Hardening:
+- MetricEvaluator class for rule evaluation
+- PatternValidator for input validation
+- EvaluationResult dataclass with detailed status
+- Comprehensive error handling
 """
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Literal, Tuple
 from datetime import datetime
+from dataclasses import dataclass, field
+from enum import Enum
+import logging
 
 from app.schemas.director_pack import (
     DirectorPack, PackMeta, SourceRef, TargetSpec, RuntimeContract,
     Persona, Scoring, DNAInvariant, TimeScope, RuleSpec,
     CoachLineTemplates, MutationSlot, Checkpoint, Policy, LoggingSpec
 )
+
+logger = logging.getLogger(__name__)
+
+
+# ====================
+# EVALUATION RESULT
+# ====================
+
+class EvaluationStatus(str, Enum):
+    PASS = "pass"
+    FAIL = "fail"
+    UNKNOWN = "unknown"
+    ERROR = "error"
+    SKIPPED = "skipped"
+
+
+@dataclass
+class EvaluationResult:
+    """메트릭 평가 결과"""
+    rule_id: str
+    status: EvaluationStatus
+    
+    # 측정값
+    metric_value: Optional[float] = None
+    threshold: Optional[float] = None
+    
+    # 위반 정보
+    violated: bool = False
+    violation_severity: Optional[float] = None  # 0~1, 위반 정도
+    
+    # 코칭
+    coach_line: Optional[str] = None
+    coach_tone: str = "friendly"
+    
+    # 메타
+    t_sec: float = 0.0
+    evaluated_at: datetime = field(default_factory=datetime.now)
+    error_message: Optional[str] = None
+    
+    @property
+    def needs_intervention(self) -> bool:
+        """개입 필요 여부"""
+        return self.violated and self.status == EvaluationStatus.FAIL
+
+
+# ====================
+# METRIC EVALUATOR
+# ====================
+
+class MetricEvaluator:
+    """
+    메트릭 기반 규칙 평가기
+    
+    Usage:
+        evaluator = MetricEvaluator()
+        result = evaluator.evaluate(
+            pattern=HOOK_START_WITHIN_2S,
+            metric_value=2.5,
+            t_sec=2.5
+        )
+    """
+    
+    # 연산자별 평가 함수
+    OPERATORS = {
+        "<=": lambda v, t: v <= t,
+        "<": lambda v, t: v < t,
+        ">=": lambda v, t: v >= t,
+        ">": lambda v, t: v > t,
+        "equals": lambda v, t: v == t,
+        "exists": lambda v, t: v is not None,
+    }
+    
+    def __init__(self, default_tone: str = "friendly"):
+        self.default_tone = default_tone
+    
+    def evaluate(
+        self,
+        pattern: DNAInvariant,
+        metric_value: Optional[float],
+        t_sec: float = 0.0,
+        aggregation_values: Optional[List[float]] = None,
+        tone: str = None,
+        skip_time_check: bool = True  # v1.1: 기본적으로 메트릭 기반 평가만
+    ) -> EvaluationResult:
+        """
+        패턴 규칙 평가
+        
+        Args:
+            pattern: 평가할 DNAInvariant
+            metric_value: 단일 측정값 (aggregation 없을 때)
+            t_sec: 측정 시점
+            aggregation_values: 집계용 값 리스트 (mean/max/min용)
+            tone: 코칭 톤 (strict/friendly/neutral)
+            skip_time_check: True면 time_window 체크 스킵 (메트릭만 평가)
+            
+        Returns:
+            EvaluationResult with detailed status
+        """
+        tone = tone or self.default_tone
+        spec = pattern.spec
+        
+        try:
+            # 1. 시간 범위 체크 (옵셔널)
+            if not skip_time_check and not self._in_time_window(t_sec, pattern.time_scope):
+                return EvaluationResult(
+                    rule_id=pattern.rule_id,
+                    status=EvaluationStatus.SKIPPED,
+                    t_sec=t_sec,
+                    error_message="Outside time window"
+                )
+            
+            # 2. 값 계산 (단일 or 집계)
+            if aggregation_values and spec.aggregation:
+                actual_value = self._aggregate(aggregation_values, spec.aggregation)
+            else:
+                actual_value = metric_value
+            
+            # 3. 값 없으면 UNKNOWN
+            if actual_value is None:
+                return EvaluationResult(
+                    rule_id=pattern.rule_id,
+                    status=EvaluationStatus.UNKNOWN,
+                    t_sec=t_sec,
+                    error_message="No metric value provided"
+                )
+            
+            # 4. 규칙 평가
+            target = spec.target
+            op = spec.op
+            
+            if op == "between":
+                range_ = spec.range or [0, 1]
+                passed = range_[0] <= actual_value <= range_[1]
+            elif op in self.OPERATORS:
+                passed = self.OPERATORS[op](actual_value, target)
+            else:
+                return EvaluationResult(
+                    rule_id=pattern.rule_id,
+                    status=EvaluationStatus.ERROR,
+                    t_sec=t_sec,
+                    error_message=f"Unknown operator: {op}"
+                )
+            
+            # 5. 위반 정도 계산
+            violation_severity = None
+            if not passed and target is not None:
+                violation_severity = self._calculate_severity(actual_value, target, op)
+            
+            # 6. 결과 구성
+            coach_line = self._get_coach_line(pattern, tone) if not passed else None
+            
+            return EvaluationResult(
+                rule_id=pattern.rule_id,
+                status=EvaluationStatus.PASS if passed else EvaluationStatus.FAIL,
+                metric_value=actual_value,
+                threshold=target,
+                violated=not passed,
+                violation_severity=violation_severity,
+                coach_line=coach_line,
+                coach_tone=tone,
+                t_sec=t_sec
+            )
+            
+        except Exception as e:
+            logger.error(f"Evaluation error for {pattern.rule_id}: {e}")
+            return EvaluationResult(
+                rule_id=pattern.rule_id,
+                status=EvaluationStatus.ERROR,
+                t_sec=t_sec,
+                error_message=str(e)
+            )
+    
+    def _in_time_window(self, t_sec: float, scope: TimeScope) -> bool:
+        """시간 범위 내인지 체크"""
+        t_min, t_max = scope.t_window
+        return t_min <= t_sec <= t_max
+    
+    def _aggregate(self, values: List[float], agg_type: str) -> Optional[float]:
+        """값 집계"""
+        if not values:
+            return None
+        
+        if agg_type == "mean":
+            return sum(values) / len(values)
+        elif agg_type == "max":
+            return max(values)
+        elif agg_type == "min":
+            return min(values)
+        elif agg_type == "sum":
+            return sum(values)
+        elif agg_type == "first":
+            return values[0]
+        elif agg_type == "last":
+            return values[-1]
+        else:
+            return sum(values) / len(values)  # default to mean
+    
+    def _calculate_severity(
+        self, 
+        actual: float, 
+        target: float, 
+        op: str
+    ) -> float:
+        """위반 심각도 계산 (0~1)"""
+        if target == 0:
+            return 1.0
+        
+        if op in ["<=", "<"]:
+            # 초과량 / 기준값
+            return min(1.0, (actual - target) / target)
+        elif op in [">=", ">"]:
+            # 부족량 / 기준값
+            return min(1.0, (target - actual) / target) if actual < target else 0.0
+        else:
+            return 0.5  # default medium severity
+    
+    def _get_coach_line(self, pattern: DNAInvariant, tone: str) -> Optional[str]:
+        """코칭 라인 가져오기"""
+        templates = pattern.coach_line_templates
+        if tone == "strict":
+            return templates.strict
+        elif tone == "friendly":
+            return templates.friendly
+        elif tone == "neutral":
+            return templates.neutral
+        else:
+            return templates.ko.get("default") if templates.ko else templates.neutral
+
+
+# ====================
+# PATTERN VALIDATOR
+# ====================
+
+class PatternValidator:
+    """패턴 및 입력 유효성 검증"""
+    
+    @staticmethod
+    def validate_pattern(pattern: DNAInvariant) -> Tuple[bool, List[str]]:
+        """
+        패턴 유효성 검증
+        
+        Returns:
+            (is_valid, error_messages)
+        """
+        errors = []
+        
+        # rule_id 체크
+        if not pattern.rule_id:
+            errors.append("rule_id is required")
+        
+        # spec 체크
+        spec = pattern.spec
+        if not spec.metric_id:
+            errors.append("metric_id is required")
+        if not spec.op:
+            errors.append("operator is required")
+        if spec.op not in ["<=", "<", ">=", ">", "between", "equals", "exists"]:
+            errors.append(f"Invalid operator: {spec.op}")
+        
+        # time_scope 체크
+        scope = pattern.time_scope
+        if len(scope.t_window) != 2:
+            errors.append("t_window must have exactly 2 values")
+        elif scope.t_window[0] > scope.t_window[1]:
+            errors.append("t_window[0] must be <= t_window[1]")
+        
+        # between 연산자는 range 필요
+        if spec.op == "between" and not spec.range:
+            errors.append("range is required for 'between' operator")
+        
+        return len(errors) == 0, errors
+    
+    @staticmethod
+    def validate_metric_input(
+        pattern: DNAInvariant,
+        metric_value: Optional[float],
+        t_sec: float
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        메트릭 입력 유효성 검증
+        
+        Returns:
+            (is_valid, error_message)
+        """
+        # t_sec 음수 체크
+        if t_sec < 0:
+            return False, "t_sec cannot be negative"
+        
+        # 값 타입 체크
+        if metric_value is not None and not isinstance(metric_value, (int, float)):
+            return False, f"metric_value must be numeric, got {type(metric_value)}"
+        
+        return True, None
+
+
+# 싱글톤 인스턴스
+_evaluator: Optional[MetricEvaluator] = None
+
+
+def get_metric_evaluator() -> MetricEvaluator:
+    """싱글톤 MetricEvaluator 인스턴스"""
+    global _evaluator
+    if _evaluator is None:
+        _evaluator = MetricEvaluator()
+    return _evaluator
+
 
 
 # ====================
