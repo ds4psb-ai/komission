@@ -10,7 +10,7 @@ Based on 15_FINAL_ARCHITECTURE.md
 import logging
 from typing import Optional
 from datetime import datetime
-import google.generativeai as genai
+from app.services.genai_client import get_genai_client, DEFAULT_MODEL_FLASH
 
 from app.schemas.analysis_schema import (
     VideoAnalysisSchema,
@@ -28,7 +28,7 @@ from app.models import NotebookLibraryEntry
 logger = logging.getLogger(__name__)
 
 # Gemini Model Configuration
-ANALYSIS_MODEL = "gemini-2.0-flash"  # or "gemini-1.5-pro" for production
+ANALYSIS_MODEL = DEFAULT_MODEL_FLASH
 SCHEMA_VERSION = "v1.0"
 
 
@@ -39,24 +39,16 @@ class AnalysisPipeline:
     """
     
     def __init__(self):
-        self.model = None
+        self.client = None
         self._configure_gemini()
     
     def _configure_gemini(self):
-        """Gemini API 설정"""
-        if settings.GOOGLE_API_KEY:
-            genai.configure(api_key=settings.GOOGLE_API_KEY)
-            self.model = genai.GenerativeModel(
-                model_name=ANALYSIS_MODEL,
-                generation_config={
-                    "temperature": 0.1,  # 낮은 온도로 일관성 확보
-                    "max_output_tokens": 4096,
-                    "response_mime_type": "application/json",  # JSON 출력 강제
-                }
-            )
-            logger.info(f"Gemini model configured: {ANALYSIS_MODEL}")
-        else:
-            logger.warning("GOOGLE_API_KEY not set - analysis pipeline will use mock data")
+        """Gemini API 설정 (new SDK)"""
+        try:
+            self.client = get_genai_client()
+            logger.info(f"Gemini client configured: {ANALYSIS_MODEL}")
+        except ValueError as e:
+            logger.warning(f"API key not set - analysis pipeline will use mock data: {e}")
     
     def _build_prompt(self, video_url: str, video_context: Optional[dict] = None) -> str:
         """분석 프롬프트 생성"""
@@ -110,13 +102,21 @@ Return ONLY valid JSON matching this schema: {VideoAnalysisSchema.model_json_sch
             AnalysisResponse with schema or error
         """
         try:
-            if not self.model:
-                logger.warning("No model configured, returning mock analysis")
+            if not self.client:
+                logger.warning("No client configured, returning mock analysis")
                 return self._mock_analysis(request)
             
-            # Generate analysis
+            # Generate analysis with new SDK
             prompt = self._build_prompt(request.video_url)
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(
+                model=ANALYSIS_MODEL,
+                contents=[prompt],
+                config={
+                    "temperature": 0.1,
+                    "max_output_tokens": 4096,
+                    "response_mime_type": "application/json",
+                }
+            )
             
             # Parse JSON response
             import json

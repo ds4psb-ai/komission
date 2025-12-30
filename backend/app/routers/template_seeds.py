@@ -14,10 +14,9 @@ import uuid as uuid_lib
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import google.generativeai as genai
 
 from app.utils.time import utcnow
-import google.generativeai as genai
+from app.services.genai_client import get_genai_client, DEFAULT_MODEL_FLASH
 
 from app.database import get_db
 from app.config import settings
@@ -180,28 +179,27 @@ async def _generate_seed_params(
     cluster_id: Optional[str],
     context: Optional[dict],
 ) -> SeedParams:
-    """Gemini를 사용하여 시드 파라미터 생성 (또는 목업)"""
+    """Gemini를 사용하여 시드 파라미터 생성 (new SDK)"""
     
-    if settings.GOOGLE_API_KEY:
-        try:
-            genai.configure(api_key=settings.GOOGLE_API_KEY)
-            model = genai.GenerativeModel(
-                model_name="gemini-2.0-flash",
-                generation_config={
-                    "temperature": 0.3,
-                    "response_mime_type": "application/json",
-                },
-            )
-            
-            prompt = _build_opal_prompt(template_type, parent_data, cluster_id, context)
-            response = model.generate_content(prompt)
-            
-            import json
-            params = json.loads(response.text)
-            return SeedParams(**params)
-            
-        except Exception as e:
-            logger.warning(f"Gemini call failed, using mock: {e}")
+    try:
+        client = get_genai_client()
+        prompt = _build_opal_prompt(template_type, parent_data, cluster_id, context)
+        
+        response = client.models.generate_content(
+            model=DEFAULT_MODEL_FLASH,
+            contents=[prompt],
+            config={
+                "temperature": 0.3,
+                "response_mime_type": "application/json",
+            },
+        )
+        
+        import json
+        params = json.loads(response.text)
+        return SeedParams(**params)
+        
+    except Exception as e:
+        logger.warning(f"Gemini call failed, using mock: {e}")
     
     # Mock fallback
     return SeedParams(

@@ -8,8 +8,7 @@ from typing import Dict, Any, List
 import json
 import logging
 from datetime import datetime
-import google.generativeai as genai
-from google.generativeai import types
+from google.genai.types import Part
 from app.schemas.vdg_v4 import (
     VisualPassResult, 
     AnalysisPlan, 
@@ -23,6 +22,7 @@ from app.services.vdg_2pass.prompts.visual_prompt import (
 )
 from app.services.vdg_2pass.gemini_utils import robust_generate_content
 from app.services.vdg_2pass.frame_extractor import FrameExtractor
+from app.services.genai_client import get_genai_client, DEFAULT_MODEL_PRO
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -49,12 +49,10 @@ class VisualPass:
     """
     
     def __init__(self, client=None):
-        self.client = client
-        if not self.client and settings.GEMINI_API_KEY:
-            genai.configure(api_key=settings.GEMINI_API_KEY)
+        self.client = client or get_genai_client()
         
-        # Use config or default to 1.5 Pro
-        self.model_name = getattr(settings, "GEMINI_MODEL_PRO", "gemini-1.5-pro-latest")
+        # Use config or default to Pro
+        self.model_name = getattr(settings, "GEMINI_MODEL_PRO", DEFAULT_MODEL_PRO)
         
         # P0-2: Check if frame extraction is available
         self._use_frames = FrameExtractor.is_available()

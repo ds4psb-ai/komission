@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException, Depends
-import google.generativeai as genai
+from app.services.genai_client import get_genai_client, DEFAULT_MODEL_FLASH
 
 from app.routers.auth import get_current_user
 from app.services.proof_patterns import (
@@ -368,36 +368,33 @@ async def chat(
         if classified.keywords:
             context.push_topic(classified.keywords[0])
         
-        # 3. API 키 체크
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-        
-        genai.configure(api_key=api_key)
-        
-        # 4. 시스템 프롬프트 구성 (컨텍스트 포함)
+        # 3. 컨텍스트 구성
         pattern_context = get_pattern_context()
         context_summary = context.get_context_summary()
         system_prompt = AGENT_SYSTEM_PROMPT.format(pattern_context=pattern_context)
         if context_summary != "새 대화":
             system_prompt += f"\n\n## 대화 컨텍스트\n{context_summary}"
         
-        # 5. 대화 히스토리 구성
-        history = []
+        # 4. 대화 히스토리 구성
+        history_contents = []
         for msg in request.history:
-            history.append({
-                "role": msg.role if msg.role != "assistant" else "model",
-                "parts": [msg.content]
-            })
+            role = "user" if msg.role == "user" else "model"
+            history_contents.append({"role": role, "parts": [{"text": msg.content}]})
         
-        # 6. Gemini 모델 생성 및 응답
-        model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
-            system_instruction=system_prompt
+        # 5. 현재 메시지 추가
+        history_contents.append({"role": "user", "parts": [{"text": request.message}]})
+        
+        # 6. Gemini 생성 (새 SDK)
+        client = get_genai_client()
+        response = client.models.generate_content(
+            model=DEFAULT_MODEL_FLASH,
+            contents=history_contents,
+            config={
+                "system_instruction": system_prompt,
+                "temperature": 0.7,
+                "max_output_tokens": 4096,
+            }
         )
-        
-        chat_session = model.start_chat(history=history)
-        response = chat_session.send_message(request.message)
         
         # 7. 인텐트 기반 추천 + 액션 생성
         suggestions = _generate_suggestions_by_intent(classified)
