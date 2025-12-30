@@ -2,75 +2,23 @@
 Visual Pass Prompt Template
 Focus: Precision, Metrics, and Entity Resolution (Pass 2)
 
-P0-2: Includes Metric Registry for hardened measurement contracts
+SSoT: Uses metric_registry.py as Single Source of Record
 P0-3: Includes prompt injection defense
 """
 from typing import Dict, List
 import json
 
-# P0-2: Metric Registry (Authoritative Definitions)
-# This ensures model outputs are reproducible regardless of model version
-METRIC_REGISTRY = {
-    "cmp.center_offset_xy.v1": {
-        "description": "Distance from frame center to subject center",
-        "unit": "norm_-1_1",
-        "coordinate_frame": "frame_center_origin",
-        "range": [-1.0, 1.0],
-        "aggregation": ["median", "mean"],
-        "measurement": "abs(subject_center_x - 0.5) + abs(subject_center_y - 0.5)"
-    },
-    "cmp.stability_score.v1": {
-        "description": "Camera stability score (1.0 = perfectly stable)",
-        "unit": "norm_0_1",
-        "range": [0.0, 1.0],
-        "aggregation": ["min", "mean"],
-        "measurement": "1.0 - (frame_motion_magnitude / max_motion)"
-    },
-    "cmp.composition_grid.v1": {
-        "description": "Rule of thirds alignment score",
-        "unit": "norm_0_1",
-        "range": [0.0, 1.0],
-        "aggregation": ["mean"],
-        "measurement": "proximity to nearest grid intersection"
-    },
-    "lit.brightness_ratio.v1": {
-        "description": "Subject brightness vs background ratio",
-        "unit": "ratio",
-        "range": [0.0, 10.0],
-        "aggregation": ["mean"],
-        "measurement": "subject_avg_luminance / background_avg_luminance"
-    },
-    "ent.face_size_ratio.v1": {
-        "description": "Face bounding box area as fraction of frame",
-        "unit": "norm_0_1",
-        "range": [0.0, 1.0],
-        "aggregation": ["max", "mean"],
-        "measurement": "(face_bbox_width * face_bbox_height) / (frame_width * frame_height)"
-    },
-    "ent.expression_arouse.v1": {
-        "description": "Facial expression arousal level (neutral=0.5)",
-        "unit": "norm_0_1",
-        "range": [0.0, 1.0],
-        "aggregation": ["max", "mean"],
-        "measurement": "expression intensity from neutral baseline"
-    },
-    "vis.dominant_color.v1": {
-        "description": "Most prominent color in the frame",
-        "unit": "hex_color",
-        "format": "#RRGGBB",
-        "aggregation": ["mode"],
-        "measurement": "most frequent color cluster centroid"
-    }
-}
+# SSoT: Import from Single Source of Record (no local copies)
+from app.schemas.metric_registry import METRIC_DEFINITIONS, to_prompt_json
 
 
 def get_metric_registry_json(metric_ids: List[str] = None) -> str:
-    """Get JSON string of metric definitions for requested metrics."""
-    if metric_ids:
-        filtered = {k: v for k, v in METRIC_REGISTRY.items() if k in metric_ids}
-    else:
-        filtered = METRIC_REGISTRY
-    return json.dumps(filtered, indent=2, ensure_ascii=False)
+    """
+    Get JSON string of metric definitions for requested metrics.
+    
+    Uses centralized metric_registry.py (SSoT).
+    """
+    return to_prompt_json(metric_ids)
 
 
 VISUAL_SYSTEM_PROMPT = """
