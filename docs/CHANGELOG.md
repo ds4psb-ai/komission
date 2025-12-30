@@ -4,6 +4,57 @@
 
 ---
 
+## 2025-12-31 (Late Night Session)
+
+### 🚀 google-genai SDK 마이그레이션
+- **deprecated `google-generativeai` → 신규 `google-genai` v1.56.0**
+- **genai_client.py** (130줄) 신규 모듈:
+  - `get_genai_client()`: 싱글톤 클라이언트
+  - `generate_content()`, `generate_content_async()` 래퍼
+  - `DEFAULT_MODEL_FLASH`, `DEFAULT_MODEL_PRO` 상수
+- 마이그레이션된 파일 6개:
+  - `agent.py`, `template_seeds.py`
+  - `analysis_pipeline.py`
+  - `semantic_pass.py`, `visual_pass.py`
+
+### 🛡️ Sentry 에러 모니터링
+- **Frontend Sentry 설정** (Next.js):
+  - `sentry.client.config.ts` (클라이언트)
+  - `sentry.server.config.ts` (서버 SSR)
+  - `sentry.edge.config.ts` (Edge 런타임)
+  - `next.config.ts` Sentry wrapper 적용
+- 설정: Production 전용, 10% 샘플링, 일반 오류 필터링
+
+### 🔧 Turbopack 호환성 수정
+- **styled-jsx 제거** (Turbopack 빌드 오류 해결):
+  - `agent/page.tsx` (-11줄)
+  - `Toast.tsx` (-16줄)
+  - `CelebrationModal.tsx` (-24줄)
+- **globals.css 애니메이션 추가**:
+  - `slide-in` (Toast)
+  - `confetti` (CelebrationModal)
+- Root Cause: styled-jsx가 Next.js 16 Turbopack과 호환되지 않음
+
+### 📂 Ops 격리 리팩토링
+- `/pipelines` → `/ops/pipelines` 이동
+- 리다이렉트 페이지 추가: `/canvas`, `/outliers`, `/pipelines`
+
+### ⚡ API 응답시간 측정
+- `/health`: 8ms ✅
+- `/suggestions`: 2.7ms (401)
+- `/chat`: 2ms (401)
+- 목표 3초 대비 300배 이상 빠름
+
+### Git Commits (6개)
+- `883e782` fix: Remove all styled-jsx for Turbopack compatibility
+- `0aecb34` fix: Remove styled-jsx for Turbopack compatibility
+- `72372d6` feat: Add Sentry error monitoring to frontend
+- `dd18e1e` feat: Migrate from google-generativeai to google-genai SDK
+- `49d83b6` refactor: Ops isolation - pipelines to /ops
+- `7d32ab9` feat: Chat Agent UI Premium Upgrade
+
+---
+
 ## 2024-12-31 (Major Release)
 
 ### 🤖 Chat Agent UI MVP + Hardening
