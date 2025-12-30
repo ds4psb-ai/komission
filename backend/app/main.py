@@ -129,6 +129,10 @@ app.include_router(websocket_router, tags=["WebSocket"])
 from app.routers.agent import router as agent_router
 app.include_router(agent_router, tags=["Agent"])
 
+# Register Coaching routes (Audio Coach Sessions)
+from app.routers.coaching import router as coaching_router
+app.include_router(coaching_router, tags=["Coaching"])
+
 
 @app.get("/health")
 async def health_check():
