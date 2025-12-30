@@ -98,13 +98,57 @@ function ChatBubble({ message }: { message: ChatMessage }) {
 // MAIN PAGE
 // ====================
 
+const STORAGE_KEY = 'komission_agent_chat';
+const MAX_RETRY_ATTEMPTS = 2;
+
+function generateSessionId(): string {
+    return `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export default function AgentPage() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [suggestions, setSuggestions] = useState<Suggestion[]>(DEFAULT_SUGGESTIONS);
+    const [sessionId, setSessionId] = useState<string>('');
+    const [error, setError] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Initialize session and load persisted messages
+    useEffect(() => {
+        // Generate or restore session ID
+        const storedSession = localStorage.getItem(`${STORAGE_KEY}_session`);
+        if (storedSession) {
+            setSessionId(storedSession);
+        } else {
+            const newSession = generateSessionId();
+            setSessionId(newSession);
+            localStorage.setItem(`${STORAGE_KEY}_session`, newSession);
+        }
+
+        // Load persisted messages
+        const storedMessages = localStorage.getItem(`${STORAGE_KEY}_messages`);
+        if (storedMessages) {
+            try {
+                const parsed = JSON.parse(storedMessages);
+                const restored = parsed.map((m: ChatMessage) => ({
+                    ...m,
+                    timestamp: new Date(m.timestamp)
+                }));
+                setMessages(restored);
+            } catch (e) {
+                console.log('Could not restore messages');
+            }
+        }
+    }, []);
+
+    // Persist messages to localStorage
+    useEffect(() => {
+        if (messages.length > 0) {
+            localStorage.setItem(`${STORAGE_KEY}_messages`, JSON.stringify(messages));
+        }
+    }, [messages]);
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -115,6 +159,14 @@ export default function AgentPage() {
     useEffect(() => {
         loadSuggestions();
     }, []);
+
+    const clearChat = () => {
+        setMessages([]);
+        localStorage.removeItem(`${STORAGE_KEY}_messages`);
+        const newSession = generateSessionId();
+        setSessionId(newSession);
+        localStorage.setItem(`${STORAGE_KEY}_session`, newSession);
+    };
 
     const loadSuggestions = async () => {
         try {
@@ -133,17 +185,22 @@ export default function AgentPage() {
         }
     };
 
-    const sendMessage = async (text: string) => {
+    const sendMessage = async (text: string, retryCount = 0) => {
         if (!text.trim() || isLoading) return;
 
-        const userMessage: ChatMessage = {
-            role: 'user',
-            content: text.trim(),
-            timestamp: new Date()
-        };
+        setError(null);
 
-        setMessages(prev => [...prev, userMessage]);
-        setInput('');
+        // Only add user message on first attempt
+        if (retryCount === 0) {
+            const userMessage: ChatMessage = {
+                role: 'user',
+                content: text.trim(),
+                timestamp: new Date()
+            };
+            setMessages(prev => [...prev, userMessage]);
+            setInput('');
+        }
+
         setIsLoading(true);
 
         try {
@@ -156,6 +213,7 @@ export default function AgentPage() {
                 },
                 body: JSON.stringify({
                     message: text,
+                    session_id: sessionId,
                     history: messages.map(m => ({
                         role: m.role,
                         content: m.content
@@ -164,7 +222,7 @@ export default function AgentPage() {
             });
 
             if (!response.ok) {
-                throw new Error('Chat request failed');
+                throw new Error(`Server error: ${response.status}`);
             }
 
             const data = await response.json();
@@ -177,7 +235,7 @@ export default function AgentPage() {
 
             setMessages(prev => [...prev, assistantMessage]);
 
-            // Update dynamic suggestions
+            // Update dynamic suggestions from backend
             if (data.suggestions?.length) {
                 setSuggestions(prev => [
                     ...data.suggestions.map((text: string, i: number) => ({
@@ -188,8 +246,17 @@ export default function AgentPage() {
                     ...prev.slice(0, 2)
                 ].slice(0, 4));
             }
-        } catch (error) {
-            console.error('Chat error:', error);
+        } catch (err) {
+            console.error('Chat error:', err);
+
+            // Retry logic
+            if (retryCount < MAX_RETRY_ATTEMPTS) {
+                console.log(`Retrying... (${retryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
+                setTimeout(() => sendMessage(text, retryCount + 1), 1000);
+                return;
+            }
+
+            setError('응답을 받지 못했어요. 잠시 후 다시 시도해주세요.');
             setMessages(prev => [...prev, {
                 role: 'assistant',
                 content: '죄송해요, 지금 응답하기 어려운 상황이에요. 잠시 후 다시 시도해주세요! 🙏',
