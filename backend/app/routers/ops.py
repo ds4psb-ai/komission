@@ -116,11 +116,11 @@ async def get_pipeline_status(
     # VDGEdge 통계
     edge_stats = await db.execute(
         select(
-            VDGEdge.status,
+            VDGEdge.edge_status,
             func.count(VDGEdge.id).label("count")
-        ).group_by(VDGEdge.status)
+        ).group_by(VDGEdge.edge_status)
     )
-    edge_counts = {row.status.value: row.count for row in edge_stats}
+    edge_counts = {row.edge_status.value: row.count for row in edge_stats}
     
     total_edges = sum(edge_counts.values())
     edges_candidate = edge_counts.get("CANDIDATE", 0)
@@ -399,7 +399,7 @@ async def list_vdg_edges(
     if status:
         try:
             status_enum = VDGEdgeStatus(status.upper())
-            query = query.where(VDGEdge.status == status_enum)
+            query = query.where(VDGEdge.edge_status == status_enum)
         except ValueError:
             pass
     

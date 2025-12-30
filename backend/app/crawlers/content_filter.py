@@ -275,3 +275,87 @@ def filter_with_reason(
 ) -> FilterResult:
     """편의 함수: 필터 결과 전체 반환"""
     return content_filter.filter(title, channel_name, hashtags, description)
+
+
+@dataclass
+class UGCCheckResult:
+    """UGC 친화도 체크 결과"""
+    is_filmable: bool
+    reject_reasons: List[str]
+    score: int  # 0-100
+
+
+def is_creator_filmable(
+    duration_sec: int = 60,
+    creator_followers: int = 0,
+    title: str = "",
+    description: str = "",
+) -> UGCCheckResult:
+    """
+    핸드폰 촬영 가능 여부 판단 (UGC 친화도)
+    
+    Research-based criteria:
+    1. 영상 길이 <= 60초
+    2. 팔로워 < 1M (메가 인플루언서 제외)
+    3. 전문 편집 흔적 없음
+    4. TV/방송 콘텐츠 아님
+    
+    Returns:
+        UGCCheckResult with filmable status and score
+    """
+    reasons = []
+    score = 100
+    
+    # 1. 영상 길이 체크 (60초 이하)
+    if duration_sec > 60:
+        reasons.append(f"too_long:{duration_sec}s")
+        score -= 30
+    
+    # 2. 팔로워 수 체크 (메가 인플루언서 제외)
+    if creator_followers >= 1_000_000:
+        reasons.append(f"mega_influencer:{creator_followers}")
+        score -= 40
+    elif creator_followers >= 500_000:
+        # 중형 인플루언서는 페널티 적음
+        score -= 10
+    
+    # 3. 전문 편집 흔적 체크
+    professional_edit_keywords = [
+        "vfx", "cgi", "3d", "모션그래픽",
+        "전문촬영", "drone", "드론", "촬영팀",
+        "스튜디오", "studio", "제작사",
+    ]
+    combined_text = f"{title} {description}".lower()
+    for keyword in professional_edit_keywords:
+        if keyword in combined_text:
+            reasons.append(f"professional_edit:{keyword}")
+            score -= 25
+            break
+    
+    # 4. TV/방송 콘텐츠 체크 (기존 필터 활용)
+    filter_result = content_filter.filter(title, description=description)
+    if not filter_result.should_collect:
+        reasons.append(filter_result.reject_reason or "content_filter")
+        score -= 50
+    
+    # 최종 판단
+    is_filmable = len(reasons) == 0 and score >= 60
+    
+    return UGCCheckResult(
+        is_filmable=is_filmable,
+        reject_reasons=reasons,
+        score=max(0, score)
+    )
+
+
+# Hook 패턴 분류 (UGC 리서치 기반)
+HOOK_PATTERNS = {
+    "reaction_face": "표정 리액션 (첫 0.5초)",
+    "product_reveal": "제품 공개 (언박싱)",
+    "food_first_bite": "첫 입 클로즈업 (먹방)",
+    "before_after": "전후 비교",
+    "pov_approach": "POV 진입",
+    "text_hook": "텍스트 후킹",
+    "question_hook": "질문형 후킹",
+}
+

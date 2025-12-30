@@ -50,6 +50,52 @@ class YouTubeCrawler(BaseCrawler):
         "news": "25",
     }
     
+    # Keyword strategy for targeted Shorts crawling (O2O 연계)
+    # Research-based: UGC-friendly content categories for mobile creators
+    KEYWORD_STRATEGY = {
+        # 밈/리액션 - 순수 레퍼런스 (O2O 미연계)
+        "meme_reaction": [
+            "밈 #shorts", "reaction #shorts", 
+            "표정챌린지 shorts", "meme 2024 shorts",
+            "리액션 #shorts", "funny reaction shorts"
+        ],
+        
+        # 제품 리뷰 - O2O 연계 (제품 배송)
+        "product_review": [
+            "솔직후기 #shorts", "언박싱 shorts",
+            "하울 #shorts", "product review shorts",
+            "unboxing shorts", "honest review shorts"
+        ],
+        
+        # 맛집/카페 - O2O 연계 (방문 체험)
+        "food_cafe": [
+            "카페투어 #shorts", "맛집 shorts",
+            "먹방 shorts", "cafe vlog shorts",
+            "mukbang shorts", "food review shorts"
+        ],
+        
+        # 뷰티 - O2O 연계 (뷰티 제품)
+        "beauty": [
+            "GRWM shorts", "스킨케어 shorts",
+            "K-beauty shorts", "메이크업 shorts",
+            "skincare routine shorts", "makeup shorts"
+        ],
+        
+        # 피트니스 - O2O 연계 (피트니스 용품)
+        "fitness": [
+            "홈트 #shorts", "운동루틴 shorts",
+            "workout shorts", "exercise shorts",
+            "홈트레이닝 shorts"
+        ],
+        
+        # 라이프스타일 - O2O 연계 (라이프스타일 제품)
+        "lifestyle": [
+            "일상브이로그 shorts", "daily routine shorts",
+            "day in my life shorts", "vlog shorts",
+            "일상 shorts", "하루루틴 shorts"
+        ]
+    }
+    
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or settings.YOUTUBE_API_KEY
         if not self.api_key:
@@ -394,6 +440,67 @@ class YouTubeCrawler(BaseCrawler):
             self._normalize_to_outlier_item(v, "search")
             for v in videos
         ]
+    
+    def crawl_by_strategy(
+        self,
+        strategy: str,
+        limit: int = 25,
+        region_code: str = "KR",
+        published_after_days: int = 14
+    ) -> List[OutlierCrawlItem]:
+        """
+        Crawl Shorts using predefined keyword strategy.
+        
+        Args:
+            strategy: One of 'meme', 'review', 'unboxing', 'cafe', 'beauty', 'fitness', 'viral_global'
+            limit: Total max results across all keywords
+            region_code: Region for search
+            published_after_days: Only include videos from last N days
+        
+        Returns:
+            List of OutlierCrawlItem
+        """
+        keywords = self.KEYWORD_STRATEGY.get(strategy.lower(), [])
+        if not keywords:
+            logger.warning(f"Unknown strategy: {strategy}. Available: {list(self.KEYWORD_STRATEGY.keys())}")
+            return []
+        
+        logger.info(f"Crawling with strategy '{strategy}': {len(keywords)} keywords, limit={limit}")
+        
+        # Distribute limit across keywords
+        per_keyword_limit = max(limit // len(keywords), 5)
+        
+        results = []
+        seen_ids = set()
+        
+        for keyword in keywords:
+            try:
+                items = self.search_shorts_by_keyword(
+                    keyword=keyword,
+                    limit=per_keyword_limit,
+                    published_after_days=published_after_days
+                )
+                
+                # Dedupe by external_id
+                for item in items:
+                    if item.external_id not in seen_ids:
+                        seen_ids.add(item.external_id)
+                        # Override category with strategy
+                        item.category = strategy
+                        results.append(item)
+                        
+                        if len(results) >= limit:
+                            break
+                            
+            except Exception as e:
+                logger.warning(f"Keyword '{keyword}' failed: {e}")
+                continue
+            
+            if len(results) >= limit:
+                break
+        
+        logger.info(f"Strategy '{strategy}' complete: {len(results)} items, quota used: {self.quota_used}")
+        return results[:limit]
     
     def close(self):
         """Close HTTP client."""

@@ -5,6 +5,7 @@ import { RemixNode } from '@/lib/api';
 import { Eye, Zap, Star, Award, Diamond, BarChart, ExternalLink, Camera, Rocket } from 'lucide-react';
 import { NodeWrapper } from './NodeWrapper';
 import { HANDLE_STYLES, formatViewCount } from './utils';
+import { TierBadge, OutlierMetrics } from '@/components/outlier';
 
 /**
  * CrawlerOutlierItem interface for 3-platform crawler data
@@ -381,17 +382,13 @@ export const CrawlerOutlierNode = memo(({ data }: { data: CrawlerOutlierNodeData
                             {platformConfig.icon}
                         </div>
                     )}
-                    {/* Tier Badge Overlay */}
-                    {tierConfig && (
-                        <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full ${tierConfig.bgClass} border ${tierConfig.borderClass} flex items-center gap-1`}>
-                            <TierIcon className={`w-3 h-3 ${tierConfig.colorClass}`} />
-                            <span className={`text-[10px] font-black ${tierConfig.colorClass}`}>{tierConfig.label}</span>
-                        </div>
-                    )}
+                    {/* Tier Badge - using shared component */}
+                    <div className="absolute top-2 left-2">
+                        <TierBadge tier={outlier.outlier_tier} size="sm" showIcon />
+                    </div>
                     {/* Views Badge */}
-                    <div className="absolute top-2 right-2 px-2 py-0.5 bg-black/60 backdrop-blur rounded text-[10px] font-mono flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        {formatViewCount(outlier.view_count)}
+                    <div className="absolute top-2 right-2">
+                        <OutlierMetrics viewCount={outlier.view_count} layout="compact" />
                     </div>
                 </div>
 

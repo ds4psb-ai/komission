@@ -1,7 +1,9 @@
 # Docs Index: Structure + Dependencies + SoR Rules
 
-**작성**: 2025-12-28 (Updated: 2025-12-30)  
+**작성**: 2025-12-28 (Updated: 2025-12-30 Consolidation)  
 **목표**: 문서 체계/범주/의존관계/SoR 규칙을 단일 인덱스로 고정
+
+> **Note**: 2025-12-30 문서 통합 작업으로 5개 문서 삭제됨 (백업: `docs_backup_20251230/`)
 
 ---
 
@@ -9,35 +11,33 @@
 ### A. 전략/비전
 - `docs/00_SINGLE_SOURCE_OF_TRUTH.md`
 - `docs/00_EXECUTIVE_SUMMARY.md`
-- `docs/ARCHITECTURE_FINAL.md` ← **NEW: 컨설팅용 최종 아키텍처**
-- `docs/CHANGELOG.md` ← **NEW: 개발 이력**
-- `docs/16_PDR.md`
-- `docs/15_FINAL_ARCHITECTURE.md`
-- `docs/11_VIRLO_BENCHMARK.md`
-- `docs/10_UI_UX_STRATEGY.md`
-- `docs/19_NEXT_STEP_ROADMAP.md`
-- `docs/20_UI_COMPONENT_SPEC.md`
-- `docs/21_PAGE_IA_REDESIGN.md`
-- `docs/22_FRONTEND_FILE_AUDIT.md`
+- `docs/ARCHITECTURE_FINAL.md` ← **PRIMARY: 최종 아키텍처 (통합)**
+- `docs/CHANGELOG.md` ← 개발 이력
+- `docs/14_PDR.md`
+- `docs/NOTEBOOKLM_SPEC.md` ← **NEW: NotebookLM 통합 스펙**
+- `docs/10_VIRLO_BENCHMARK.md`
+- `docs/09_UI_UX_STRATEGY.md`
+- `docs/16_NEXT_STEP_ROADMAP.md`
+- `docs/17_UI_COMPONENT_SPEC.md`
+- `docs/18_PAGE_IA_REDESIGN.md`
+- `docs/19_FRONTEND_FILE_AUDIT.md`
 - `docs/vdg_v4_2pass_protocol.md` ← **VDG v4.0 2-Pass Protocol**
 
 ### B. 아키텍처/데이터
 - `docs/01_VDG_SYSTEM.md`
 - `docs/02_EVIDENCE_LOOP_CANVAS.md`
-- `docs/04_TECHNICAL_OVERVIEW.md`
-- `docs/08_CANVAS_NODE_CONTRACTS.md`
-- `docs/12_KOMISSION_STUDIO_SPEC.md`
-- `docs/13_PERIODIC_CRAWLING_SPEC.md`
-- `docs/14_NOTEBOOK_LIBRARY_NODE_SPEC.md`
-- `docs/14_OUTLIER_CRAWLER_INTEGRATION_DESIGN.md`
-- `docs/17_NOTEBOOKLM_LIBRARY_STRATEGY.md`
-- `docs/18_NOTEBOOKLM_ENTERPRISE_INTEGRATION.md`
+- `docs/07_CANVAS_NODE_CONTRACTS.md`
+- `docs/11_KOMISSION_STUDIO_SPEC.md`
+- `docs/12_PERIODIC_CRAWLING_SPEC.md`
+- `docs/13_OUTLIER_CRAWLER_INTEGRATION_DESIGN.md`
+- `docs/20_TIKTOK_EMBED_SPEC.md` ← TikTok 임베드 (Virlo 분석)
+- `docs/NOTEBOOKLM_SPEC.md` ← NotebookLM 통합 (14+17+18 병합)
 
 ### C. 운영/플로우
-- `docs/05_DATA_SOURCES_O2O.md`
-- `docs/06_USER_FLOW.md`
-- `docs/07_PIPELINE_PLAYBOOK.md`
-- `docs/09_OPERATIONS_RUNBOOK.md`
+- `docs/04_DATA_SOURCES_O2O.md`
+- `docs/05_USER_FLOW.md`
+- `docs/06_PIPELINE_PLAYBOOK.md`
+- `docs/08_OPERATIONS_RUNBOOK.md`
 
 ### D. 템플릿
 - `docs/templates/opal_workflow.md`
@@ -59,54 +59,68 @@
 4. **영상 해석은 코드 기반**: Gemini 3.0 Pro로 스키마 추출 (재현성 우선)
 5. **노드 UI는 입출력만 노출**: 내부 체인/로직은 숨김
 6. **패턴 경계는 VDG/DB 고정**: NotebookLM은 Pattern Engine이지만, 패턴 경계(cluster_id)는 VDG/DB 기준선으로 고정
-7. **PEGL v1.0 Phase 준수**: Phase 0(가드레일) → Phase 1(수집) → ... → Phase 6(UX) 순서 고정 (상세: `15_FINAL_ARCHITECTURE.md`)
+7. **PEGL v1.0 Phase 준수**: Phase 0(가드레일) → Phase 1(수집) → ... → Phase 6(UX) 순서 고정 (상세: `ARCHITECTURE_FINAL.md`)
 
 ---
 
 ## 4) 문서 의존관계 (상위 → 하위)
 **최상위 설계**
-- `docs/15_FINAL_ARCHITECTURE.md` → 전체 문서의 상위 기준
-- `docs/15_FINAL_ARCHITECTURE.md` → `docs/16_PDR.md`
+- `docs/ARCHITECTURE_FINAL.md` → 전체 문서의 상위 기준
+- `docs/ARCHITECTURE_FINAL.md` → `docs/14_PDR.md`
 
 **기본 흐름**
 - `docs/01_VDG_SYSTEM.md` → `docs/02_EVIDENCE_LOOP_CANVAS.md`
-- `docs/02_EVIDENCE_LOOP_CANVAS.md` → `docs/08_CANVAS_NODE_CONTRACTS.md`
-- `docs/02_EVIDENCE_LOOP_CANVAS.md` → `docs/07_PIPELINE_PLAYBOOK.md`
-- `docs/02_EVIDENCE_LOOP_CANVAS.md` → `docs/06_USER_FLOW.md`
+- `docs/02_EVIDENCE_LOOP_CANVAS.md` → `docs/07_CANVAS_NODE_CONTRACTS.md`
+- `docs/02_EVIDENCE_LOOP_CANVAS.md` → `docs/06_PIPELINE_PLAYBOOK.md`
+- `docs/02_EVIDENCE_LOOP_CANVAS.md` → `docs/05_USER_FLOW.md`
 
 **데이터/운영 연계**
-- `docs/05_DATA_SOURCES_O2O.md` → `docs/07_PIPELINE_PLAYBOOK.md`
-- `docs/07_PIPELINE_PLAYBOOK.md` → `docs/09_OPERATIONS_RUNBOOK.md`
+- `docs/04_DATA_SOURCES_O2O.md` → `docs/06_PIPELINE_PLAYBOOK.md`
+- `docs/06_PIPELINE_PLAYBOOK.md` → `docs/08_OPERATIONS_RUNBOOK.md`
 
 **스튜디오/캔버스**
-- `docs/08_CANVAS_NODE_CONTRACTS.md` → `docs/12_KOMISSION_STUDIO_SPEC.md`
-- `docs/10_UI_UX_STRATEGY.md` → `docs/12_KOMISSION_STUDIO_SPEC.md`
+- `docs/07_CANVAS_NODE_CONTRACTS.md` → `docs/11_KOMISSION_STUDIO_SPEC.md`
+- `docs/09_UI_UX_STRATEGY.md` → `docs/11_KOMISSION_STUDIO_SPEC.md`
 
 **크롤링**
-- `docs/13_PERIODIC_CRAWLING_SPEC.md` → `docs/14_OUTLIER_CRAWLER_INTEGRATION_DESIGN.md`
+- `docs/12_PERIODIC_CRAWLING_SPEC.md` → `docs/13_OUTLIER_CRAWLER_INTEGRATION_DESIGN.md`
 
 **Notebook Library**
-- `docs/14_NOTEBOOK_LIBRARY_NODE_SPEC.md` → `docs/08_CANVAS_NODE_CONTRACTS.md`
-- `docs/17_NOTEBOOKLM_LIBRARY_STRATEGY.md` → `docs/14_NOTEBOOK_LIBRARY_NODE_SPEC.md`
+- `docs/NOTEBOOKLM_SPEC.md` → `docs/07_CANVAS_NODE_CONTRACTS.md`
+- `docs/NOTEBOOKLM_SPEC.md` → `docs/06_PIPELINE_PLAYBOOK.md`
 
 ---
 
 ## 5) 읽기 순서 (권장)
 1. `docs/00_SINGLE_SOURCE_OF_TRUTH.md`
-2. `docs/15_FINAL_ARCHITECTURE.md`
+2. `docs/ARCHITECTURE_FINAL.md`
 3. `docs/00_EXECUTIVE_SUMMARY.md`
-4. `docs/16_PDR.md`
+4. `docs/14_PDR.md`
 5. `docs/01_VDG_SYSTEM.md`
 6. `docs/02_EVIDENCE_LOOP_CANVAS.md`
-7. `docs/04_TECHNICAL_OVERVIEW.md`
-8. `docs/05_DATA_SOURCES_O2O.md`
-9. `docs/07_PIPELINE_PLAYBOOK.md`
-10. `docs/08_CANVAS_NODE_CONTRACTS.md`
-11. `docs/12_KOMISSION_STUDIO_SPEC.md`
-12. `docs/09_OPERATIONS_RUNBOOK.md`
+7. `docs/NOTEBOOKLM_SPEC.md`
+8. `docs/04_DATA_SOURCES_O2O.md`
+9. `docs/06_PIPELINE_PLAYBOOK.md`
+10. `docs/07_CANVAS_NODE_CONTRACTS.md`
+11. `docs/11_KOMISSION_STUDIO_SPEC.md`
+12. `docs/08_OPERATIONS_RUNBOOK.md`
 
 ---
 
 ## 6) 변경 규칙
-- 구조 변경 시 반드시 `docs/15_FINAL_ARCHITECTURE.md`와 이 인덱스를 먼저 갱신
-- 기능/노드 추가 시 `docs/08_CANVAS_NODE_CONTRACTS.md`와 `docs/07_PIPELINE_PLAYBOOK.md` 동시 업데이트
+- 구조 변경 시 반드시 `docs/ARCHITECTURE_FINAL.md`와 이 인덱스를 먼저 갱신
+- 기능/노드 추가 시 `docs/07_CANVAS_NODE_CONTRACTS.md`와 `docs/06_PIPELINE_PLAYBOOK.md` 동시 업데이트
+
+---
+
+## 7) 삭제/통합된 문서 (2025-12-30)
+
+| 삭제된 문서 | 병합 대상 |
+|-------------|----------|
+| `04_TECHNICAL_OVERVIEW.md` | → `ARCHITECTURE_FINAL.md` |
+| `15_FINAL_ARCHITECTURE.md` | → `ARCHITECTURE_FINAL.md` |
+| `14_NOTEBOOK_LIBRARY_NODE_SPEC.md` | → `NOTEBOOKLM_SPEC.md` |
+| `17_NOTEBOOKLM_LIBRARY_STRATEGY.md` | → `NOTEBOOKLM_SPEC.md` |
+| `18_NOTEBOOKLM_ENTERPRISE_INTEGRATION.md` | → `NOTEBOOKLM_SPEC.md` |
+
+> 백업: `docs_backup_20251230/`

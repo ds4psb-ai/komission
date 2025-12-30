@@ -96,16 +96,20 @@ python backend/scripts/run_provider_pipeline.py --config backend/provider_source
 
 ## 3) 단계별 체크리스트
 **수집**
-- 중복 URL 제거
+- 중복 URL 제거 ← **DB UNIQUE 제약조건 적용됨 (2024-12-30)**
+- `video_url` 기준 중복 체크 (API + DB 이중 방어)
 - platform/category 채워짐
 
 **후보 선정**
 - 기준: 조회수/성장률/최근성
 - status = candidate
 
-**승격**
+**승격 [Updated 2024-12-30]**
 - Parent RemixNode 생성 확인
 - node_id 기록
+- **승격 옵션**:
+  - `[승격]`: 일반 RemixNode 생성
+  - `[체험단 선정]`: RemixNode + `campaign_eligible=True` (O2O 후보군)
 
 **Evidence/Decision**
 - Evidence Sheet row 생성
@@ -158,7 +162,7 @@ python backend/scripts/build_notebook_source_pack.py \
 2. **Mutation Strategy**: 성공/실패 변수 + 다음 Depth 추천
 3. **Failure Modes**: 공통 실패 패턴 + 금지 요소
 
-> 상세 프롬프트는 `docs/17_NOTEBOOKLM_LIBRARY_STRATEGY.md` 섹션 9 참고
+> 상세 프롬프트는 `docs/NOTEBOOKLM_SPEC.md` 섹션 9 참고
 
 ### 5.5 결과 DB 래핑
 ```bash
@@ -186,7 +190,7 @@ python backend/scripts/notebooklm_reconcile.py
 python backend/scripts/notebooklm_cleanup.py --older-than 90d
 ```
 
-> 상세 스펙은 `docs/18_NOTEBOOKLM_ENTERPRISE_INTEGRATION.md` 참고
+> 상세 스펙은 `docs/NOTEBOOKLM_SPEC.md` 참고
 
 ---
 

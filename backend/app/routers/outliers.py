@@ -34,6 +34,7 @@ from app.schemas.evidence import (
     OutlierItemManualCreate,
     OutlierItemResponse,
     OutlierCandidatesResponse,
+    OutlierPromoteRequest,
 )
 
 router = APIRouter(prefix="/outliers", tags=["Outliers"])
@@ -313,7 +314,18 @@ async def create_item(
     item: OutlierItemCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    """아웃라이어 후보 수동 등록 (크롤러 또는 수동)"""
+    """아웃라이어 후보 수동 등록 (크롤러 또는 수동)
+    
+    video_url 기준으로 중복 체크 수행
+    """
+    # Check for duplicate video_url
+    existing = await db.execute(
+        select(OutlierItem).where(OutlierItem.video_url == item.video_url)
+    )
+    existing_item = existing.scalar_one_or_none()
+    if existing_item:
+        return _item_to_response(existing_item)  # Return existing instead of error
+    
     new_item = OutlierItem(
         source_id=UUID(item.source_id),
         external_id=item.external_id,
@@ -1075,6 +1087,7 @@ async def update_item_status(
 async def promote_to_parent(
     item_id: str,
     background_tasks: BackgroundTasks,
+    request: OutlierPromoteRequest = None,  # Optional Request Body
     current_user: Optional[User] = Depends(get_current_user_optional),  # 인증 선택사항
     db: AsyncSession = Depends(get_db)
 ):
@@ -1129,6 +1142,9 @@ async def promote_to_parent(
 
     item.status = OutlierItemStatus.PROMOTED
     item.promoted_to_node_id = node.id
+    if request and request.campaign_eligible:
+        item.campaign_eligible = True
+    
     # VDG 분석은 Admin 승인 후에만 실행됨 (analysis_status = pending)
     await db.commit()
     await db.refresh(node)
@@ -1162,6 +1178,7 @@ def _item_to_response(item: OutlierItem) -> OutlierItemResponse:
         growth_rate=item.growth_rate,
         status=item.status,
         promoted_to_node_id=str(item.promoted_to_node_id) if item.promoted_to_node_id else None,
+        campaign_eligible=item.campaign_eligible,
         crawled_at=item.crawled_at,
     )
 
@@ -1253,9 +1270,9 @@ async def bulk_upload_csv(
         # Generate external_id from URL hash
         external_id = f"{source_name}_{hashlib.sha256(source_url.encode()).hexdigest()[:12]}"
         
-        # Check for duplicates
+        # Check for duplicates by video_url (more robust than external_id)
         existing = await db.execute(
-            select(OutlierItem).where(OutlierItem.external_id == external_id)
+            select(OutlierItem).where(OutlierItem.video_url == source_url)
         )
         if existing.scalar_one_or_none():
             skipped += 1

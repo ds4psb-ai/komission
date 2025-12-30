@@ -6,7 +6,7 @@
 ---
 
 ## 1) 핵심 원칙 (참조)
-- 기본 원칙: `docs/00_DOCS_INDEX.md`, `docs/15_FINAL_ARCHITECTURE.md`
+- 기본 원칙: `docs/00_DOCS_INDEX.md`, `docs/ARCHITECTURE_FINAL.md`
 - 이 문서는 **Evidence Loop 운영/Sheets 계약**만 상세화한다.
 
 ---

@@ -599,9 +599,10 @@ export class ApiClient {
         return this.request<OutlierListResponse>(`/api/v1/outliers${query ? '?' + query : ''}`);
     }
 
-    async promoteOutlier(itemId: string): Promise<PromoteOutlierResponse> {
+    async promoteOutlier(itemId: string, campaignEligible: boolean = false): Promise<PromoteOutlierResponse> {
         return this.request<PromoteOutlierResponse>(`/api/v1/outliers/items/${itemId}/promote`, {
             method: 'POST',
+            body: JSON.stringify({ campaign_eligible: campaignEligible }),
         });
     }
 

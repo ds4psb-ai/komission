@@ -100,10 +100,19 @@ class OutlierItemResponse(BaseModel):
     growth_rate: Optional[str] = None
     status: OutlierItemStatus
     promoted_to_node_id: Optional[str] = None
+    campaign_eligible: bool = False
     crawled_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class OutlierPromoteRequest(BaseModel):
+    """
+    승격 요청 바디
+    - campaign_eligible: 체험단 적합 여부 (O2O 연동)
+    """
+    campaign_eligible: bool = False
 
 
 class OutlierCandidatesResponse(BaseModel):

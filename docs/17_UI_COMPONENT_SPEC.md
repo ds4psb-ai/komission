@@ -237,3 +237,51 @@ interface FeedbackWidgetProps {
 | EvidenceBar | 신규 |
 | FeedbackWidget | `TemplateFeedback` 모델 활용 |
 | ForYouPage | `SessionHUD.tsx` 패턴 참고 |
+
+---
+
+## 8) Outlier 공용 컴포넌트 [NEW 2024-12-30]
+
+> `/components/outlier/` 디렉토리에 통합된 아웃라이어 관련 공용 컴포넌트
+
+### 8.1 Component List
+
+| Component | 파일명 | 용도 |
+|-----------|--------|------|
+| TikTokPlayer | `TikTokPlayer.tsx` | TikTok 임베드 재생 (Virlo-style postMessage unmute) |
+| TierBadge | `TierBadge.tsx` | S/A/B/C 티어 뱃지 (그라디언트) |
+| OutlierMetrics | `OutlierMetrics.tsx` | 조회수/좋아요/공유 메트릭 표시 |
+| PipelineStatus | `PipelineStatus.tsx` | 파이프라인 단계 뱃지 (pending→promoted→analyzing→completed) |
+| FilmingGuide | `FilmingGuide.tsx` | VDG hook_genome 기반 3단계 촬영 가이드 |
+| OutlierDetailModal | `OutlierDetailModal.tsx` | 통합 상세 모달 (TikTok 플레이어 + 메타 + 승격 액션) |
+
+### 8.2 OutlierDetailModal Actions
+
+```
+┌─────────────────────────────────────────┐
+│ [Pending Stage]                         │
+│   ┌────────────┐  ┌────────────────────┐│
+│   │  [승격]    │  │  [체험단 선정]    ││
+│   │  (파란색)  │  │  (핑크색 + Gift)  ││
+│   └────────────┘  └────────────────────┘│
+│                                         │
+│ [Promoted Stage]                        │
+│   ┌────────────────────────────────────┐│
+│   │  [VDG 분석 시작]                   ││
+│   └────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+```
+
+### 8.3 Import
+
+```typescript
+import {
+    TikTokPlayer,
+    TikTokHoverPreview,
+    TierBadge,
+    OutlierMetrics,
+    PipelineStatus,
+    FilmingGuide,
+    OutlierDetailModal,
+} from '@/components/outlier';
+```

@@ -64,9 +64,9 @@
 
 ## 7) 변경 규칙
 - SoR 규칙 변경 시 **반드시** 아래 문서를 함께 갱신한다:
-  - `docs/15_FINAL_ARCHITECTURE.md`
+  - `docs/ARCHITECTURE_FINAL.md`
   - `docs/00_DOCS_INDEX.md`
-  - `docs/07_PIPELINE_PLAYBOOK.md`
+  - `docs/06_PIPELINE_PLAYBOOK.md`
 - 스키마 버전 변경 시 **migration/validator/ingest**를 동시에 업데이트한다.
 
 ---

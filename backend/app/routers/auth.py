@@ -127,10 +127,21 @@ async def get_current_user_optional(
 
 
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    """Require admin role"""
-    if current_user.role != "admin":
+    """Require admin role or super admin status"""
+    if current_user.role != "admin" and not is_super_admin(current_user):
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
+
+
+def is_super_admin(user: User) -> bool:
+    """
+    Check if user is a Super Admin based on environment variable.
+    Super Admins are defined in SUPER_ADMIN_EMAILS environment variable.
+    This is designed for 1-person admin/developer setup.
+    """
+    if not user or not user.email:
+        return False
+    return user.email.lower() in settings.SUPER_ADMIN_EMAIL_LIST
 
 
 async def require_curator(current_user: User = Depends(get_current_user)) -> User:
@@ -148,15 +159,6 @@ async def require_curator(current_user: User = Depends(get_current_user)) -> Use
     return current_user
 
 
-def is_super_admin(user: User) -> bool:
-    """
-    Check if user is a Super Admin based on environment variable.
-    Super Admins are defined in SUPER_ADMIN_EMAILS environment variable.
-    This is designed for 1-person admin/developer setup.
-    """
-    if not user or not user.email:
-        return False
-    return user.email.lower() in settings.SUPER_ADMIN_EMAIL_LIST
 
 
 async def require_super_admin(current_user: User = Depends(get_current_user)) -> User:

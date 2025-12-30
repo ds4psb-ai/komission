@@ -103,121 +103,8 @@ interface RawVDG {
     }>;
 }
 
-// Demo Data
-const DEMO_VIDEOS: Record<string, VideoDetail> = {
-    'demo-tiktok-1': {
-        id: 'demo-tiktok-1',
-        video_url: 'https://www.tiktok.com/@khaby.lame/video/7019309323322220805',
-        platform: 'tiktok',
-        title: 'Khaby Lame - Life Hack Reactions 🙄',
-        thumbnail_url: 'https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=400&h=600&fit=crop',
-        creator: 'khaby.lame',
-        category: 'meme',
-        tags: ['viral', 'reaction', 'comedy'],
-        view_count: 150000000,
-        like_count: 12000000,
-        engagement_rate: 0.08,
-        outlier_tier: 'S',
-        creator_avg_views: 50000000,
-        analysis: {
-            hook_pattern: 'visual_reaction',
-            hook_score: 10,
-            hook_duration_sec: 1.5,
-            visual_patterns: ['POV', 'reaction_face', 'quick_cut'],
-            audio_pattern: 'silent_comedy',
-            shotlist: ['문제 상황 보여주기', 'Khaby 등장', '손으로 간단 해결', '표정 리액션'],
-            timing: ['1.5s', '0.5s', '2s', '1s'],
-            do_not: ['말하지 않기', '효과음 과다 사용'],
-            // Temporal Variation Theory 적용
-            invariant: [
-                '첫 0.5초 무표정 → 리액션 전환',
-                '빠른 컷편집 (0.3~0.5초)',
-                '마지막 손동작 + 표정 마무리',
-                '무음 또는 미니멀 사운드'
-            ],
-            variable: [
-                '소재: 음식→뷰티→일상 변경 OK',
-                '인물: 성별/연령 자유롭게 변경',
-                '중간 킥: 5초에 서브 리액션 추가 추천',
-                '반전: 예상과 다른 결말 시도'
-            ]
-        },
-        hasCampaign: false
-    },
-    'demo-beauty-1': {
-        id: 'demo-beauty-1',
-        video_url: 'https://www.tiktok.com/@skincare/video/123',
-        platform: 'tiktok',
-        title: '올리브영 신상 하울 🛒 가성비 꿀템 발견!',
-        thumbnail_url: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=600&fit=crop',
-        creator: 'beauty_lover',
-        category: 'beauty',
-        tags: ['올리브영', '하울', '스킨케어'],
-        view_count: 2800000,
-        like_count: 180000,
-        engagement_rate: 0.064,
-        outlier_tier: 'A',
-        creator_avg_views: 400000,
-        analysis: {
-            hook_pattern: 'unboxing',
-            hook_score: 8,
-            hook_duration_sec: 2.0,
-            visual_patterns: ['product_reveal', 'text_overlay'],
-            shotlist: ['패키지 보여주기', '개봉', '제품 설명', '사용 후기'],
-            timing: ['2s', '1s', '3s', '2s'],
-        },
-        hasCampaign: true,
-        campaignType: 'product'
-    },
-    'demo-food-1': {
-        id: 'demo-food-1',
-        video_url: 'https://www.youtube.com/shorts/l_v3g7qx3vo',
-        platform: 'youtube',
-        title: '성수 핫플 카페 투어 ☕️',
-        thumbnail_url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=600&fit=crop',
-        creator: 'cafe_hunter',
-        category: 'food',
-        tags: ['성수', '카페', '브이로그'],
-        view_count: 1500000,
-        like_count: 95000,
-        engagement_rate: 0.063,
-        outlier_tier: 'A',
-        creator_avg_views: 300000,
-        analysis: {
-            hook_pattern: 'aesthetic_reveal',
-            hook_score: 8,
-            hook_duration_sec: 1.8,
-            visual_patterns: ['aesthetic_shot', 'slow_motion'],
-            shotlist: ['외관 샷', '입장', '메뉴 주문', '음료 클로즈업'],
-            timing: ['1.5s', '1s', '2s', '2s'],
-        },
-        hasCampaign: true,
-        campaignType: 'visit'
-    },
-    'demo-fitness-1': {
-        id: 'demo-fitness-1',
-        video_url: 'https://www.tiktok.com/@fitness/video/456',
-        platform: 'tiktok',
-        title: '2주만에 뱃살 빠지는 운동 루틴 🔥',
-        thumbnail_url: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&h=600&fit=crop',
-        creator: 'fit_trainer',
-        category: 'fitness',
-        tags: ['운동', '다이어트', '홈트'],
-        view_count: 4200000,
-        like_count: 320000,
-        engagement_rate: 0.076,
-        outlier_tier: 'S',
-        creator_avg_views: 600000,
-        analysis: {
-            hook_pattern: 'transformation',
-            hook_score: 9,
-            hook_duration_sec: 1.5,
-            visual_patterns: ['before_after', 'quick_cuts'],
-        },
-        hasCampaign: true,
-        campaignType: 'delivery'
-    }
-};
+// No demo data - all data comes from API
+const DEMO_VIDEOS: Record<string, VideoDetail> = {};
 
 // ==================
 // Platform Embed
@@ -786,8 +673,8 @@ export default function VideoDetailPage() {
                                         setShowCoaching(true);
                                     }}
                                     className={`w-full p-4 rounded-xl border text-left transition-all ${coachingMode === mode
-                                            ? 'bg-cyan-500/20 border-cyan-500/50'
-                                            : 'bg-white/5 border-white/10 hover:border-white/30'
+                                        ? 'bg-cyan-500/20 border-cyan-500/50'
+                                        : 'bg-white/5 border-white/10 hover:border-white/30'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3">

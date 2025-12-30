@@ -13,7 +13,7 @@
  */
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Heart, TrendingUp, Zap, Star, Award, Diamond, BarChart, ArrowUpRight, Sparkles } from 'lucide-react';
+import { Eye, Heart, TrendingUp, Zap, Star, Award, Diamond, BarChart, ArrowUpRight, Sparkles, Gift } from 'lucide-react';
 
 export interface OutlierCardItem {
     id: string;
@@ -34,11 +34,12 @@ export interface OutlierCardItem {
     status?: 'pending' | 'selected' | 'rejected' | 'promoted';
     // VDG Analysis data (indicates completed analysis)
     vdg_analysis?: unknown;
+    campaign_eligible?: boolean;
 }
 
 interface UnifiedOutlierCardProps {
     item: OutlierCardItem;
-    onPromote?: (item: OutlierCardItem) => void;
+    onPromote?: (item: OutlierCardItem, campaignEligible?: boolean) => void;
 }
 
 const TIER_CONFIG = {
@@ -228,16 +229,26 @@ export function UnifiedOutlierCard({ item, onPromote }: UnifiedOutlierCardProps)
 
             {/* Promote Button (if callback provided and not promoted) */}
             {onPromote && !isPromoted && (
-                <button
-                    onClick={(e) => { e.stopPropagation(); onPromote(item); }}
-                    className={`
-                        w-full py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition-all
-                        ${tierConfig ? `${tierConfig.textClass} hover:bg-white/10` : 'text-violet-300 hover:bg-violet-500/10'}
-                    `}
-                >
-                    <Star className="w-3.5 h-3.5" />
-                    Promote
-                </button>
+                <div className="flex border-t border-white/5 divide-x divide-white/5">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onPromote(item, false); }}
+                        className={`
+                            flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition-all
+                            ${tierConfig ? `${tierConfig.textClass} hover:bg-white/10` : 'text-violet-300 hover:bg-violet-500/10'}
+                        `}
+                    >
+                        <Star className="w-3.5 h-3.5" />
+                        Promote
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onPromote(item, true); }}
+                        className="flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 text-pink-400 hover:bg-pink-500/10 transition-all"
+                        title="체험단 캠페인 후보로 등록"
+                    >
+                        <Gift className="w-3.5 h-3.5" />
+                        체험단 선정
+                    </button>
+                </div>
             )}
         </div>
     );

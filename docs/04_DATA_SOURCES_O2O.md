@@ -135,7 +135,36 @@ python backend/scripts/ingest_progress_csv.py --csv /path/to/progress.csv
 
 ---
 
-## 4) Evidence Loop와 결합
+## 4) Outlier → O2O 캠페인 연동 [NEW 2024-12-30]
+
+### campaign_eligible 필드
+아웃라이어 승격 시 O2O 캠페인 후보로 등록할 수 있습니다.
+
+**DB 스키마**
+```sql
+outlier_items.campaign_eligible  -- boolean, default=False
+```
+
+**승격 옵션**
+| 버튼 | campaign_eligible | 용도 |
+|------|-------------------|------|
+| `[승격]` | `False` | 일반 RemixNode 생성 (VDG 분석용) |
+| `[체험단 선정]` | `True` | RemixNode + O2O 캠페인 후보군 등록 |
+
+**API**
+```
+POST /api/v1/outliers/items/{id}/promote
+Body: { "campaign_eligible": true }
+```
+
+**활용 (Phase 2+)**
+- `campaign_eligible=True`인 아이템 목록 조회
+- O2O 캠페인 생성 시 후보군으로 자동 포함
+- 체험단 모집/선정 워크플로우 연계
+
+---
+
+## 5) Evidence Loop와 결합
 - VDG 결과가 **O2O 추천 조건**으로 사용됨
 - Evidence Table 기준 상위 구조에 캠페인 매칭
 - O2O 성과는 다음 Depth 실험에 피드백

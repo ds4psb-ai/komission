@@ -205,6 +205,33 @@ POST /api/v1/crawlers/run          # Trigger crawl (admin)
 GET  /api/v1/crawlers/status       # Crawl status
 ```
 
+### 4.3 Duplicate Prevention Architecture [IMPLEMENTED 2024-12-30]
+
+중복 크롤링 방지를 위한 이중 방어 체계:
+
+**1차 방어: Application Layer (API 코드)**
+```python
+# create_item, bulk_import 엔드포인트에서
+existing = await db.execute(
+    select(OutlierItem).where(OutlierItem.video_url == item.video_url)
+)
+if existing.scalar_one_or_none():
+    return existing_item  # 새로 만들지 않고 기존 것 반환
+```
+
+**2차 방어: Database Layer (UNIQUE 제약조건)**
+```sql
+ALTER TABLE outlier_items ADD CONSTRAINT outlier_items_video_url_key UNIQUE (video_url);
+CREATE INDEX ix_outlier_items_video_url ON outlier_items(video_url);
+```
+
+**흐름 요약**
+| 시나리오 | 1차(App) | 2차(DB) | 결과 |
+|---------|----------|---------|------|
+| 새 URL 등록 | 통과 ✓ | 통과 ✓ | 정상 저장 |
+| 중복 URL 등록 | **차단** ⛔ | 도달 안 함 | 기존 항목 반환 |
+| 1차 우회 시도 | 통과 | **차단** ⛔ | DB 에러 (극히 드묾) |
+
 ---
 
 ## 5) Outlier Score Formula [OBSERVED from 13_PERIODIC_CRAWLING_SPEC]

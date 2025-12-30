@@ -31,36 +31,8 @@ const CATEGORIES = [
     { id: 'lifestyle', label: '라이프', icon: ShoppingBag },
 ];
 
-const DEMO_ITEMS: OutlierCardItem[] = [
-    {
-        id: 'demo-1',
-        video_url: 'https://www.tiktok.com/@khaby.lame/video/7019309323322220805',
-        platform: 'tiktok',
-        title: 'Khaby Lame - Life Hack Reactions 🙄',
-        thumbnail_url: 'https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=400&h=600&fit=crop',
-        category: 'meme',
-        view_count: 150000000,
-        like_count: 12000000,
-        engagement_rate: 0.08,
-        outlier_tier: 'S',
-        creator_avg_views: 50000000,
-        crawled_at: new Date().toISOString(),
-    },
-    {
-        id: 'demo-2',
-        video_url: 'https://www.youtube.com/shorts/abc',
-        platform: 'youtube',
-        title: '이 영상이 2500만뷰를 달성한 비결 🔥',
-        thumbnail_url: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=600&fit=crop',
-        category: 'beauty',
-        view_count: 25000000,
-        like_count: 2100000,
-        engagement_rate: 0.084,
-        outlier_tier: 'S',
-        creator_avg_views: 48000,
-        crawled_at: new Date(Date.now() - 3600000).toISOString(),
-    },
-];
+// Empty fallback - no more hardcoded demo data
+const DEMO_ITEMS: OutlierCardItem[] = [];
 
 function mapToCardItem(item: OutlierItem): OutlierCardItem {
     return {

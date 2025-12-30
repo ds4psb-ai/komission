@@ -1,6 +1,6 @@
 # Frontend File Removal/Demotion List
 
-**기준**: `21_PAGE_IA_REDESIGN.md` 기반, L1/L2 자동화 + Session 중심 전환에 맞춘 파일 정리
+**기준**: `18_PAGE_IA_REDESIGN.md` 기반, L1/L2 자동화 + Session 중심 전환에 맞춘 파일 정리
 
 ---
 
@@ -120,3 +120,38 @@
 4. **기존 라우트 리다이렉트**: `/discover` → `/trending`
 5. **Ops 전용 이동**: `/outliers` → `/ops/outliers`
 6. **제거**: 중복 컴포넌트 삭제
+
+---
+
+## 8) Outlier 공용 컴포넌트 디렉토리 [NEW 2024-12-30]
+
+> `/components/outlier/` 디렉토리로 통합된 아웃라이어 관련 컴포넌트
+
+### 구조
+```
+frontend/src/components/outlier/
+├── index.ts                  # 통합 export
+├── TikTokPlayer.tsx          # TikTok 임베드 재생 (postMessage unmute)
+├── TierBadge.tsx             # S/A/B/C 티어 뱃지
+├── OutlierMetrics.tsx        # 조회수/좋아요/공유 메트릭
+├── PipelineStatus.tsx        # 파이프라인 단계 뱃지
+├── FilmingGuide.tsx          # VDG 기반 촬영 가이드
+└── OutlierDetailModal.tsx    # 통합 상세 모달
+```
+
+### 특징
+- **중복 제거**: 여러 페이지에 흩어진 Outlier 관련 UI 통합
+- **일관성**: Tier, Platform 스타일 일치
+- **재사용**: `/ops/outliers`, `/canvas`, `/` (메인 페이지) 등에서 공용 사용
+- **코드 감소**: `ops/outliers/page.tsx` 559줄 → 270줄 (52% 감소)
+
+### Import 예시
+```typescript
+import {
+    TikTokPlayer,
+    TierBadge,
+    OutlierMetrics,
+    FilmingGuide,
+    OutlierDetailModal,
+} from '@/components/outlier';
+```

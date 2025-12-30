@@ -60,7 +60,6 @@ const navGroups: NavGroupData[] = [
         items: [
             { href: "/trending", label: "트렌딩", icon: TrendingUp },
             { href: "/for-you", label: "추천", icon: Sparkles },
-            { href: "/canvas", label: "캔버스", icon: Network },
         ]
     },
     {
@@ -80,6 +79,7 @@ const navGroups: NavGroupData[] = [
         items: [
             { href: "/ops", label: "Ops Console", icon: Radar },
             { href: "/ops/outliers", label: "아웃라이어", icon: TrendingUp },
+            { href: "/ops/canvas", label: "캔버스", icon: Network },
         ]
     }
 ];

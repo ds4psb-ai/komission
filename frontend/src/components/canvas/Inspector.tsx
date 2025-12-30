@@ -5,8 +5,9 @@ import { Node } from '@xyflow/react';
 import type { CapsuleDefinition, CapsuleParam } from '@/components/canvas/CapsuleNode';
 import { VDGCard, VDGData } from '@/components/canvas/VDGCard';
 import { cn } from '@/lib/utils';
-import { Video, Brain, Clapperboard, Lock } from 'lucide-react';
+import { Video, Brain, Clapperboard, Lock, Eye, Heart, TrendingUp } from 'lucide-react';
 import { Badge } from "@/components/ui/Badge";
+import { TierBadge, FilmingGuide, OutlierMetrics } from '@/components/outlier';
 
 interface InspectorProps {
     selectedNode: Node | null;
@@ -56,6 +57,26 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, onUpdateNodeDat
     // VDG Analysis data (from Gemini Pipeline)
     const vdgData = nodeData.gemini_analysis as VDGData | undefined;
 
+    // CrawlerOutlier specific data
+    const outlierData = nodeType === 'crawler_outlier' ? (nodeData.outlier as {
+        id?: string;
+        title?: string;
+        video_url?: string;
+        thumbnail_url?: string;
+        outlier_tier?: 'S' | 'A' | 'B' | 'C' | null;
+        view_count?: number;
+        like_count?: number;
+        share_count?: number;
+        comment_count?: number;
+        outlier_score?: number;
+        analysis_status?: string;
+        vdg_analysis?: {
+            hook_genome?: {
+                pattern?: string;
+            };
+        };
+    } | undefined) : undefined;
+
     const updateCapsuleParam = (param: CapsuleParam, value: string | number | boolean) => {
         if (!capsule || !onUpdateNodeData) return;
 
@@ -97,7 +118,8 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, onUpdateNodeDat
                         intent={
                             nodeType === 'source' ? 'success' :
                                 nodeType === 'process' ? 'brand' :
-                                    nodeType === 'capsule' ? 'error' : 'cyan'
+                                    nodeType === 'crawler_outlier' ? 'warning' :
+                                        nodeType === 'capsule' ? 'error' : 'cyan'
                         }
                         className="gap-1.5 px-3 py-1.5"
                     >
@@ -105,8 +127,13 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, onUpdateNodeDat
                         {nodeType === 'process' && <Brain className="w-3.5 h-3.5" />}
                         {nodeType === 'output' && <Clapperboard className="w-3.5 h-3.5" />}
                         {nodeType === 'capsule' && <Lock className="w-3.5 h-3.5" />}
-                        <span className="uppercase tracking-wider text-[10px]">{nodeType} Node</span>
+                        {nodeType === 'crawler_outlier' && <Eye className="w-3.5 h-3.5" />}
+                        <span className="uppercase tracking-wider text-[10px]">{nodeType === 'crawler_outlier' ? 'Outlier' : nodeType} Node</span>
                     </Badge>
+                    {/* Show Tier Badge for Outlier nodes */}
+                    {outlierData?.outlier_tier && (
+                        <TierBadge tier={outlierData.outlier_tier} size="sm" showIcon />
+                    )}
                 </div>
             </div>
 
@@ -167,6 +194,57 @@ export function Inspector({ selectedNode, onClose, onDeleteNode, onUpdateNodeDat
                             VDG 분석
                         </h4>
                         <VDGCard vdg={vdgData} />
+                    </div>
+                )}
+
+                {/* Outlier Info - for crawler_outlier nodes */}
+                {outlierData && (
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <span className="w-1 h-1 rounded-full bg-amber-500"></span>
+                            아웃라이어 정보
+                        </h4>
+
+                        {/* Title */}
+                        {outlierData.title && (
+                            <div className="text-sm font-bold text-white leading-snug line-clamp-2">
+                                {outlierData.title}
+                            </div>
+                        )}
+
+                        {/* Metrics */}
+                        <OutlierMetrics
+                            viewCount={outlierData.view_count ?? 0}
+                            likeCount={outlierData.like_count}
+                            shareCount={outlierData.share_count}
+                            commentCount={outlierData.comment_count}
+                            outlierScore={outlierData.outlier_score}
+                            layout="grid"
+                        />
+
+                        {/* FilmingGuide - VDG based */}
+                        <div className="pt-2">
+                            <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] flex items-center gap-2 mb-3">
+                                <span className="w-1 h-1 rounded-full bg-violet-500"></span>
+                                촬영 가이드
+                            </h4>
+                            <FilmingGuide
+                                analysisStatus={outlierData.analysis_status as 'pending' | 'promoted' | 'analyzing' | 'completed' | undefined}
+                                vdgAnalysis={outlierData.vdg_analysis}
+                            />
+                        </div>
+
+                        {/* View Original Link */}
+                        {outlierData.video_url && (
+                            <a
+                                href={outlierData.video_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block w-full py-2 text-center text-xs text-white/50 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all"
+                            >
+                                🔗 원본 영상 보기
+                            </a>
+                        )}
                     </div>
                 )}
 

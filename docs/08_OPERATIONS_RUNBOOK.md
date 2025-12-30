@@ -89,8 +89,26 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 
 ## 4) 장애/리스크 대응
 - Sheet 쓰기 실패: 권한/폴더 공유 확인
-- 중복 Outlier: URL hash 중복 확인
+- ~~중복 Outlier: URL hash 중복 확인~~ → **DB UNIQUE 제약으로 자동 방지됨 (2024-12-30)**
 - Decision 공백: Opal 실패 시 규칙 기반 대체
+
+---
+
+## 4.5) 승격 워크플로우 [NEW 2024-12-30]
+
+**일반 승격 vs 체험단 승격**
+
+| 액션 | campaign_eligible | 용도 |
+|------|-------------------|------|
+| `[승격]` 버튼 | `False` | 일반 RemixNode 생성 (VDG 분석용) |
+| `[체험단 선정]` 버튼 | `True` | RemixNode + O2O 캠페인 후보군 등록 |
+
+**체험단 후보 조회**:
+```bash
+# campaign_eligible=true 아이템 목록
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://komission-api-xxx.run.app/api/v1/outliers/items?campaign_eligible=true"
+```
 
 ---
 
@@ -98,3 +116,4 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 - Evidence → Decision 생성 시간
 - Depth 실험 회전율
 - O2O 타입별 전환율
+- **체험단 후보 → 실제 캠페인 전환율**

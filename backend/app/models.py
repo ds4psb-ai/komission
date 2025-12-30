@@ -576,7 +576,7 @@ class OutlierItem(Base):
     external_id: Mapped[str] = mapped_column(String(200), unique=True, index=True)  # 소스별 고유ID
     
     # 콘텐츠 정보
-    video_url: Mapped[str] = mapped_column(String(500))
+    video_url: Mapped[str] = mapped_column(String(500), unique=True, index=True)
     title: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     thumbnail_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     platform: Mapped[str] = mapped_column(String(50))  # tiktok, instagram, youtube
@@ -608,6 +608,9 @@ class OutlierItem(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
     approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    
+    # O2O Campaign Eligibility (체험단 적합 여부)
+    campaign_eligible: Mapped[bool] = mapped_column(Boolean, default=False)
     
     # Best Comments (바이럴 인간 지표)
     best_comments: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)

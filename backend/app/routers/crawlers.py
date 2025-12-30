@@ -292,6 +292,154 @@ async def run_crawlers(
     )
 
 
+class StrategyCrawlRequest(BaseModel):
+    strategy: str  # meme, review, unboxing, cafe, beauty, fitness, viral_global
+    limit: int = 50
+    region: str = "KR"
+    published_after_days: int = 14
+
+
+@router.post("/run/strategy", response_model=CrawlerRunResponse)
+async def run_strategy_crawl(
+    request: StrategyCrawlRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(require_curator),
+):
+    """
+    전략 기반 YouTube Shorts 크롤링 (키워드 전략)
+    
+    Strategies:
+    - meme: 밈/리액션 콘텐츠
+    - review: 리뷰/체험 콘텐츠
+    - unboxing: 언박싱/하울
+    - cafe: 카페/맛집 콘텐츠
+    - beauty: 뷰티/메이크업
+    - fitness: 운동/홈트
+    - viral_global: 글로벌 바이럴
+    """
+    job_id = f"strategy_{request.strategy}_{utcnow().strftime('%Y%m%d_%H%M%S')}"
+    
+    background_tasks.add_task(
+        _run_strategy_crawl_background,
+        job_id=job_id,
+        strategy=request.strategy,
+        limit=request.limit,
+        region=request.region,
+        published_after_days=request.published_after_days,
+    )
+    
+    return CrawlerRunResponse(
+        status="started",
+        job_id=job_id,
+        platforms=["youtube"],
+        message=f"Strategy '{request.strategy}' crawl started. Check status with GET /crawlers/jobs/{job_id}"
+    )
+
+
+async def _run_strategy_crawl_background(
+    job_id: str,
+    strategy: str,
+    limit: int,
+    region: str,
+    published_after_days: int,
+):
+    """Background task for strategy-based crawling"""
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.config import settings
+    
+    _running_jobs[job_id] = {
+        "status": "running",
+        "started_at": utcnow(),
+        "strategy": strategy,
+        "results": {}
+    }
+    
+    try:
+        from app.crawlers.youtube import YouTubeCrawler
+        
+        engine = create_async_engine(settings.DATABASE_URL, echo=False)
+        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        
+        async with async_session() as db:
+            crawler = YouTubeCrawler()
+            items = crawler.crawl_by_strategy(
+                strategy=strategy,
+                limit=limit,
+                region_code=region,
+                published_after_days=published_after_days,
+            )
+            crawler.close()
+            
+            # Get or create source
+            source_name = f"youtube_strategy_{strategy}"
+            result = await db.execute(
+                select(OutlierSource).where(OutlierSource.name == source_name)
+            )
+            source = result.scalar_one_or_none()
+            
+            if not source:
+                source = OutlierSource(
+                    name=source_name,
+                    base_url=f"https://youtube.com/shorts/strategy/{strategy}",
+                    auth_type="api_key",
+                    is_active=True,
+                )
+                db.add(source)
+                await db.flush()
+            
+            # Insert items
+            inserted = 0
+            s_tier_count = 0
+            
+            for item in items:
+                existing = await db.execute(
+                    select(OutlierItem).where(
+                        OutlierItem.external_id == item.external_id
+                    )
+                )
+                if not existing.scalar_one_or_none():
+                    outlier = OutlierItem(
+                        source_id=source.id,
+                        external_id=item.external_id,
+                        video_url=item.video_url,
+                        platform=item.platform,
+                        category=item.category,
+                        title=item.title,
+                        thumbnail_url=item.thumbnail_url,
+                        view_count=item.view_count,
+                        like_count=item.like_count,
+                        share_count=item.share_count,
+                        growth_rate=item.growth_rate,
+                        outlier_score=item.outlier_score,
+                        outlier_tier=item.outlier_tier,
+                        status=OutlierItemStatus.PENDING,
+                        crawled_at=utcnow(),
+                    )
+                    db.add(outlier)
+                    inserted += 1
+                    
+                    if item.outlier_score and item.outlier_score >= 500:
+                        s_tier_count += 1
+            
+            await db.commit()
+            
+            _running_jobs[job_id]["results"] = {
+                "collected": len(items),
+                "inserted": inserted,
+                "s_tier_count": s_tier_count,
+            }
+        
+        await engine.dispose()
+        _running_jobs[job_id]["status"] = "completed"
+        _running_jobs[job_id]["completed_at"] = utcnow()
+        
+    except Exception as e:
+        logger.error(f"Strategy crawl job {job_id} failed: {e}")
+        _running_jobs[job_id]["status"] = "failed"
+        _running_jobs[job_id]["error"] = str(e)
+
+
 @router.get("/jobs/{job_id}")
 async def get_job_status(job_id: str):
     """크롤러 작업 상태 조회"""
