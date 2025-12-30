@@ -119,30 +119,6 @@ export function CelebrationModal({
                     </button>
                 </div>
             </div>
-
-            {/* CSS Keyframes (inline style tag for Next.js) */}
-            <style jsx global>{`
-                @keyframes scaleIn {
-                    from {
-                        opacity: 0;
-                        transform: scale(0.9);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
-                }
-                @keyframes confetti {
-                    0% {
-                        transform: translateY(0) rotate(0deg);
-                        opacity: 1;
-                    }
-                    100% {
-                        transform: translateY(300px) rotate(720deg);
-                        opacity: 0;
-                    }
-                }
-            `}</style>
         </div>
     );
 }
