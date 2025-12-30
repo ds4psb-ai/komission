@@ -1607,3 +1607,183 @@ class CreatorSubmission(Base):
     user: Mapped["User"] = relationship("User")
     pattern_library: Mapped[Optional["PatternLibrary"]] = relationship("PatternLibrary")
     outlier_item: Mapped[Optional["OutlierItem"]] = relationship("OutlierItem")
+
+
+# ==================
+# COACHING SESSION LOGS (Proof Playbook v1.0)
+# ==================
+
+class CoachingAssignment(str, enum.Enum):
+    """코칭 그룹 할당"""
+    COACHED = "coached"
+    CONTROL = "control"
+
+
+class CoachingMode(str, enum.Enum):
+    """코칭 세션 모드"""
+    HOMAGE = "homage"
+    MUTATION = "mutation"
+    CAMPAIGN = "campaign"
+
+
+class EvidenceType(str, enum.Enum):
+    """증거 유형"""
+    FRAME = "frame"
+    AUDIO = "audio"
+    TEXT = "text"
+
+
+class ComplianceResult(str, enum.Enum):
+    """준수 결과"""
+    COMPLIED = "complied"
+    VIOLATED = "violated"
+    UNKNOWN = "unknown"
+
+
+class CoachingSession(Base):
+    """
+    오디오 코칭 세션 (Proof Playbook v1.0)
+    
+    핵심 조인키: session_id + pattern_id + pack_id
+    """
+    __tablename__ = "coaching_sessions"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    user_id_hash: Mapped[str] = mapped_column(String(64), index=True)  # 개인정보 X - 해시만
+    
+    # Session config
+    mode: Mapped[str] = mapped_column(SQLEnum(CoachingMode), default=CoachingMode.HOMAGE)
+    pattern_id: Mapped[str] = mapped_column(String(100), index=True)
+    pack_id: Mapped[str] = mapped_column(String(100), index=True)
+    pack_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    
+    # Coaching assignment (Goodhart prevention: 10% control, 5% holdout)
+    assignment: Mapped[str] = mapped_column(SQLEnum(CoachingAssignment), default=CoachingAssignment.COACHED)
+    holdout_group: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Timestamps
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    duration_sec: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    # Device/Environment (P2)
+    device_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    
+    # Aggregated metrics (denormalized for query efficiency)
+    intervention_count: Mapped[int] = mapped_column(Integer, default=0)
+    compliance_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    unknown_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    # Relationships
+    interventions: Mapped[List["CoachingIntervention"]] = relationship(
+        "CoachingIntervention", back_populates="session", cascade="all, delete-orphan"
+    )
+    outcomes: Mapped[List["CoachingOutcome"]] = relationship(
+        "CoachingOutcome", back_populates="session", cascade="all, delete-orphan"
+    )
+    upload_outcome: Mapped[Optional["CoachingUploadOutcome"]] = relationship(
+        "CoachingUploadOutcome", back_populates="session", uselist=False
+    )
+
+
+class CoachingIntervention(Base):
+    """
+    코칭 개입 이벤트
+    
+    증명용 핵심 필드:
+    - t_sec: 언제 개입했는지
+    - rule_id: 어떤 규칙 위반인지
+    - coach_line_id: 어떤 코칭 문장이었는지
+    """
+    __tablename__ = "coaching_interventions"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id: Mapped[str] = mapped_column(
+        String(100), ForeignKey("coaching_sessions.session_id"), index=True
+    )
+    
+    t_sec: Mapped[float] = mapped_column(Float)  # 세션 시작 기준 초
+    rule_id: Mapped[str] = mapped_column(String(100), index=True)
+    ap_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # ActionPoint ID
+    
+    # Evidence
+    evidence_id: Mapped[str] = mapped_column(String(100))
+    evidence_type: Mapped[str] = mapped_column(SQLEnum(EvidenceType), default=EvidenceType.FRAME)
+    
+    # Coach line delivered
+    coach_line_id: Mapped[str] = mapped_column(String(50))  # strict/friendly/neutral
+    coach_line_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Metric snapshot
+    metric_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    metric_threshold: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    
+    # Relationships
+    session: Mapped["CoachingSession"] = relationship("CoachingSession", back_populates="interventions")
+
+
+class CoachingOutcome(Base):
+    """
+    행동 변화 관찰 기록
+    
+    compliance = COMPLIED: 코칭 후 규칙 준수
+    compliance = VIOLATED: 코칭 후에도 위반 지속
+    compliance = UNKNOWN: 측정 불가
+    """
+    __tablename__ = "coaching_outcomes"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id: Mapped[str] = mapped_column(
+        String(100), ForeignKey("coaching_sessions.session_id"), index=True
+    )
+    
+    t_sec: Mapped[float] = mapped_column(Float)  # 관찰 시점
+    rule_id: Mapped[str] = mapped_column(String(100), index=True)
+    
+    # Compliance result
+    compliance: Mapped[str] = mapped_column(SQLEnum(ComplianceResult), default=ComplianceResult.UNKNOWN)
+    compliance_unknown_reason: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    
+    # Metric after intervention
+    metric_value_after: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    metric_delta: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    # Time since intervention
+    latency_sec: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    
+    # Relationships
+    session: Mapped["CoachingSession"] = relationship("CoachingSession", back_populates="outcomes")
+
+
+class CoachingUploadOutcome(Base):
+    """
+    업로드 결과 프록시 (성과 Lift 계산용)
+    """
+    __tablename__ = "coaching_upload_outcomes"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id: Mapped[str] = mapped_column(
+        String(100), ForeignKey("coaching_sessions.session_id"), unique=True, index=True
+    )
+    
+    # Upload status
+    uploaded: Mapped[bool] = mapped_column(Boolean, default=False)
+    upload_platform: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    
+    # Early performance buckets
+    early_views_bucket: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    early_likes_bucket: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    
+    # Self-rating (1-5)
+    self_rating: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    self_rating_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    
+    # Relationships
+    session: Mapped["CoachingSession"] = relationship("CoachingSession", back_populates="upload_outcome")
