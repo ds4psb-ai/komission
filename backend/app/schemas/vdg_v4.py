@@ -552,6 +552,117 @@ class DistillRun(BaseModel):
     model_id: Optional[str] = None
 
 
+# ====================
+# A→B MIGRATION (Signal → Invariant)
+# ====================
+
+# Promotion thresholds (configurable)
+PROMOTION_THRESHOLDS = {
+    "slot_to_candidate": {
+        "min_sessions": 10,
+        "min_success_rate": 0.7,
+        "min_distinct_contents": 3
+    },
+    "candidate_to_dna": {
+        "min_sessions": 50,
+        "min_success_rate": 0.8,
+        "requires_distill_validation": True
+    }
+}
+
+
+class SignalPerformance(BaseModel):
+    """
+    Tracks mise_en_scene_signal performance over time.
+    
+    A→B Migration: As data accumulates, signals with high success_rate
+    are automatically promoted to InvariantCandidate.
+    
+    Example signal_key: "outfit_color.yellow", "background.minimal"
+    """
+    signal_key: str  # domain.value format
+    element: str  # outfit_color, background, lighting, props
+    value: str  # yellow, minimal, bright, etc.
+    sentiment: str = "positive"  # positive/negative
+    
+    # First seen
+    first_seen_at: Optional[str] = None
+    first_seen_content_id: Optional[str] = None
+    
+    # Tracking counters
+    sessions_applied: int = 0  # How many sessions used this as slot
+    success_count: int = 0  # User followed advice
+    violation_count: int = 0  # User ignored or failed
+    distinct_content_ids: List[str] = Field(default_factory=list)
+    
+    # Computed metrics
+    @property
+    def success_rate(self) -> float:
+        total = self.success_count + self.violation_count
+        return self.success_count / total if total > 0 else 0.0
+    
+    @property
+    def confidence_tier(self) -> str:
+        """low → medium → high based on data volume."""
+        if self.sessions_applied < 10:
+            return "low"
+        elif self.sessions_applied < 50:
+            return "medium"
+        else:
+            return "high"
+    
+    def should_promote_to_candidate(self) -> bool:
+        """Check if signal meets promotion threshold."""
+        thresholds = PROMOTION_THRESHOLDS["slot_to_candidate"]
+        return (
+            self.sessions_applied >= thresholds["min_sessions"] and
+            self.success_rate >= thresholds["min_success_rate"] and
+            len(self.distinct_content_ids) >= thresholds["min_distinct_contents"]
+        )
+
+
+class InvariantCandidate(BaseModel):
+    """
+    Intermediate state between MutationSlot and DNAInvariant.
+    
+    A→B Migration: Signals that pass promotion threshold become
+    candidates. Candidates become DNA Invariants after:
+    1. More data accumulation (50+ sessions)
+    2. DistillRun validation (optional but recommended)
+    
+    Status flow: pending → approved → promoted (or rejected)
+    """
+    candidate_id: str
+    source: str = "signal_promotion"  # signal_promotion, distill_run, manual
+    
+    # Original signal info
+    signal_key: str
+    element: str
+    value: str
+    sentiment: str = "positive"
+    
+    # Evidence
+    evidence_refs: List[str] = Field(default_factory=list)
+    source_content_ids: List[str] = Field(default_factory=list)
+    performance_summary: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Proposed invariant
+    proposed_rule_id: Optional[str] = None
+    proposed_domain: str = "composition"
+    proposed_priority: str = "medium"
+    
+    # Status
+    status: str = "pending"  # pending, approved, promoted, rejected
+    created_at: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    reviewed_by: Optional[str] = None
+    rejection_reason: Optional[str] = None
+    
+    # Distill validation
+    distill_validated: bool = False
+    distill_run_id: Optional[str] = None
+
+
 # Forward reference resolution
 VDGv4.model_rebuild()
 

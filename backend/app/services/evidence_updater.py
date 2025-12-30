@@ -1,5 +1,5 @@
 """
-Evidence Loop → DirectorPack Updater (Phase 2)
+Evidence Loop → DirectorPack Updater (Phase 2 + A→B Migration)
 
 EvidenceSnapshot 기반으로 DirectorPack 규칙 가중치 자동 업데이트
 
@@ -7,10 +7,15 @@ Blueprint Philosophy:
 - 성공률 높은 규칙 → weight 증가
 - 실패율 높은 규칙 → priority 상향 (더 자주 체크)
 - NotebookLM Parent-Kids 분석 → 불변/가변 경계 조정
+
+A→B Migration:
+- 신호 성능 추적 (SignalPerformance)
+- 자동 승격 (Slot → Candidate → Invariant)
 """
 import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+import hashlib
 
 from app.schemas.director_pack import (
     DirectorPack,
@@ -18,6 +23,11 @@ from app.schemas.director_pack import (
     MutationSlot,
     Checkpoint,
     CoachLineTemplates
+)
+from app.schemas.vdg_v4 import (
+    SignalPerformance,
+    InvariantCandidate,
+    PROMOTION_THRESHOLDS
 )
 
 logger = logging.getLogger(__name__)
@@ -218,3 +228,148 @@ def update_director_pack_from_evidence(
         )
     """
     return EvidenceUpdater.update_pack_from_evidence(pack, evidence_summary)
+
+
+# ====================
+# A→B MIGRATION: SIGNAL TRACKER
+# ====================
+
+class SignalTracker:
+    """
+    A→B Migration: Tracks mise_en_scene signal performance.
+    
+    As data accumulates, signals with high success rates
+    are automatically promoted to InvariantCandidate.
+    
+    Usage:
+        tracker = SignalTracker()
+        tracker.track_outcome("outfit_color.yellow", success=True, content_id="abc")
+        candidates = tracker.check_promotions()
+    """
+    
+    def __init__(self):
+        self._signals: Dict[str, SignalPerformance] = {}
+        self._candidates: List[InvariantCandidate] = []
+    
+    def get_or_create_signal(
+        self,
+        element: str,
+        value: str,
+        sentiment: str = "positive"
+    ) -> SignalPerformance:
+        """Get or create a SignalPerformance tracker."""
+        signal_key = f"{element}.{value}"
+        
+        if signal_key not in self._signals:
+            self._signals[signal_key] = SignalPerformance(
+                signal_key=signal_key,
+                element=element,
+                value=value,
+                sentiment=sentiment,
+                first_seen_at=datetime.utcnow().isoformat()
+            )
+        
+        return self._signals[signal_key]
+    
+    def track_outcome(
+        self,
+        element: str,
+        value: str,
+        success: bool,
+        content_id: str,
+        sentiment: str = "positive"
+    ):
+        """
+        Track a coaching outcome for a signal.
+        
+        Args:
+            element: outfit_color, background, lighting, props
+            value: yellow, minimal, bright, etc.
+            success: Did the user follow the advice?
+            content_id: Which content this was applied to
+        """
+        signal = self.get_or_create_signal(element, value, sentiment)
+        signal.sessions_applied += 1
+        
+        if success:
+            signal.success_count += 1
+        else:
+            signal.violation_count += 1
+        
+        if content_id and content_id not in signal.distinct_content_ids:
+            signal.distinct_content_ids.append(content_id)
+        
+        logger.debug(f"📊 Signal {signal.signal_key}: sessions={signal.sessions_applied}, success_rate={signal.success_rate:.2f}")
+    
+    def check_promotions(self) -> List[InvariantCandidate]:
+        """
+        Check all signals and promote those meeting thresholds.
+        
+        Returns:
+            List of newly created InvariantCandidate objects
+        """
+        new_candidates = []
+        
+        for signal_key, signal in self._signals.items():
+            if signal.should_promote_to_candidate():
+                # Check if already promoted
+                existing = [c for c in self._candidates if c.signal_key == signal_key]
+                if existing:
+                    continue
+                
+                # Create new candidate
+                candidate = self._create_candidate(signal)
+                self._candidates.append(candidate)
+                new_candidates.append(candidate)
+                
+                logger.info(f"🎉 Signal promoted to candidate: {signal_key} (success_rate={signal.success_rate:.2f})")
+        
+        return new_candidates
+    
+    def _create_candidate(self, signal: SignalPerformance) -> InvariantCandidate:
+        """Create an InvariantCandidate from a SignalPerformance."""
+        candidate_id = hashlib.sha256(
+            f"{signal.signal_key}|{datetime.utcnow().isoformat()}".encode()
+        ).hexdigest()[:12]
+        
+        return InvariantCandidate(
+            candidate_id=f"cand_{candidate_id}",
+            source="signal_promotion",
+            signal_key=signal.signal_key,
+            element=signal.element,
+            value=signal.value,
+            sentiment=signal.sentiment,
+            source_content_ids=signal.distinct_content_ids.copy(),
+            performance_summary={
+                "sessions_applied": signal.sessions_applied,
+                "success_count": signal.success_count,
+                "violation_count": signal.violation_count,
+                "success_rate": signal.success_rate,
+                "confidence_tier": signal.confidence_tier
+            },
+            proposed_domain="composition" if signal.element in ["background", "outfit_color"] else "performance",
+            proposed_priority="medium" if signal.sentiment == "positive" else "high",
+            status="pending",
+            created_at=datetime.utcnow().isoformat()
+        )
+    
+    def get_all_signals(self) -> Dict[str, SignalPerformance]:
+        """Get all tracked signals."""
+        return self._signals.copy()
+    
+    def get_pending_candidates(self) -> List[InvariantCandidate]:
+        """Get all pending candidates (not yet promoted to DNA)."""
+        return [c for c in self._candidates if c.status == "pending"]
+
+
+# Global tracker instance (singleton pattern for simplicity)
+_signal_tracker: Optional[SignalTracker] = None
+
+
+def get_signal_tracker() -> SignalTracker:
+    """Get or create the global SignalTracker instance."""
+    global _signal_tracker
+    if _signal_tracker is None:
+        _signal_tracker = SignalTracker()
+    return _signal_tracker
+
