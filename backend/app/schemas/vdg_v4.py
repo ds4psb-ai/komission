@@ -752,6 +752,10 @@ class CoachingIntervention(BaseModel):
     Single coaching action delivered to user.
     
     RL join key: (session_id, rule_id, ap_id, evidence_id)
+    
+    Goodhart Prevention:
+    - assignment: 'coached' vs 'control' (10% holdout for true A/B)
+    - coach_channel: 'audio' vs 'text' vs 'none'
     """
     intervention_id: str
     session_id: str
@@ -770,6 +774,13 @@ class CoachingIntervention(BaseModel):
     # Content
     command_text: str = ""
     persona_preset: str = "neutral"
+    
+    # Goodhart Prevention: Control Group (10% should be 'control')
+    assignment: str = "coached"  # "coached" | "control" - CRITICAL for causal inference
+    coach_channel: str = "audio"  # "audio" | "text" | "none"
+    
+    # Holdout flag (separate from canary - for promotion verification)
+    holdout_group: bool = False  # If True, exclude from promotion calculations
 
 
 class CoachingOutcome(BaseModel):
@@ -809,6 +820,13 @@ class CoachingOutcome(BaseModel):
     reported_comments: Optional[int] = None
     upload_url: Optional[str] = None  # For verification (optional)
     outcome_reported_at: Optional[str] = None
+    
+    # Goodhart Prevention: Outcome quality tracking
+    outcome_unknown_reason: Optional[str] = None  # "api_blocked", "user_declined", "timeout", "scrape_failed"
+    
+    # Negative Evidence: Track failures for learning
+    is_negative_evidence: bool = False  # True if this rule application led to failure
+    negative_reason: Optional[str] = None  # "compliance_but_poor_outcome", "rule_caused_harm"
 
 
 # Forward reference resolution

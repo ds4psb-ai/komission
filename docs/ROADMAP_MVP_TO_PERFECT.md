@@ -243,9 +243,61 @@ JSON 형태로 출력해주세요.
 
 ---
 
-## Part 3: "완벽" 판정 체크리스트
+## Part 3: Goodhart 방지 + 3축 승격 기준
 
-아래 7개가 모두 ✅ 되면 "완벽" 선언 가능:
+> **핵심 원칙**: 컴플라이언스만 올리면 게임된다.
+> 승격은 **Compliance + Outcome + Robustness** 3축 모두 만족해야 함.
+
+### 3.1 Control Group (10% 필수)
+
+```python
+# CoachingIntervention 필드 (이미 추가됨)
+assignment: str = "coached"  # "coached" | "control"
+holdout_group: bool = False  # 승격 판단에서 제외
+```
+
+**운영 정책**:
+- 모든 세션의 10%는 `assignment="control"` (코칭 안 함)
+- Holdout 5%는 승격 검증용으로 별도 분리
+- **Control 없으면 인과 증명 불가**
+
+### 3.2 Negative Evidence 저장
+
+```python
+# CoachingOutcome 필드 (이미 추가됨)
+is_negative_evidence: bool = False
+negative_reason: str  # "compliance_but_poor_outcome", "rule_caused_harm"
+```
+
+**목적**: 실패 케이스도 학습에 활용
+- "이 규칙 따랐는데 결과가 나빴다" → 승격 차단
+
+### 3.3 3축 승격 기준 (Goodhart 방지)
+
+#### A) Signal → MutationSlot (즉시 반영)
+- **조건**: 댓글/VDG에서 신호 포착
+- **처리**: Slot으로만 노출 (Lock 없음)
+
+#### B) MutationSlot → InvariantCandidate
+| 기준 | 조건 |
+|------|------|
+| 샘플 | N ≥ 10 세션 |
+| Compliance Lift | ≥ +0.15 (vs control) |
+| Unknown Rate | ≤ 15% |
+| Persona 다양성 | ≥ 2종 |
+
+#### C) Candidate → DNA Invariant
+| 기준 | 조건 |
+|------|------|
+| 샘플 | N ≥ 50 세션 |
+| Cluster 다양성 | ≥ 2 클러스터 |
+| **Outcome Lift** | ≥ threshold (완주율↑, 업로드율↑) |
+| DistillRun 검증 | distill_validated = True |
+| Negative Evidence | 동일 signal 실패 < 20% |
+
+**롤백 조건**: Canary에서 outcome_lift 2회 연속 음수 → DNA → Candidate 강등
+
+### 3.4 "완벽" 판정 체크리스트 (10개)
 
 | # | 항목 | DoD | 상태 |
 |---|------|-----|------|
@@ -254,8 +306,11 @@ JSON 형태로 출력해주세요.
 | 3 | rule_evaluated | 개입 없는 구간 포함 기록 | ⬜ |
 | 4 | Intervention-Outcome Join | join key 100% | ✅ |
 | 5 | Two-stage Outcome | 즉시 + 업로드 | ✅ |
-| 6 | Cluster + Distill | 10개 + 주간 1회 | ⬜ |
-| 7 | Canary/Rollback | 실제 발생 | ⬜ |
+| 6 | **Control Group** | 10% assignment=control | ✅ |
+| 7 | **Negative Evidence** | 실패 케이스 저장 | ✅ |
+| 8 | **3축 승격** | Compliance + Outcome + Diversity | ✅ |
+| 9 | Cluster + Distill | 10개 + 주간 1회 | ⬜ |
+| 10 | Canary/Rollback | 실제 발생 | ⬜ |
 
 ---
 
