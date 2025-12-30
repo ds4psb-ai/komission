@@ -16,7 +16,7 @@ v4.0.2 Protocol Freeze Patches:
 10. mise_en_scene_signals moved to semantic root
 """
 from typing import List, Literal, Optional, Dict, Any, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from enum import Enum
 
@@ -714,6 +714,11 @@ class ContentCluster(BaseModel):
     P2 Requirements:
     - Parent: Tier S/A, merger_quality=gold, kids>=3
     - Kids: similarity>=70%, success+failure included
+    
+    Hardening (v1.1):
+    - Deterministic cluster_id generation
+    - Signature hash normalization
+    - Kids dedup+sort via validator
     """
     cluster_id: str
     cluster_name: str  # Human readable
@@ -727,15 +732,16 @@ class ContentCluster(BaseModel):
     # Kids structure (P2 enhanced)
     kids: List[ClusterKid] = Field(default_factory=list)
     
-    # Legacy fields (for backward compat)
+    # Legacy fields (for backward compat) - auto-deduped and sorted
     kid_vdg_ids: List[str] = Field(default_factory=list)
     kid_content_ids: List[str] = Field(default_factory=list)
     
     # Cluster signature
     signature: ClusterSignature = Field(default_factory=ClusterSignature)
+    signature_hash: Optional[str] = None  # v1.1: Deterministic hash
     
     # P2 Selection criteria
-    min_kids_required: int = 3  # Statistical validity
+    min_kids_required: int = 6  # Consultant: 6~8이 현실적
     min_similarity_threshold: float = 0.70  # 70% match required
     requires_success_failure_contrast: bool = True
     
@@ -747,6 +753,47 @@ class ContentCluster(BaseModel):
     created_by: str = "manual"  # manual, auto_similarity, auto_time
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+    
+    @field_validator('kid_vdg_ids', mode='before')
+    @classmethod
+    def dedupe_sort_kid_vdg_ids(cls, v: List[str]) -> List[str]:
+        """Ensure kid_vdg_ids are deduplicated and sorted."""
+        if v:
+            return sorted(set(v))
+        return v
+    
+    @field_validator('kid_content_ids', mode='before')
+    @classmethod
+    def dedupe_sort_kid_content_ids(cls, v: List[str]) -> List[str]:
+        """Ensure kid_content_ids are deduplicated and sorted."""
+        if v:
+            return sorted(set(v))
+        return v
+    
+    def compute_signature_hash(self) -> str:
+        """Compute deterministic hash from signature."""
+        import hashlib
+        import json
+        
+        sig_dict = self.signature.model_dump()
+        # Normalize: sort keys, round floats
+        def normalize(obj):
+            if isinstance(obj, dict):
+                return {k: normalize(v) for k, v in sorted(obj.items())}
+            if isinstance(obj, float):
+                return round(obj, 6)
+            if isinstance(obj, list):
+                return [normalize(x) for x in obj]
+            return obj
+        
+        normalized = normalize(sig_dict)
+        json_str = json.dumps(normalized, sort_keys=True, ensure_ascii=False)
+        hash_digest = hashlib.sha256(json_str.encode()).hexdigest()[:12]
+        return f"sig.{hash_digest}"
+    
+    def update_signature_hash(self) -> None:
+        """Update the signature_hash field."""
+        self.signature_hash = self.compute_signature_hash()
     
     def is_distill_ready(self) -> bool:
         """Check if cluster meets P2 distill criteria."""
