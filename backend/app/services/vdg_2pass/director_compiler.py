@@ -119,6 +119,9 @@ class DirectorCompiler:
         logger.info(f"🔧 Compiling DirectorPack for pattern: {actual_pattern_id}")
         
         try:
+            # Phase 2: Track compiler warnings for operational debugging
+            compiler_warnings: List[str] = []
+            
             # H3 Hardening: contract_candidates is PRIMARY source
             # Heuristics are FALLBACK only when no candidates available
             
@@ -131,6 +134,7 @@ class DirectorCompiler:
                 # Fallback to heuristic extraction if no candidates
                 invariants = cls._extract_dna_invariants(vdg)
                 logger.warning(f"   └─ No contract_candidates, using heuristic fallback")
+                compiler_warnings.append("heuristic_fallback_used")
             
             # 2. Dedupe invariants by rule_id
             invariants = cls._dedupe_invariants(invariants)
@@ -140,6 +144,7 @@ class DirectorCompiler:
                 logger.warning(f"⚠️ Only {len(invariants)} invariant(s), adding fallback rules")
                 invariants.extend(cls._get_fallback_invariants(vdg.duration_sec))
                 invariants = cls._dedupe_invariants(invariants)
+                compiler_warnings.append("fallback_invariants_used")
             
             logger.info(f"   └─ DNA Invariants: {len(invariants)}")
             
@@ -178,7 +183,8 @@ class DirectorCompiler:
                             vdg_content_id=vdg.content_id,
                             vdg_version=vdg.vdg_version
                         )
-                    ]
+                    ],
+                    compiler_warnings=compiler_warnings  # Phase 2: Operational debugging
                 ),
                 runtime_contract=RuntimeContract(
                     input_modalities_expected=["video_1fps"],
@@ -399,10 +405,16 @@ class DirectorCompiler:
                     relative_to=candidate.get("relative_to", "start")
                 )
                 
-                # Build RuleSpec
+                # Build RuleSpec with Phase 4 metric validation
                 spec_data = candidate.get("spec", {})
+                raw_metric_id = spec_data.get("metric_id", f"candidate.{rule_id}.v1")
+                
+                # Phase 4: Validate metric_id against registry
+                from app.schemas.metric_registry import validate_metric_id
+                validated_metric_id = validate_metric_id(raw_metric_id)
+                
                 spec = RuleSpec(
-                    metric_id=spec_data.get("metric_id", f"candidate.{rule_id}.v1"),
+                    metric_id=validated_metric_id,  # Validated/normalized
                     op=spec_data.get("op", ">="),
                     target=spec_data.get("target"),
                     range=spec_data.get("range"),

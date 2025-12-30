@@ -34,6 +34,8 @@ class PackMeta(BaseModel):
     generated_at: str
     compiler_version: str
     source_refs: List[SourceRef] = Field(default_factory=list)
+    # Phase 2: Operational debugging - log when fallback rules used
+    compiler_warnings: List[str] = Field(default_factory=list)
 
 
 # ====================

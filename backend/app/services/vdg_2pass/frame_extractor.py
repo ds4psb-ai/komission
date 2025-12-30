@@ -24,34 +24,39 @@ logger = logging.getLogger(__name__)
 
 class FrameEvidence(NamedTuple):
     """Frame with deterministic evidence ID for RL join."""
-    evidence_id: str
+    evidence_id: str  # Structural ID (stable across extractor versions)
     t: float
     jpeg_bytes: bytes
-    sha256: str  # Full hash for dedup
+    sha256: str  # Content hash for integrity/dedup (NOT in ID)
 
 
 def generate_evidence_id(
     content_id: str,
     ap_id: str,
     t_ms: int,
-    jpeg_bytes: bytes
+    jpeg_bytes: bytes = None  # Optional - only used for sha256
 ) -> Tuple[str, str]:
     """
     Generate deterministic evidence_id for a frame.
     
-    Format: ev.frame.{content_id}.{ap_id}.{t_ms:06d}.{sha8}
+    Phase 1 Refinement:
+    - ID is STRUCTURAL only (stable across extractor versions)
+    - sha256 is SEPARATE for integrity/dedup
+    
+    Format: ev.frame.{content_id}.{ap_id}.{t_ms:06d}
     
     Returns:
         (evidence_id, full_sha256)
     """
-    full_sha256 = hashlib.sha256(jpeg_bytes).hexdigest()
-    sha8 = full_sha256[:8]
+    # Calculate sha256 if bytes provided (for integrity/dedup)
+    full_sha256 = hashlib.sha256(jpeg_bytes).hexdigest() if jpeg_bytes else ""
     
     # Sanitize IDs (remove special chars that might break joins)
     safe_content_id = content_id.replace(".", "_").replace("/", "_")[:32] if content_id else "unknown"
     safe_ap_id = ap_id.replace(".", "_")[:32] if ap_id else "noap"
     
-    evidence_id = f"ev.frame.{safe_content_id}.{safe_ap_id}.{t_ms:06d}.{sha8}"
+    # STRUCTURAL ID ONLY - no sha in ID (extractor-version stable)
+    evidence_id = f"ev.frame.{safe_content_id}.{safe_ap_id}.{t_ms:06d}"
     return evidence_id, full_sha256
 
 

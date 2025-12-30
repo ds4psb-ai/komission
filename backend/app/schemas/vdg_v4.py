@@ -663,6 +663,122 @@ class InvariantCandidate(BaseModel):
     distill_run_id: Optional[str] = None
 
 
+# ====================
+# PHASE 3: CLUSTER SoR (Parent-Kids)
+# ====================
+
+class ClusterSignature(BaseModel):
+    """Cluster signature for similarity matching."""
+    hook_pattern: str = ""  # e.g., "question_hook", "visual_punch"
+    primary_intent: str = ""  # e.g., "tutorial", "review", "vlog"
+    audio_style: str = ""  # e.g., "voiceover", "direct_address"
+    avg_duration_sec: float = 0.0
+    key_elements: List[str] = Field(default_factory=list)
+
+
+class ContentCluster(BaseModel):
+    """
+    Phase 3: Content Cluster for Parent-Kids relationships.
+    
+    Enables NotebookLM-integrated pipeline:
+    - DistillRun operates on clusters, not single videos
+    - Pack quality improves with cluster-validated rules
+    """
+    cluster_id: str
+    cluster_name: str  # Human readable
+    
+    # Parent-Kids structure
+    parent_vdg_id: str
+    parent_content_id: str
+    kid_vdg_ids: List[str] = Field(default_factory=list)
+    kid_content_ids: List[str] = Field(default_factory=list)
+    
+    # Cluster signature
+    signature: ClusterSignature = Field(default_factory=ClusterSignature)
+    
+    # Provenance
+    created_by: str = "manual"  # manual, auto_similarity, auto_time
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+# ====================
+# PHASE 5: LIVE LOG SCHEMA (RL Data Quality)
+# ====================
+
+class SessionContext(BaseModel):
+    """
+    Context for personalization learning.
+    
+    Captured per coaching session for RL to understand
+    "why did this work/not work for this user?"
+    """
+    session_id: str
+    
+    # Persona
+    persona_preset: str = "neutral"  # cynical_expert, home_cook, etc.
+    
+    # Environment
+    environment: str = "unknown"  # home, outdoor, studio, store
+    device_setup: str = "unknown"  # tripod, handheld, gimbal
+    
+    # Conditions (estimated)
+    lighting_quality: str = "unknown"  # good, fair, poor
+    noise_level: str = "unknown"  # quiet, moderate, noisy
+    
+    # User state
+    experience_level: str = "unknown"  # beginner, intermediate, advanced
+
+
+class CoachingIntervention(BaseModel):
+    """
+    Single coaching action delivered to user.
+    
+    RL join key: (session_id, rule_id, ap_id, evidence_id)
+    """
+    intervention_id: str
+    session_id: str
+    pack_id: str
+    
+    # What was delivered
+    rule_id: str
+    ap_id: Optional[str] = None  # Analysis point that triggered this
+    checkpoint_id: Optional[str] = None
+    evidence_id: Optional[str] = None
+    
+    # Timing
+    delivered_at: str
+    t_video: float = 0.0  # Video timestamp
+    
+    # Content
+    command_text: str = ""
+    persona_preset: str = "neutral"
+
+
+class CoachingOutcome(BaseModel):
+    """
+    Observed result after intervention.
+    
+    Joins with CoachingIntervention via intervention_id.
+    """
+    intervention_id: str  # FK to intervention
+    
+    # Immediate (within 5s)
+    user_response: str = "unknown"  # complied, ignored, questioned, retake
+    compliance_detected: bool = False
+    
+    # Measurement (if applicable)
+    metric_id: Optional[str] = None
+    metric_before: Optional[float] = None
+    metric_after: Optional[float] = None
+    improvement: Optional[float] = None
+    
+    # Session level
+    retake_count: int = 0
+    session_completed: bool = True
+    observed_at: Optional[str] = None
+
+
 # Forward reference resolution
 VDGv4.model_rebuild()
 
