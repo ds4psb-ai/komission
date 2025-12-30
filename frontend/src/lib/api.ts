@@ -698,6 +698,71 @@ export class ApiClient {
     async getTemplateSeed(seedId: string): Promise<TemplateSeedDetail> {
         return this.request<TemplateSeedDetail>(`/api/v1/template-seeds/${seedId}`);
     }
+
+    // ==================
+    // P1: COACHING SESSION EVENTS
+    // ==================
+
+    /**
+     * Create a new coaching session with control group assignment
+     */
+    async createCoachingSession(data: CreateCoachingSessionInput): Promise<CoachingSessionResponse> {
+        return this.request<CoachingSessionResponse>('/api/v1/coaching/sessions', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    /**
+     * Log rule evaluation event (CRITICAL: log even without intervention)
+     */
+    async logRuleEvaluated(sessionId: string, data: LogRuleEvaluatedInput): Promise<LogEventResponse> {
+        return this.request<LogEventResponse>(`/api/v1/coaching/sessions/${sessionId}/events/rule-evaluated`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    /**
+     * Log coaching intervention event
+     */
+    async logIntervention(sessionId: string, data: LogInterventionInput): Promise<LogEventResponse> {
+        return this.request<LogEventResponse>(`/api/v1/coaching/sessions/${sessionId}/events/intervention`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    /**
+     * Log outcome event with automatic negative evidence detection
+     */
+    async logOutcome(sessionId: string, data: LogOutcomeInput): Promise<LogOutcomeResponse> {
+        return this.request<LogOutcomeResponse>(`/api/v1/coaching/sessions/${sessionId}/events/outcome`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    /**
+     * Get all events for a session
+     */
+    async getSessionEvents(sessionId: string): Promise<SessionEventsResponse> {
+        return this.request<SessionEventsResponse>(`/api/v1/coaching/sessions/${sessionId}/events`);
+    }
+
+    /**
+     * Get session summary with quality metrics
+     */
+    async getSessionSummary(sessionId: string): Promise<SessionSummaryResponse> {
+        return this.request<SessionSummaryResponse>(`/api/v1/coaching/sessions/${sessionId}/summary`);
+    }
+
+    /**
+     * Get all sessions stats (for verifying control ratio)
+     */
+    async getAllSessionsStats(): Promise<AllSessionsStatsResponse> {
+        return this.request<AllSessionsStatsResponse>('/api/v1/coaching/stats/all-sessions');
+    }
 }
 
 // Evidence Loop Types
@@ -1483,6 +1548,104 @@ export interface GenerateTemplateSeedResponse {
     error?: string;
 }
 
+// ==================
+// P1: COACHING SESSION TYPES
+// ==================
+
+export interface CreateCoachingSessionInput {
+    director_pack: any;  // DirectorPack JSON
+    language?: string;
+    voice_style?: 'strict' | 'friendly' | 'neutral';
+}
+
+export interface CoachingSessionResponse {
+    session_id: string;
+    status: 'created' | 'active' | 'ended' | 'error';
+    websocket_url: string;
+    created_at: string;
+    expires_at: string;
+    pattern_id: string;
+    goal?: string;
+    assignment: 'coached' | 'control';
+    holdout_group: boolean;
+}
+
+export interface LogRuleEvaluatedInput {
+    rule_id: string;
+    ap_id: string;
+    checkpoint_id: string;
+    result: 'passed' | 'violated' | 'unknown';
+    result_reason?: string;
+    t_video: number;
+    metric_id?: string;
+    metric_value?: number;
+    evidence_id?: string;
+    intervention_triggered: boolean;
+}
+
+export interface LogInterventionInput {
+    intervention_id: string;
+    rule_id: string;
+    ap_id?: string;
+    checkpoint_id: string;
+    t_video: number;
+    command_text?: string;
+    evidence_id?: string;
+}
+
+export interface LogOutcomeInput {
+    intervention_id: string;
+    compliance_detected: boolean;
+    compliance_unknown_reason?: string;
+    user_response?: string;
+    metric_id?: string;
+    metric_before?: number;
+    metric_after?: number;
+    upload_outcome_proxy?: string;
+    reported_views?: number;
+    reported_likes?: number;
+    reported_saves?: number;
+    outcome_unknown_reason?: string;
+}
+
+export interface LogEventResponse {
+    logged: boolean;
+    event_id: string;
+}
+
+export interface LogOutcomeResponse extends LogEventResponse {
+    is_negative_evidence: boolean;
+    negative_reason?: string;
+}
+
+export interface SessionEventsResponse {
+    session_id: string;
+    total_events: number;
+    events: any[];  // SessionEvent[]
+}
+
+export interface SessionSummaryResponse {
+    session_id: string;
+    pack_id: string;
+    assignment: string;
+    holdout_group: boolean;
+    total_events: number;
+    rules_evaluated: number;
+    interventions_delivered: number;
+    outcomes_observed: number;
+    intervention_outcome_join_rate: number;
+    compliance_unknown_rate: number;
+    negative_evidence_rate: number;
+}
+
+export interface AllSessionsStatsResponse {
+    total_sessions: number;
+    control_sessions: number;
+    control_ratio: number;
+    holdout_sessions: number;
+    avg_intervention_outcome_join_rate: number;
+    avg_compliance_unknown_rate: number;
+}
+
 // Singleton instance
 export const api = new ApiClient();
-

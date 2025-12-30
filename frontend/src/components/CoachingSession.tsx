@@ -10,15 +10,21 @@
  * 4. Progress indicator (R_ES based)
  * 
  * Backend Integration:
- * - POST /coaching/sessions → create session
+ * - POST /coaching/sessions → create session (with control group assignment)
+ * - POST /coaching/sessions/{id}/events/* → event logging
  * - WebSocket /coaching/live → real-time feedback
+ * 
+ * P1 Features:
+ * - Control Group (10%): No coaching, for causal inference
+ * - 3-event logging: rule_evaluated, intervention, outcome
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     X, Mic, MicOff, Camera, CameraOff,
     CheckCircle, Circle, AlertCircle, Volume2,
-    Play, Square, RotateCcw, Sparkles
+    Play, Square, RotateCcw, Sparkles, FlaskConical
 } from 'lucide-react';
+import { api } from '@/lib/api';
 
 // ==================
 // Types
@@ -29,6 +35,7 @@ interface CoachingRule {
     description: string;
     priority: 'critical' | 'high' | 'medium' | 'low';
     status: 'pending' | 'passed' | 'failed';
+    checkpoint_id?: string;
 }
 
 interface CoachingFeedback {
@@ -71,6 +78,12 @@ export function CoachingSession({
     const [isMobile, setIsMobile] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // P1: Control Group State
+    const [assignment, setAssignment] = useState<'coached' | 'control'>('coached');
+    const [holdoutGroup, setHoldoutGroup] = useState(false);
+    const [currentInterventionId, setCurrentInterventionId] = useState<string | null>(null);
+    const [currentCheckpoint, setCurrentCheckpoint] = useState<string>('hook_punch');
+
     // Refs
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -111,34 +124,33 @@ export function CoachingSession({
                 videoRef.current.srcObject = stream;
             }
 
-            // 2. Create coaching session
-            const token = localStorage.getItem('token');
-            const res = await fetch('/api/v1/coaching/sessions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` })
-                },
-                body: JSON.stringify({
-                    video_id: videoId,
-                    pack_id: packId,
-                    mode
-                })
-            });
+            // 2. Create coaching session with P1 control group assignment
+            try {
+                const sessionData = await api.createCoachingSession({
+                    director_pack: { pattern_id: videoId, pack_meta: { pack_id: packId } },
+                    language: 'ko',
+                    voice_style: 'friendly'
+                });
 
-            if (!res.ok) {
+                setSessionId(sessionData.session_id);
+                setAssignment(sessionData.assignment);
+                setHoldoutGroup(sessionData.holdout_group);
+                setRules(getDemoRules(mode));
+
+                // Log if control group
+                if (sessionData.assignment === 'control') {
+                    console.log('🔬 Control Group: 코칭 없이 촬영 (인과 추론용)');
+                }
+                if (sessionData.holdout_group) {
+                    console.log('📊 Holdout Group: 승격 판단 제외');
+                }
+
+            } catch (apiErr) {
                 // Fallback: create dummy session for demo
+                console.warn('API failed, using demo mode:', apiErr);
                 setSessionId(`demo-session-${Date.now()}`);
                 setRules(getDemoRules(mode));
-                return;
             }
-
-            const data = await res.json();
-            setSessionId(data.session_id);
-            setRules(data.rules || getDemoRules(mode));
-
-            // 3. Connect WebSocket for real-time feedback
-            // connectWebSocket(data.session_id);
 
         } catch (err) {
             console.error('Failed to init session:', err);
@@ -205,33 +217,88 @@ export function CoachingSession({
     }, [sessionId, onComplete]);
 
     const simulateCoaching = () => {
-        // Demo: simulate coaching feedback
+        // P1: Demo coaching with event logging
         const feedbacks = [
-            { message: "좋아요! 카메라를 정면으로 봐주세요", type: 'instruction' as const, delay: 2000 },
-            { message: "훌륭해요! 첫 훅이 잘 걸렸어요 ✨", type: 'praise' as const, delay: 4000 },
-            { message: "조금 더 가까이 와주세요", type: 'instruction' as const, delay: 7000 },
-            { message: "완벽해요! 자연스럽게 마무리하세요", type: 'praise' as const, delay: 12000 },
+            { message: "좋아요! 카메라를 정면으로 봐주세요", type: 'instruction' as const, delay: 2000, rule: rules[0] },
+            { message: "훌륭해요! 첫 훅이 잘 걸렸어요 ✨", type: 'praise' as const, delay: 4000, rule: rules[0] },
+            { message: "조금 더 가까이 와주세요", type: 'instruction' as const, delay: 7000, rule: rules[1] },
+            { message: "완벽해요! 자연스럽게 마무리하세요", type: 'praise' as const, delay: 12000, rule: rules[2] },
         ];
 
-        feedbacks.forEach(({ message, type, delay }) => {
-            setTimeout(() => {
-                if (!isRecording) return;
-                const feedback: CoachingFeedback = { message, type, timestamp: Date.now() };
-                setCurrentFeedback(feedback);
-                setFeedbackHistory(prev => [...prev.slice(-4), feedback]);
+        feedbacks.forEach(({ message, type, delay, rule }, index) => {
+            setTimeout(async () => {
+                if (!isRecording || !sessionId) return;
 
-                // Update progress
-                setProgress(prev => Math.min(prev + 20, 100));
+                const currentRule = rule || rules[index % rules.length];
+                if (!currentRule) return;
 
-                // Update rule status
-                setRules(prev => {
-                    const updated = [...prev];
-                    const pendingIdx = updated.findIndex(r => r.status === 'pending');
-                    if (pendingIdx >= 0) {
-                        updated[pendingIdx].status = 'passed';
+                // Always log rule evaluation (even for control group)
+                const ruleResult = type === 'praise' ? 'passed' : 'violated';
+                const shouldIntervene = type === 'instruction';
+
+                try {
+                    // P1: Log rule_evaluated (ALWAYS, even without intervention)
+                    await api.logRuleEvaluated(sessionId, {
+                        rule_id: currentRule.rule_id,
+                        ap_id: `ap_${currentRule.rule_id}_${recordingTime}`,
+                        checkpoint_id: currentCheckpoint,
+                        result: ruleResult,
+                        t_video: recordingTime,
+                        intervention_triggered: shouldIntervene && assignment !== 'control',
+                    });
+
+                    // P1: Only deliver coaching for non-control group
+                    if (assignment === 'control') {
+                        // Control group: silent evaluation only
+                        console.log(`🔬 Control: ${currentRule.rule_id} = ${ruleResult} (no coaching)`);
+                        setProgress(prev => Math.min(prev + 20, 100));
+                        return;
                     }
-                    return updated;
-                });
+
+                    // Coached group: deliver feedback
+                    if (shouldIntervene) {
+                        const interventionId = `iv_${Date.now()}_${index}`;
+                        setCurrentInterventionId(interventionId);
+
+                        // Log intervention
+                        await api.logIntervention(sessionId, {
+                            intervention_id: interventionId,
+                            rule_id: currentRule.rule_id,
+                            ap_id: `ap_${currentRule.rule_id}_${recordingTime}`,
+                            checkpoint_id: currentCheckpoint,
+                            t_video: recordingTime,
+                            command_text: message,
+                        });
+                    }
+
+                    // Update UI
+                    const feedback: CoachingFeedback = { message, type, rule_id: currentRule.rule_id, timestamp: Date.now() };
+                    setCurrentFeedback(feedback);
+                    setFeedbackHistory(prev => [...prev.slice(-4), feedback]);
+                    setProgress(prev => Math.min(prev + 20, 100));
+
+                    // Update rule status
+                    setRules(prev => {
+                        const updated = [...prev];
+                        const idx = updated.findIndex(r => r.rule_id === currentRule.rule_id);
+                        if (idx >= 0) {
+                            updated[idx].status = type === 'praise' ? 'passed' : 'pending';
+                        }
+                        return updated;
+                    });
+
+                    // Log outcome for praised rules (compliance detected)
+                    if (type === 'praise' && currentInterventionId) {
+                        await api.logOutcome(sessionId, {
+                            intervention_id: currentInterventionId,
+                            compliance_detected: true,
+                            user_response: 'complied',
+                        });
+                    }
+
+                } catch (err) {
+                    console.error('Event logging failed:', err);
+                }
             }, delay);
         });
     };
@@ -283,6 +350,13 @@ export function CoachingSession({
                         <span className={`px-2 py-1 text-xs font-bold rounded border ${modeLabels[mode].color}`}>
                             {modeLabels[mode].label}
                         </span>
+                        {/* P1: Control Group Badge */}
+                        {assignment === 'control' && (
+                            <span className="px-2 py-1 text-xs font-bold rounded border bg-amber-500/20 text-amber-300 border-amber-500/50 flex items-center gap-1">
+                                <FlaskConical className="w-3 h-3" />
+                                실험군
+                            </span>
+                        )}
                         {isRecording && (
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
@@ -317,18 +391,32 @@ export function CoachingSession({
                     style={{ transform: 'scaleX(-1)' }}
                 />
 
-                {/* Audio Feedback Display */}
-                {currentFeedback && (
+                {/* Audio Feedback Display (hidden for control group) */}
+                {currentFeedback && assignment !== 'control' && (
                     <div className="absolute top-24 left-4 right-4">
                         <div className={`p-4 rounded-xl backdrop-blur-lg ${currentFeedback.type === 'praise'
-                                ? 'bg-emerald-500/30 border border-emerald-500/50'
-                                : currentFeedback.type === 'warning'
-                                    ? 'bg-red-500/30 border border-red-500/50'
-                                    : 'bg-white/20 border border-white/30'
+                            ? 'bg-emerald-500/30 border border-emerald-500/50'
+                            : currentFeedback.type === 'warning'
+                                ? 'bg-red-500/30 border border-red-500/50'
+                                : 'bg-white/20 border border-white/30'
                             }`}>
                             <div className="flex items-center gap-2">
                                 <Volume2 className="w-5 h-5 text-white animate-pulse" />
                                 <p className="text-white font-medium">{currentFeedback.message}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Control Group: Silent evaluation notice */}
+                {assignment === 'control' && isRecording && (
+                    <div className="absolute top-24 left-4 right-4">
+                        <div className="p-4 rounded-xl backdrop-blur-lg bg-amber-500/20 border border-amber-500/30">
+                            <div className="flex items-center gap-2">
+                                <FlaskConical className="w-5 h-5 text-amber-300" />
+                                <p className="text-amber-200 font-medium text-sm">
+                                    🔬 인과 추론용 대조군 촬영 중
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -352,8 +440,8 @@ export function CoachingSession({
                                         <Circle className="w-4 h-4 text-white/40" />
                                     )}
                                     <span className={`text-xs ${rule.status === 'passed' ? 'text-emerald-300' :
-                                            rule.status === 'failed' ? 'text-red-300' :
-                                                'text-white/70'
+                                        rule.status === 'failed' ? 'text-red-300' :
+                                            'text-white/70'
                                         }`}>
                                         {rule.description}
                                     </span>
@@ -379,8 +467,8 @@ export function CoachingSession({
                     <button
                         onClick={isRecording ? stopRecording : startRecording}
                         className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${isRecording
-                                ? 'bg-red-500 hover:bg-red-400'
-                                : 'bg-gradient-to-r from-cyan-500 to-emerald-500 hover:brightness-110'
+                            ? 'bg-red-500 hover:bg-red-400'
+                            : 'bg-gradient-to-r from-cyan-500 to-emerald-500 hover:brightness-110'
                             }`}
                     >
                         {isRecording ? (
