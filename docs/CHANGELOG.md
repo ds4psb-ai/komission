@@ -6,6 +6,20 @@
 
 ## 2024-12-30
 
+### 🎯 Expert Feedback Hardenings (Senior Dev Review)
+- **ddbee21** `fix: Add compliance_unknown_reason to CoachingOutcome`
+  - `compliance_unknown_reason`: occluded/out_of_frame/no_audio/ambiguous
+
+- **f648f0b** `feat: Causal Outcome + Promotion Safety Hardenings`
+  - Two-stage Outcome: `upload_outcome_proxy`, `reported_views/likes/saves`
+  - Canary mode: `canary_enabled`, `canary_session_ratio` (10%)
+  - Cluster diversity: `cluster_ids_verified`, `min_clusters_required` (2)
+  - Rollback: `rollback_eligible`, `rollback_reason`
+
+- **d0aa83b** `feat: Final Hardenings (H-Final-1, H-Final-2)`
+  - PackMeta: `prompt_version`, `model_version`, `parent_pack_id`, `experiment_id`
+  - Evidence ID: comment/asr/ocr/metric generators (`evidence_id_utils.py`)
+
 ### 🎨 Frontend UX Integration
 - **24b9cd8** `feat: Add CoachingSession component + Card Detail integration`
   - `CoachingSession.tsx` (350줄): 실시간 AI 코칭 오버레이

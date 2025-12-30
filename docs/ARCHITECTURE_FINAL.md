@@ -73,8 +73,15 @@
 
 ### RL Data Schema
 - ✅ `CoachingIntervention` (rule_id, ap_id, evidence_id)
-- ✅ `CoachingOutcome` (compliance, metric_before/after)
+- ✅ `CoachingOutcome` (compliance, metric_before/after, **upload_outcome**)
 - ✅ `SessionContext` (persona, environment, device)
+- ✅ `compliance_unknown_reason` for RL data quality
+
+### Expert Feedback Hardenings (2024-12-30)
+- ✅ `PackMeta` versioning (prompt_version, model_version, parent_pack_id)
+- ✅ `evidence_id_utils.py` (comment/asr/ocr/metric ID generators)
+- ✅ Two-stage Outcome (compliance + upload outcome)
+- ✅ Promotion Safety (canary, cluster diversity, rollback)
 
 ---
 
