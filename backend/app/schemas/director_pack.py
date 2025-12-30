@@ -36,6 +36,12 @@ class PackMeta(BaseModel):
     source_refs: List[SourceRef] = Field(default_factory=list)
     # Phase 2: Operational debugging - log when fallback rules used
     compiler_warnings: List[str] = Field(default_factory=list)
+    
+    # H-Final-1: Version tracking for rollback and experiments
+    prompt_version: str = "v1"  # VDG prompt version used
+    model_version: str = "gemini-2.5-pro"  # AI model used for analysis
+    parent_pack_id: Optional[str] = None  # Previous pack (for rollback lineage)
+    experiment_id: Optional[str] = None  # A/B test flag (optional)
 
 
 # ====================
