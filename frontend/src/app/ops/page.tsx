@@ -20,9 +20,11 @@ import { SessionHUD } from '@/components/SessionHUD';
 import {
     Activity, AlertCircle, CheckCircle, Clock,
     RefreshCw, ChevronRight, Database, GitBranch, BarChart3,
-    Zap, FlaskConical, ArrowRight, RotateCcw, Upload, BookOpen, ExternalLink
+    Zap, FlaskConical, ArrowRight, RotateCcw, Upload, BookOpen, ExternalLink,
+    Sparkles, Target, TrendingUp, FileVideo
 } from 'lucide-react';
 import { api, SourcePackItem } from '@/lib/api';
+import Link from 'next/link';
 
 interface PipelineStatus {
     total_runs: number;
@@ -49,6 +51,21 @@ interface RunItem {
     duration_sec: number | null;
 }
 
+interface ClusterInfo {
+    cluster_id: string;
+    cluster_name: string;
+    parent_vdg_id: string;
+    kids_count: number;
+    distill_ready: boolean;
+}
+
+interface P2Progress {
+    total_clusters: number;
+    distill_ready_clusters: number;
+    target: number;
+    progress_percent: number;
+}
+
 export default function OpsConsolePage() {
     const [status, setStatus] = useState<PipelineStatus | null>(null);
     const [runs, setRuns] = useState<RunItem[]>([]);
@@ -57,6 +74,8 @@ export default function OpsConsolePage() {
     const [error, setError] = useState<string | null>(null);
     const [retrying, setRetrying] = useState<string | null>(null);
     const [uploading, setUploading] = useState<string | null>(null);
+    const [clusters, setClusters] = useState<ClusterInfo[]>([]);
+    const [p2Progress, setP2Progress] = useState<P2Progress | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -112,6 +131,34 @@ export default function OpsConsolePage() {
             } catch (e) {
                 console.warn("Source Packs API failed:", e);
                 setSourcePacks([]);
+            }
+
+            // Fetch P2 Clusters
+            try {
+                const clustersRes = await fetch('/api/v1/clusters', { headers });
+                if (clustersRes.ok) {
+                    const clustersData = await clustersRes.json();
+                    setClusters((clustersData.clusters || []).map((c: any) => ({
+                        cluster_id: c.cluster_id,
+                        cluster_name: c.cluster_name,
+                        parent_vdg_id: c.parent_vdg_id,
+                        kids_count: c.kids?.length || 0,
+                        distill_ready: c.distill_ready
+                    })));
+                }
+            } catch (e) {
+                console.warn("Clusters API failed:", e);
+            }
+
+            // Fetch P2 Progress
+            try {
+                const progressRes = await fetch('/api/v1/clusters/p2-progress', { headers });
+                if (progressRes.ok) {
+                    const progressData = await progressRes.json();
+                    setP2Progress(progressData);
+                }
+            } catch (e) {
+                console.warn("P2 Progress API failed:", e);
             }
         } catch {
             setError('서버 연결 실패');
@@ -270,13 +317,81 @@ export default function OpsConsolePage() {
                             <div className="p-5 bg-gradient-to-br from-orange-500/10 to-orange-900/10 border border-orange-500/20 rounded-2xl">
                                 <div className="flex items-center gap-2 text-orange-400 mb-2">
                                     <Database className="w-4 h-4" />
-                                    <span className="text-xs font-medium">Clusters</span>
+                                    <span className="text-xs font-medium">P2 Clusters</span>
                                 </div>
-                                <div className="text-3xl font-black text-white">{status.total_clusters}</div>
+                                <div className="text-3xl font-black text-white">
+                                    {p2Progress?.distill_ready_clusters || 0}
+                                    <span className="text-lg text-white/40">/{p2Progress?.target || 10}</span>
+                                </div>
                                 <div className="mt-2 text-xs text-white/40">
-                                    {status.total_source_packs} Source Packs
+                                    {p2Progress?.progress_percent || 0}% 완료
                                 </div>
                             </div>
+                        </div>
+
+                        {/* P2 Clusters Section */}
+                        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mb-8">
+                            <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                                <h2 className="font-bold text-white flex items-center gap-2">
+                                    <Target className="w-5 h-5 text-orange-400" />
+                                    P2 Content Clusters
+                                    <span className="text-xs text-white/40 ml-2">DistillRun 대상</span>
+                                </h2>
+                                <div className="flex items-center gap-3">
+                                    {/* Progress Bar */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all"
+                                                style={{ width: `${p2Progress?.progress_percent || 0}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-xs text-white/60">{p2Progress?.progress_percent || 0}%</span>
+                                    </div>
+                                    <Link
+                                        href="/ops/outliers"
+                                        className="px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 rounded-lg text-xs font-medium text-orange-300 flex items-center gap-1 transition-colors"
+                                    >
+                                        <FileVideo className="w-3 h-3" />
+                                        아웃라이어 관리
+                                    </Link>
+                                </div>
+                            </div>
+
+                            {clusters.length === 0 ? (
+                                <div className="p-12 text-center text-white/40">
+                                    <Target className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                    <p>아직 생성된 클러스터가 없습니다</p>
+                                    <p className="text-xs mt-1">Virlo/TikTok에서 아웃라이어를 크롤링하고 클러스터를 생성하세요</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-white/5">
+                                    {clusters.map(cluster => (
+                                        <div
+                                            key={cluster.cluster_id}
+                                            className="px-6 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className={`p-2 rounded-lg ${cluster.distill_ready ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'}`}>
+                                                    {cluster.distill_ready ? <CheckCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                                                </div>
+                                                <div>
+                                                    <div className="font-medium text-white">{cluster.cluster_name}</div>
+                                                    <div className="text-xs text-white/40">
+                                                        {cluster.kids_count}개 Kids · Parent: {cluster.parent_vdg_id}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-2 py-1 rounded text-xs font-medium ${cluster.distill_ready ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'}`}>
+                                                    {cluster.distill_ready ? 'Distill Ready' : 'Pending'}
+                                                </span>
+                                                <ChevronRight className="w-4 h-4 text-white/20" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Source Packs Section (Phase D) */}
@@ -416,32 +531,44 @@ export default function OpsConsolePage() {
                         </div>
 
                         {/* Quick Actions */}
-                        <div className="mt-8 grid md:grid-cols-3 gap-4">
-                            <button className="p-4 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 rounded-xl text-left transition-colors group">
+                        <div className="mt-8 grid md:grid-cols-4 gap-4">
+                            <Link
+                                href="/ops/outliers"
+                                className="p-4 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 rounded-xl text-left transition-colors group"
+                            >
                                 <div className="flex items-center justify-between mb-2">
-                                    <Zap className="w-5 h-5 text-violet-400" />
+                                    <FileVideo className="w-5 h-5 text-violet-400" />
                                     <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-violet-400 transition-colors" />
                                 </div>
-                                <div className="font-bold text-white">새 크롤 실행</div>
-                                <div className="text-xs text-white/50">Outlier 수집 시작</div>
+                                <div className="font-bold text-white">아웃라이어 관리</div>
+                                <div className="text-xs text-white/50">Promote & VDG 분석</div>
+                            </Link>
+
+                            <button className="p-4 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 rounded-xl text-left transition-colors group">
+                                <div className="flex items-center justify-between mb-2">
+                                    <Sparkles className="w-5 h-5 text-orange-400" />
+                                    <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-orange-400 transition-colors" />
+                                </div>
+                                <div className="font-bold text-white">P3 DistillRun</div>
+                                <div className="text-xs text-white/50">주간 자동화 실행</div>
                             </button>
 
                             <button className="p-4 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded-xl text-left transition-colors group">
                                 <div className="flex items-center justify-between mb-2">
-                                    <FlaskConical className="w-5 h-5 text-cyan-400" />
+                                    <TrendingUp className="w-5 h-5 text-cyan-400" />
                                     <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-cyan-400 transition-colors" />
                                 </div>
-                                <div className="font-bold text-white">Evidence 검토</div>
-                                <div className="text-xs text-white/50">대기 중인 이벤트 확인</div>
+                                <div className="font-bold text-white">성과 리포트</div>
+                                <div className="text-xs text-white/50">3축 승격 현황</div>
                             </button>
 
                             <button className="p-4 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/20 rounded-xl text-left transition-colors group">
                                 <div className="flex items-center justify-between mb-2">
-                                    <GitBranch className="w-5 h-5 text-pink-400" />
+                                    <FlaskConical className="w-5 h-5 text-pink-400" />
                                     <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-pink-400 transition-colors" />
                                 </div>
-                                <div className="font-bold text-white">Edge 확정</div>
-                                <div className="text-xs text-white/50">Candidate Edge 검토</div>
+                                <div className="font-bold text-white">로그 품질</div>
+                                <div className="text-xs text-white/50">P1 세션 로그 검증</div>
                             </button>
                         </div>
                     </>

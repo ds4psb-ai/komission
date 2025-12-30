@@ -117,6 +117,198 @@ VIRLO_MEME_OUTLIERS = [
 ]
 
 
+# Virlo 2차 크롤링: TikTok 다양한 카테고리 (2024-12-30)
+VIRLO_TIKTOK_OUTLIERS = [
+    # Cooking & Baking (Tutorial pattern)
+    {
+        "creator": "thehannahbriggs",
+        "title": "High-engagement recipe tutorial - Person on camera",
+        "view_count": 2700000,
+        "outlier_score": 225,
+        "platform": "tiktok",
+        "category": "cooking",
+        "video_url": "https://www.tiktok.com/@thehannahbriggs",
+        "insight": "Tutorial with creator on camera, process filming",
+        "hook_pattern": "tutorial_reveal",
+        "success": True
+    },
+    {
+        "creator": "hugefoodzone",
+        "title": "Rapid food prep/recipe showcase",
+        "view_count": 1100000,
+        "outlier_score": 172,
+        "platform": "tiktok",
+        "category": "cooking",
+        "video_url": "https://www.tiktok.com/@hugefoodzone",
+        "insight": "Fast-paced cooking with viral appeal",
+        "hook_pattern": "speed_cooking",
+        "success": True
+    },
+    {
+        "creator": "foodiegirlsarah",
+        "title": "High-quality cooking tutorial with process filming",
+        "view_count": 792200,
+        "outlier_score": 73,
+        "platform": "tiktok",
+        "category": "cooking",
+        "video_url": "https://www.tiktok.com/@foodiegirlsarah",
+        "insight": "Quality cinematography in cooking content",
+        "hook_pattern": "asmr_cooking",
+        "success": True
+    },
+    
+    # Fashion (Visual Transition pattern)
+    {
+        "creator": "sethrufon",
+        "title": "Extreme outlier - High-impact visual style",
+        "view_count": 2600000,
+        "outlier_score": 2853,
+        "platform": "tiktok",
+        "category": "fashion",
+        "video_url": "https://www.tiktok.com/@sethrufon",
+        "insight": "Fashion transitions with massive viral reach",
+        "hook_pattern": "visual_transition",
+        "success": True
+    },
+    {
+        "creator": "sdhicks190",
+        "title": "Unique fashion styling with massive reach",
+        "view_count": 592800,
+        "outlier_score": 2589,
+        "platform": "tiktok",
+        "category": "fashion",
+        "video_url": "https://www.tiktok.com/@sdhicks190",
+        "insight": "Distinctive styling creates viral moment",
+        "hook_pattern": "outfit_reveal",
+        "success": True
+    },
+    {
+        "creator": "connorstorrienews",
+        "title": "Fast-paced news-style fashion updates",
+        "view_count": 384600,
+        "outlier_score": 1709,
+        "platform": "tiktok",
+        "category": "fashion",
+        "video_url": "https://www.tiktok.com/@connorstorrienews",
+        "insight": "News format applied to fashion content",
+        "hook_pattern": "news_format",
+        "success": True
+    },
+    {
+        "creator": "_chicasprivv_",
+        "title": "Trending style guide and outfit transitions",
+        "view_count": 295600,
+        "outlier_score": 1120,
+        "platform": "tiktok",
+        "category": "fashion",
+        "video_url": "https://www.tiktok.com/@_chicasprivv_",
+        "insight": "Style guide with smooth transitions",
+        "hook_pattern": "style_guide",
+        "success": True
+    },
+    {
+        "creator": "preppy.lifestylex",
+        "title": "Aesthetic lifestyle vlog and fashion trends",
+        "view_count": 130900,
+        "outlier_score": 692,
+        "platform": "tiktok",
+        "category": "fashion",
+        "video_url": "https://www.tiktok.com/@preppy.lifestylex",
+        "insight": "Preppy aesthetic with lifestyle elements",
+        "hook_pattern": "aesthetic_vlog",
+        "success": True
+    },
+    {
+        "creator": "waiasek",
+        "title": "Visual transitions and style showcase",
+        "view_count": 563900,
+        "outlier_score": 544,
+        "platform": "tiktok",
+        "category": "fashion",
+        "video_url": "https://www.tiktok.com/@waiasek",
+        "insight": "Clean visual transitions in fashion",
+        "hook_pattern": "visual_transition",
+        "success": True
+    },
+    {
+        "creator": "willi.xyz",
+        "title": "Artistic fashion filming and visual transitions",
+        "view_count": 154000,
+        "outlier_score": 216,
+        "platform": "tiktok",
+        "category": "fashion",
+        "video_url": "https://www.tiktok.com/@willi.xyz",
+        "insight": "Artistic approach to fashion content",
+        "hook_pattern": "artistic_style",
+        "success": True
+    },
+    {
+        "creator": "directedbytessa",
+        "title": "Creative cinematography/fashion direction",
+        "view_count": 151400,
+        "outlier_score": 112,
+        "platform": "tiktok",
+        "category": "fashion",
+        "video_url": "https://www.tiktok.com/@directedbytessa",
+        "insight": "Director-style filming approach",
+        "hook_pattern": "cinematic_style",
+        "success": True
+    },
+    
+    # Beauty (Product Review pattern)
+    {
+        "creator": "iblamekiyo",
+        "title": "Skincare/makeup application and review",
+        "view_count": 215000,
+        "outlier_score": 87,
+        "platform": "tiktok",
+        "category": "beauty",
+        "video_url": "https://www.tiktok.com/@iblamekiyo",
+        "insight": "Application tutorial with honest review",
+        "hook_pattern": "application_review",
+        "success": True
+    },
+    {
+        "creator": "stevie.nichole2",
+        "title": "Product review/tutorial with person on camera",
+        "view_count": 331100,
+        "outlier_score": 61,
+        "platform": "tiktok",
+        "category": "beauty",
+        "video_url": "https://www.tiktok.com/@stevie.nichole2",
+        "insight": "Relatable on-camera product review",
+        "hook_pattern": "honest_review",
+        "success": True
+    },
+    
+    # Failure examples for contrast
+    {
+        "creator": "fashion_fail_01",
+        "title": "Poor lighting and no hook",
+        "view_count": 100,
+        "outlier_score": 0.02,
+        "platform": "tiktok",
+        "category": "fashion",
+        "video_url": "https://www.tiktok.com/@fashion_fail_example",
+        "insight": "No visual hook, poor production quality",
+        "hook_pattern": "none",
+        "success": False
+    },
+    {
+        "creator": "cooking_fail_01",
+        "title": "Boring tutorial with no personality",
+        "view_count": 50,
+        "outlier_score": 0.01,
+        "platform": "tiktok",
+        "category": "cooking",
+        "video_url": "https://www.tiktok.com/@cooking_fail_example",
+        "insight": "No engagement, just steps",
+        "hook_pattern": "monotone",
+        "success": False
+    }
+]
+
+
 async def seed_outliers_via_api(base_url: str = "http://localhost:8000", token: str = None):
     """Seed outliers via API (requires curator auth)."""
     async with httpx.AsyncClient() as client:
