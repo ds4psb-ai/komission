@@ -8,10 +8,9 @@ Session Events Schema
 
 P1 Roadmap: 세션 로깅 인프라
 """
-from datetime import datetime
 from typing import Optional, Any, Dict, List, Literal
 from pydantic import BaseModel, Field
-import uuid
+from app.utils.time import iso_now, generate_event_id
 
 
 # ====================
@@ -20,10 +19,10 @@ import uuid
 
 class SessionEvent(BaseModel):
     """Base class for all session events."""
-    event_id: str = Field(default_factory=lambda: f"evt_{uuid.uuid4().hex[:12]}")
+    event_id: str = Field(default_factory=generate_event_id)
     session_id: str
     event_type: str  # "rule_evaluated" | "intervention" | "outcome"
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = Field(default_factory=iso_now)
     
     # Linking keys (for RL join)
     rule_id: Optional[str] = None

@@ -13,10 +13,10 @@ Endpoints:
 - GET /coaching/sessions/{session_id}/summary - 세션 요약 (P1)
 """
 import logging
-import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Dict, List, Literal, Optional
 
+from app.utils.time import utcnow, iso_now_z, generate_session_id
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel, Field
 
@@ -111,8 +111,8 @@ async def create_session(
     DirectorPack을 기반으로 Gemini Live 세션을 준비합니다.
     P1: Control Group (10%) + Holdout (5%) 자동 할당
     """
-    session_id = str(uuid.uuid4())
-    now = datetime.utcnow()
+    session_id = generate_session_id()
+    now = utcnow()
     expires_at = now + timedelta(hours=1)  # 1시간 후 만료
     
     # DirectorPack에서 코칭 컨텍스트 생성
@@ -209,7 +209,7 @@ async def submit_feedback(session_id: str, request: FeedbackRequest):
         "rule_id": request.rule_id,
         "feedback_type": request.feedback_type,
         "comment": request.comment,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": iso_now_z(),
     }
     
     session["feedbacks"].append(feedback)
@@ -341,7 +341,7 @@ async def log_intervention(session_id: str, request: LogInterventionRequest):
         ap_id=request.ap_id,
         checkpoint_id=request.checkpoint_id,
         evidence_id=request.evidence_id,
-        delivered_at=datetime.utcnow().isoformat(),
+        delivered_at=iso_now_z(),
         t_video=request.t_video,
         command_text=request.command_text,
         assignment=session.get("assignment", "coached"),
