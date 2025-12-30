@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
@@ -12,4 +13,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Wrap with Sentry (minimal config)
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  disableLogger: true,
+});
