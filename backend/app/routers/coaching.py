@@ -425,6 +425,73 @@ async def get_all_sessions_stats():
     return session_logger.get_all_sessions_summary()
 
 
+@router.get("/quality/report")
+async def get_log_quality_report():
+    """
+    P1: 로그 품질 검증 리포트
+    
+    검증 항목:
+    - intervention_outcome_join_rate (≥95%)
+    - compliance_unknown_rate (≤15%)
+    - control_group_ratio (8-12%)
+    - minimum_sessions (≥10)
+    
+    Returns:
+        LogQualityReport with flywheel readiness status
+    """
+    from app.services.log_quality_validator import get_log_quality_validator
+    
+    validator = get_log_quality_validator()
+    report = validator.validate_all_sessions()
+    
+    return {
+        "total_sessions": report.total_sessions,
+        "overall_status": report.overall_status.value,
+        "is_ready_for_flywheel": report.is_ready_for_flywheel,
+        "summary": report.summary,
+        "checks": [
+            {
+                "name": c.name,
+                "status": c.status.value,
+                "actual_value": c.actual_value,
+                "threshold": c.threshold,
+                "description": c.description,
+                "recommendation": c.recommendation,
+            }
+            for c in report.checks
+        ]
+    }
+
+
+@router.get("/quality/session/{session_id}")
+async def get_session_quality(session_id: str):
+    """P1: 개별 세션 로그 품질 검증"""
+    get_session(session_id)  # Verify session exists
+    
+    from app.services.log_quality_validator import get_log_quality_validator
+    
+    validator = get_log_quality_validator()
+    checks = validator.validate_session(session_id)
+    
+    overall_pass = all(c.status.value == "pass" for c in checks)
+    
+    return {
+        "session_id": session_id,
+        "overall_pass": overall_pass,
+        "checks": [
+            {
+                "name": c.name,
+                "status": c.status.value,
+                "actual_value": c.actual_value,
+                "threshold": c.threshold,
+                "description": c.description,
+                "recommendation": c.recommendation,
+            }
+            for c in checks
+        ]
+    }
+
+
 # ====================
 # HELPER: DIRECTOR PACK → SYSTEM PROMPT
 # ====================
