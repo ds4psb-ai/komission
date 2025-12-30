@@ -13,11 +13,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppHeader } from '@/components/AppHeader';
 import { StoryboardPanel } from '@/components/video/StoryboardPanel';
+import { CoachingSession } from '@/components/CoachingSession';
 import {
     ArrowLeft, Play, ExternalLink, Bookmark, Copy, Check,
     Target, Clock, Sparkles, Eye, Heart, TrendingUp,
     Camera, Mic, Film, Users, Truck, MapPin, Calendar,
-    ChevronRight, Award, Star, Lock, Rocket
+    ChevronRight, Award, Star, Lock, Rocket, Video
 } from 'lucide-react';
 
 // ==================
@@ -511,6 +512,9 @@ export default function VideoDetailPage() {
     const [video, setVideo] = useState<VideoDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [copied, setCopied] = useState(false);
+    const [showCoaching, setShowCoaching] = useState(false);
+    const [coachingMode, setCoachingMode] = useState<'homage' | 'variation' | 'campaign'>('variation');
+    const [showModeSelector, setShowModeSelector] = useState(false);
 
     useEffect(() => {
         async function loadVideo() {
@@ -727,6 +731,24 @@ export default function VideoDetailPage() {
                             </div>
                         )}
 
+                        {/* 🎙️ AI Coaching CTA - NEW */}
+                        <div className="p-4 bg-gradient-to-br from-cyan-500/10 to-emerald-500/10 border border-cyan-500/30 rounded-xl">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Video className="w-4 h-4 text-cyan-400" />
+                                <span className="text-sm font-bold text-white">AI 코칭 촬영</span>
+                                <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 text-[10px] font-bold rounded-full">NEW</span>
+                            </div>
+                            <p className="text-xs text-white/50 mb-4">AI가 실시간으로 촬영을 도와드립니다</p>
+
+                            <button
+                                onClick={() => setShowModeSelector(true)}
+                                className="w-full py-3 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white text-sm font-bold rounded-xl hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Mic className="w-4 h-4" />
+                                🎬 촬영 시작하기
+                            </button>
+                        </div>
+
                         {/* View Original Button - Virlo-style at bottom of sidebar */}
                         <a
                             href={video.video_url}
@@ -740,6 +762,59 @@ export default function VideoDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Mode Selector Bottom Sheet */}
+            {showModeSelector && (
+                <div className="fixed inset-0 z-50 bg-black/80 flex items-end justify-center">
+                    <div className="w-full max-w-lg bg-zinc-900 rounded-t-2xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-white">촬영 모드 선택</h3>
+                            <button onClick={() => setShowModeSelector(false)} className="text-white/60">✕</button>
+                        </div>
+
+                        <div className="space-y-3 mb-6">
+                            {[
+                                { mode: 'homage' as const, icon: '🎯', label: '오마쥬', desc: '원본을 최대한 따라하기' },
+                                { mode: 'variation' as const, icon: '✨', label: '변주', desc: '핵심은 유지, 나만의 스타일로' },
+                                { mode: 'campaign' as const, icon: '📦', label: '체험단', desc: '제품/장소 홍보 촬영' },
+                            ].map(({ mode, icon, label, desc }) => (
+                                <button
+                                    key={mode}
+                                    onClick={() => {
+                                        setCoachingMode(mode);
+                                        setShowModeSelector(false);
+                                        setShowCoaching(true);
+                                    }}
+                                    className={`w-full p-4 rounded-xl border text-left transition-all ${coachingMode === mode
+                                            ? 'bg-cyan-500/20 border-cyan-500/50'
+                                            : 'bg-white/5 border-white/10 hover:border-white/30'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-2xl">{icon}</span>
+                                        <div>
+                                            <div className="font-bold text-white">{label}</div>
+                                            <div className="text-xs text-white/50">{desc}</div>
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Coaching Session Modal */}
+            <CoachingSession
+                isOpen={showCoaching}
+                onClose={() => setShowCoaching(false)}
+                videoId={video.id}
+                mode={coachingMode}
+                onComplete={(sessionId) => {
+                    console.log('Coaching completed:', sessionId);
+                    setShowCoaching(false);
+                }}
+            />
         </div>
     );
 }
