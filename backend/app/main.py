@@ -125,6 +125,10 @@ app.include_router(pipeline_router, prefix="/api/v1/pipelines", tags=["Pipelines
 from app.routers.websocket import router as websocket_router
 app.include_router(websocket_router, tags=["WebSocket"])
 
+# Register Agent routes (Chat-based Creator Interface)
+from app.routers.agent import router as agent_router
+app.include_router(agent_router, tags=["Agent"])
+
 
 @app.get("/health")
 async def health_check():
