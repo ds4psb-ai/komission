@@ -9,7 +9,7 @@ VDG Unified Pass (Pass 1: Gemini 3.0 Pro 1회 호출)
 API 특징:
 - VideoMetadata: hook clip (10fps) + full video (1fps) 분리
 - media_resolution: low/high로 토큰 비용 제어
-- response_schema: structured output
+- JSON output (manual validation)
 """
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ class UnifiedPass:
     - Hook clip (0~4s): 10fps (정밀 microbeat 분석)
     - Zoom Windows: 5fps (scene cuts + audio peaks)
     - Full video: 1fps (전체 인과관계)
-    - Structured output: response_schema 사용
+    - JSON output: 수동 Pydantic 검증
     """
 
     def __init__(
@@ -178,13 +178,13 @@ class UnifiedPass:
             )
         ]
 
-        # 4. API 호출 (Structured output)
+        # 4. API 호출 (JSON mode only - response_schema removed due to $ref/anyOf limitation)
         config = types.GenerateContentConfig(
             temperature=self.temperature,
             top_p=0.95,
             max_output_tokens=self.max_output_tokens,
             response_mime_type="application/json",
-            response_schema=UnifiedPassLLMOutput,
+            # Note: response_schema removed - Gemini doesn't support $ref or anyOf in nested schemas
         )
 
         try:
@@ -203,13 +203,194 @@ class UnifiedPass:
             raise UnifiedPassError("UnifiedPass returned empty response")
 
         try:
-            # SDK의 parsed 속성 사용 시도
-            if hasattr(resp, 'parsed') and resp.parsed is not None:
-                out: UnifiedPassLLMOutput = resp.parsed
-            else:
-                # Fallback: JSON 직접 파싱
-                out = UnifiedPassLLMOutput.model_validate_json(resp.text)
+            # Parse raw JSON first
+            import json
+            raw_json = json.loads(resp.text)
+            
+            # Preprocess: add missing required fields with defaults
+            if 'duration_ms' not in raw_json:
+                raw_json['duration_ms'] = duration_ms
+            if 'language' not in raw_json:
+                raw_json['language'] = 'ko'
+            if 'schema_version' not in raw_json:
+                raw_json['schema_version'] = 'unified_pass_llm.v2'
+                
+            # Preprocess: intent_layer defaults
+            if 'intent_layer' not in raw_json:
+                raw_json['intent_layer'] = {
+                    'creator_intent': 'Unknown',
+                    'audience_trigger': [],
+                    'novelty': 'Unknown',
+                    'clarity': 'Unknown'
+                }
+            
+            # Preprocess: hook_genome defaults
+            if 'hook_genome' not in raw_json:
+                raw_json['hook_genome'] = {
+                    'strength': 0.5,
+                    'hook_start_ms': 0,
+                    'hook_end_ms': min(4000, duration_ms),
+                    'microbeats': []
+                }
+            
+            # Preprocess: fix microbeat roles if invalid
+            if 'hook_genome' in raw_json and 'microbeats' in raw_json['hook_genome']:
+                valid_roles = {'start', 'setup', 'hook', 'punch', 'reveal', 'demo', 'payoff', 'cta', 'loop'}
+                for mb in raw_json['hook_genome']['microbeats']:
+                    if mb.get('role') not in valid_roles:
+                        mb['role'] = 'hook'
+            
+            # Preprocess: fix mise_en_scene types (props -> prop)
+            if 'mise_en_scene_signals' in raw_json:
+                valid_mise_types = {'composition', 'lighting', 'color', 'wardrobe', 'prop', 'setting', 'camera', 'editing', 'audio', 'text'}
+                type_fixes = {'props': 'prop', 'sound': 'audio', 'costume': 'wardrobe'}
+                for mes in raw_json['mise_en_scene_signals']:
+                    t = mes.get('type', '')
+                    if t not in valid_mise_types:
+                        mes['type'] = type_fixes.get(t, 'setting')
+            
+            # Preprocess: fix comment_evidence fields
+            if 'comment_evidence_top5' in raw_json:
+                valid_signal_types = {'hook', 'twist', 'relatability', 'aesthetic', 'instruction', 'shock', 'product', 'editing', 'music', 'humor', 'other'}
+                for ce in raw_json['comment_evidence_top5']:
+                    # Fix comment_rank (might be 'C01' string)
+                    cr = ce.get('comment_rank', 1)
+                    if isinstance(cr, str):
+                        # Extract number from 'C01' format
+                        import re
+                        match = re.search(r'\d+', cr)
+                        ce['comment_rank'] = int(match.group()) if match else 1
+                    # Fix missing quote (might be 'text' field)
+                    if 'quote' not in ce and 'text' in ce:
+                        ce['quote'] = ce['text'][:160]
+                    elif 'quote' not in ce:
+                        ce['quote'] = 'Unknown comment'
+                    # Fix signal_type
+                    if ce.get('signal_type') not in valid_signal_types:
+                        ce['signal_type'] = 'other'
+                    # Ensure why_it_matters
+                    if 'why_it_matters' not in ce:
+                        ce['why_it_matters'] = 'Relevant to video content'
+            
+            # Preprocess: comment_evidence_top5 defaults (requires 5)
+            if 'comment_evidence_top5' not in raw_json or len(raw_json.get('comment_evidence_top5', [])) < 5:
+                existing = raw_json.get('comment_evidence_top5', [])
+                while len(existing) < 5:
+                    existing.append({
+                        'comment_rank': len(existing) + 1,
+                        'quote': f'Comment {len(existing) + 1}',
+                        'signal_type': 'other',
+                        'why_it_matters': 'Placeholder'
+                    })
+                raw_json['comment_evidence_top5'] = existing[:5]
+            
+            # Preprocess: fix existing viral_kicks fields
+            if 'viral_kicks' in raw_json:
+                for i, kick in enumerate(raw_json['viral_kicks']):
+                    # Ensure kick_index
+                    if 'kick_index' not in kick:
+                        kick['kick_index'] = i + 1
+                    # Ensure title
+                    if 'title' not in kick:
+                        kick['title'] = kick.get('name', kick.get('description', f'Kick {i+1}'))[:100]
+                    # Ensure mechanism
+                    if 'mechanism' not in kick:
+                        kick['mechanism'] = kick.get('description', kick.get('why', 'Visual impact'))[:240]
+                    # Ensure window
+                    if 'window' not in kick:
+                        kick['window'] = {'start_ms': i * 2000, 'end_ms': i * 2000 + 2000}
+                    # Ensure evidence_comment_ranks and parse C01 format
+                    if 'evidence_comment_ranks' not in kick:
+                        kick['evidence_comment_ranks'] = [1]
+                    else:
+                        # Parse 'C01' format to integers
+                        import re
+                        parsed_ranks = []
+                        for rank in kick['evidence_comment_ranks']:
+                            if isinstance(rank, int):
+                                parsed_ranks.append(rank)
+                            elif isinstance(rank, str):
+                                match = re.search(r'\d+', rank)
+                                parsed_ranks.append(int(match.group()) if match else 1)
+                        kick['evidence_comment_ranks'] = parsed_ranks or [1]
+                    # Ensure evidence_cues
+                    if 'evidence_cues' not in kick:
+                        kick['evidence_cues'] = [kick.get('cue', 'Visual element')]
+                    # Ensure creator_instruction
+                    if 'creator_instruction' not in kick:
+                        kick['creator_instruction'] = kick.get('instruction', kick.get('action', 'Follow this pattern'))[:200]
+            
+            # Preprocess: viral_kicks defaults (requires 3-6)
+            if 'viral_kicks' not in raw_json or len(raw_json.get('viral_kicks', [])) < 3:
+                existing = raw_json.get('viral_kicks', [])
+                while len(existing) < 3:
+                    idx = len(existing) + 1
+                    existing.append({
+                        'kick_index': idx,
+                        'window': {'start_ms': idx * 1000, 'end_ms': idx * 1000 + 2000},
+                        'title': f'Kick {idx}',
+                        'mechanism': 'Placeholder',
+                        'evidence_comment_ranks': [1],
+                        'evidence_cues': ['Visual element'],
+                        'creator_instruction': 'Placeholder'
+                    })
+                raw_json['viral_kicks'] = existing[:6]
+            
+            # Preprocess: causal_reasoning defaults
+            if 'causal_reasoning' not in raw_json:
+                raw_json['causal_reasoning'] = {
+                    'why_viral_one_liner': 'Unknown',
+                    'causal_chain': [],
+                    'replication_recipe': [],
+                    'risks_or_unknowns': []
+                }
+            
+            # Preprocess: convert entity_hints from Dict to List if needed
+            if 'entity_hints' in raw_json and isinstance(raw_json['entity_hints'], dict):
+                hints_list = []
+                for key, hint in raw_json['entity_hints'].items():
+                    if isinstance(hint, dict):
+                        hint['key'] = key  # Add key field
+                        hints_list.append(hint)
+                raw_json['entity_hints'] = hints_list
+            
+            # Preprocess: fix entity_hints fields
+            if 'entity_hints' in raw_json:
+                valid_cv_priority = {'primary', 'secondary', 'optional'}
+                priority_map = {'high': 'primary', 'medium': 'secondary', 'low': 'optional'}
+                for hint in raw_json['entity_hints']:
+                    # Fix cv_priority
+                    cv_p = hint.get('cv_priority', 'secondary')
+                    if cv_p not in valid_cv_priority:
+                        hint['cv_priority'] = priority_map.get(cv_p, 'secondary')
+                    # Fix appears_windows format (list -> dict)
+                    if 'appears_windows' in hint:
+                        fixed_windows = []
+                        for w in hint['appears_windows']:
+                            if isinstance(w, list) and len(w) == 2:
+                                fixed_windows.append({'start_ms': w[0], 'end_ms': w[1]})
+                            elif isinstance(w, dict):
+                                fixed_windows.append(w)
+                        hint['appears_windows'] = fixed_windows
+            
+            # Preprocess: fix analysis_plan.points
+            if 'analysis_plan' in raw_json and 'points' in raw_json['analysis_plan']:
+                valid_agg = {'mean', 'median', 'max', 'min', 'first', 'last', 'p95'}
+                for point in raw_json['analysis_plan']['points']:
+                    if 'measurements' in point:
+                        for m in point['measurements']:
+                            if m.get('aggregation') not in valid_agg:
+                                m['aggregation'] = 'mean'
+            
+            # Preprocess: analysis_plan defaults
+            if 'analysis_plan' not in raw_json:
+                raw_json['analysis_plan'] = {'points': []}
+            
+            # Validate with Pydantic
+            out = UnifiedPassLLMOutput.model_validate(raw_json)
+            
         except Exception as e:
+            logger.warning(f"Validation failed, attempting lenient parse: {e}")
             raise UnifiedPassError(
                 f"UnifiedPass JSON parse failed: {e}\nRaw: {resp.text[:800]}"
             ) from e

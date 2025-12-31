@@ -274,7 +274,6 @@ def generate_content_typed(
     model_id: str,
     contents: list,
     system_instruction: str,
-    response_schema: Any,
     temperature: float = 0.2,
     top_p: float = 0.95,
     max_output_tokens: int = 8192,
@@ -282,7 +281,7 @@ def generate_content_typed(
     full_video_fps: float = 1.0,  # A 컨설턴트 채택
 ) -> GenAIResponseTyped[T]:
     """
-    Structured output with Pydantic parsing.
+    JSON mode only; caller validates with Pydantic.
     Hook clip: 10fps, Full video: 1fps (A 컨설턴트 방식)
     """
     from google.genai import types
@@ -296,7 +295,6 @@ def generate_content_typed(
         top_p=top_p,
         max_output_tokens=max_output_tokens,
         response_mime_type="application/json",
-        response_schema=response_schema,
     )
 
     try:
@@ -311,7 +309,7 @@ def generate_content_typed(
         return GenAIResponseTyped(
             success=True,
             text=getattr(resp, "text", None),
-            parsed=getattr(resp, "parsed", None),
+            parsed=None,
             usage=getattr(resp, "usage_metadata", None) or {},
             latency_ms=latency_ms,
         )
@@ -332,6 +330,7 @@ def generate_content_typed(
 ```python
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -422,16 +421,16 @@ class UnifiedProPass:
             model_id=self.cfg.model_id,
             contents=contents,
             system_instruction=system_prompt,
-            response_schema=UnifiedPassLLMOutput,
             temperature=self.cfg.temperature,
             top_p=self.cfg.top_p,
             max_output_tokens=self.cfg.max_output_tokens,
         )
 
-        if not resp.success or resp.parsed is None:
+        if not resp.success or not resp.text:
             raise RuntimeError(f"UnifiedProPass failed: {resp.error_code} {resp.error}")
 
-        out: UnifiedPassLLMOutput = resp.parsed
+        raw = json.loads(resp.text)
+        out: UnifiedPassLLMOutput = UnifiedPassLLMOutput.model_validate(raw)
 
         # 4) Metric ID 정규화 (B 컨설턴트)
         for seed in out.analysis_point_seeds:
@@ -492,7 +491,7 @@ class UnifiedProPass:
 ## 6) DoD 체크리스트 (B 컨설턴트)
 
 1. ✅ Gemini 호출 **딱 1번** (UnifiedProPass.run)
-2. ✅ response_schema로 **파싱** (`resp.parsed` 존재)
+2. ✅ JSON mode + Pydantic 검증 (수동 파싱)
 3. ✅ LLM 출력에 **ap_id/evidence_id 없음**
 4. ✅ analysis_point_seeds **6~12개**, metric_id **registry 내**
 5. ✅ semantic.provenance **코드가 주입**

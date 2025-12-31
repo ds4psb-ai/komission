@@ -14,7 +14,7 @@
 │  VDG Unified Pipeline               │
 │  ├─ Pass 1: Pro LLM (의미/인과/Plan)│  ← Gemini 3.0 Pro 1회
 │  │   - 10fps hook + 1fps full       │
-│  │   - Structured output            │
+│  │   - JSON output (manual validation)│
 │  └─ Pass 2: CV (결정론적 측정)       │  ← ffmpeg + OpenCV
 │       - 3 MVP metrics               │
 │       - 100% 재현 가능              │

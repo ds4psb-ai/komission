@@ -60,7 +60,7 @@
 ```
 Pass 1: Gemini 3.0 Pro (1회)
 ├── 10fps hook + 1fps full (VideoMetadata)
-├── Structured output (response_schema)
+├── JSON output (manual validation)
 └── 출력: 의미/인과/Plan Seed
 
 Pass 2: ffmpeg + OpenCV (결정론적)

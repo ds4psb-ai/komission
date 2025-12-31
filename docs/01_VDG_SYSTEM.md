@@ -14,7 +14,7 @@
 ┌─────────────────────────────────────┐
 │  Pass 1: Pro LLM (의미/인과/Plan)   │  ← Gemini 3.0 Pro 1회
 │  - 10fps hook + 1fps full           │
-│  - Structured output (response_schema)│
+│  - JSON output (manual validation)    │
 │  - Entity Hints → CV 전달           │
 │  - 댓글 기반 Mise-en-Scène 신호     │
 └────────────────┬────────────────────┘
