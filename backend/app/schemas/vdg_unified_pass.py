@@ -145,6 +145,62 @@ class CausalReasoningLLM(BaseModel):
 
 
 # -------------------------
+# Evidence Anchors (P0 Hardening)
+# -------------------------
+
+CommentSignalType = Literal[
+    "hook", "twist", "relatability", "aesthetic", "instruction",
+    "shock", "product", "editing", "music", "humor", "other"
+]
+
+
+class CommentEvidenceLLM(BaseModel):
+    """
+    댓글 증거 (Top 5)
+    
+    중요: LLM은 새 ID를 생성하지 않고, 입력된 comment_rank만 참조
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    comment_rank: int = Field(..., ge=1, le=20, description="top_comments의 순위 (1-20)")
+    quote: str = Field(..., min_length=1, max_length=160, description="댓글 핵심 구절")
+    signal_type: CommentSignalType
+    why_it_matters: str = Field(..., min_length=1, max_length=200, description="이 댓글이 왜 바이럴 신호인지")
+    anchor_ms: Optional[int] = Field(None, ge=0, description="이 댓글이 가리키는 영상 구간 (특정 가능시)")
+
+
+class ViralKickLLM(BaseModel):
+    """
+    바이럴 킥 구간 (3~5개)
+    
+    댓글 증거 + 영상 증거 cue를 반드시 포함해야 함
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    kick_index: int = Field(..., ge=1, le=8)
+    window: TimeWindowMs
+    title: str = Field(..., min_length=1, max_length=100, description="킥 제목 (예: '2.3초 표정 반전')")
+    mechanism: str = Field(..., min_length=1, max_length=240, description="왜 먹히는지 인과 설명")
+    
+    # 증거 연결 (MUST)
+    evidence_comment_ranks: List[int] = Field(
+        ..., min_length=1, max_length=3,
+        description="comment_evidence_top5에서 참조하는 rank 목록 (최소 1개)"
+    )
+    evidence_cues: List[str] = Field(
+        ..., min_length=1, max_length=4,
+        description="영상 증거: 대사/온스크린텍스트/행동 (최소 1개)"
+    )
+    
+    # 코칭용
+    creator_instruction: str = Field(
+        ..., min_length=1, max_length=200,
+        description="크리에이터 언어로 된 실행 지시문 (1~2문장)"
+    )
+    scene_index: Optional[int] = Field(None, ge=0, description="scenes[] 인덱스 (해당시)")
+
+
+# -------------------------
 # Analysis plan seeds (for CV)
 # -------------------------
 
@@ -211,10 +267,14 @@ class UnifiedPassLLMOutput(BaseModel):
     중요:
     - IDs (ap_id/evidence_id)는 포함하지 않음 (코드에서 생성)
     - 수치 측정값 포함 금지 (CV Pass가 담당)
+    
+    Evidence Anchors (P0):
+    - comment_evidence_top5: 반드시 5개 댓글 증거
+    - viral_kicks: 3~5개 바이럴 킥 구간 (댓글+영상 증거 필수)
     """
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = Field(..., description="e.g. 'unified_pass_llm.v1'")
+    schema_version: str = Field(..., description="e.g. 'unified_pass_llm.v2'")
     language: str = Field("ko", description="output language for text fields")
     duration_ms: int = Field(..., ge=0)
 
@@ -224,9 +284,49 @@ class UnifiedPassLLMOutput(BaseModel):
     intent_layer: IntentLayerLLM
     mise_en_scene_signals: List[MiseEnSceneSignalLLM] = Field(default_factory=list, max_length=16)
 
+    # Evidence Anchors (P0 신규)
+    comment_evidence_top5: List[CommentEvidenceLLM] = Field(
+        ..., min_length=5, max_length=5,
+        description="반드시 5개의 댓글 증거 (ranked comments에서 선택)"
+    )
+    viral_kicks: List[ViralKickLLM] = Field(
+        ..., min_length=3, max_length=6,
+        description="3~5개 바이럴 킥 구간 (각각 댓글+영상 증거 필수)"
+    )
+
     # CV guidance
     entity_hints: Dict[str, EntityHintLLM] = Field(default_factory=dict)
     analysis_plan: AnalysisPlanSeedLLM
 
     # Why viral
     causal_reasoning: CausalReasoningLLM
+
+    @model_validator(mode="after")
+    def _validate_kick_coverage(self):
+        """각 viral_kick이 analysis_plan.points에 의해 커버되는지 검증"""
+        if not self.analysis_plan.points:
+            return self
+        
+        for kick in self.viral_kicks:
+            kick_start = kick.window.start_ms
+            kick_end = kick.window.end_ms
+            
+            # 적어도 하나의 point가 kick window와 겹치는지 확인
+            covered = False
+            for point in self.analysis_plan.points:
+                point_start = point.t_center_ms - point.t_window_ms // 2
+                point_end = point.t_center_ms + point.t_window_ms // 2
+                
+                # 겹침 검사
+                if point_start < kick_end and point_end > kick_start:
+                    covered = True
+                    break
+            
+            if not covered:
+                raise ValueError(
+                    f"viral_kick {kick.kick_index} ({kick_start}-{kick_end}ms) "
+                    f"is not covered by any analysis_plan.point"
+                )
+        
+        return self
+

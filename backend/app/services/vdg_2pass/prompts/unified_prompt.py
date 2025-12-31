@@ -6,13 +6,30 @@ VDG Unified Pass 프롬프트
 - metric_id는 Metric Registry에서 자동 생성하여 주입 (drift 방지)
 - ID 생성 금지 강제
 - 수치 추정 금지 강제
+- Evidence Anchors 강제 (댓글 증거 Top5 + 바이럴 킥)
 """
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
 
-PROMPT_VERSION_UNIFIED = "unified_pro_v1.0"
+PROMPT_VERSION_UNIFIED = "unified_pro_v2.0"
+
+
+def format_ranked_comments(top_comments: List[str]) -> str:
+    """
+    댓글을 rank 라벨과 함께 포맷
+    LLM이 comment_rank로 구조화된 참조 가능
+    """
+    if not top_comments:
+        return "(no comments provided)"
+    
+    lines = []
+    for i, c in enumerate(top_comments[:20], start=1):
+        c = (c or "").strip().replace("\n", " ")
+        if c:
+            lines.append(f"C{i:02d} (rank={i}): {c}")
+    return "\n".join(lines) if lines else "(no comments provided)"
 
 
 def build_unified_prompt(
@@ -25,7 +42,7 @@ def build_unified_prompt(
     metric_definitions: Dict[str, Any],
 ) -> str:
     """
-    Unified Pass 프롬프트 생성
+    Unified Pass 프롬프트 생성 (v2.0 - Evidence Anchors 강제)
     
     Args:
         duration_ms: 비디오 길이 (밀리초)
@@ -42,9 +59,8 @@ def build_unified_prompt(
     hashtags = hashtags or []
     caption = caption or ""
 
-    # comments: 너무 길면 모델 출력 안정성이 떨어지므로 상한 적용
-    top_comments = [c.strip() for c in top_comments if c and c.strip()]
-    top_comments = top_comments[:20]
+    # 댓글을 rank 라벨과 함께 포맷
+    comments_block = format_ranked_comments(top_comments)
 
     return f"""
 You are an expert short-form video analyst and director coach.
@@ -56,7 +72,7 @@ INPUTS YOU RECEIVE IN THIS REQUEST:
 - A short-form video (audio+visual). You may receive TWO video parts:
   (1) Hook clip: first few seconds with higher fps (for precise hook timing)
   (2) Full video: low fps sampling (for global context)
-- Top user comments (for audience reaction and signals)
+- Top user comments with rank labels (for audience reaction and signals)
 
 HARD CONSTRAINTS (MUST FOLLOW):
 1) Output MUST be VALID JSON only. No markdown. No extra keys.
@@ -77,10 +93,32 @@ VIDEO METADATA:
 - caption: {caption}
 - hashtags: {hashtags}
 
-TOP COMMENTS (audience signals):
-{top_comments}
+TOP COMMENTS (ranked, use comment_rank to reference):
+{comments_block}
 
-TASKS:
+=== CRITICAL EVIDENCE REQUIREMENTS (MUST) ===
+
+1) COMMENT EVIDENCE TOP 5:
+   - You MUST select EXACTLY 5 items for `comment_evidence_top5`.
+   - Each item MUST reference a `comment_rank` from the provided Top Comments list (1-20).
+   - For each comment, explain `signal_type` and `why_it_matters`.
+   - If you can localize the comment to a video moment, set `anchor_ms`.
+
+2) VIRAL KICKS (3-5 segments):
+   - You MUST output 3~5 `viral_kicks`.
+   - Each viral_kick MUST include:
+     * `evidence_comment_ranks`: at least 1 rank from comment_evidence_top5
+     * `evidence_cues`: at least 1 video cue (dialogue/on-screen text/action)
+     * `creator_instruction`: actionable instruction in creator language (1-2 sentences)
+   - Each viral_kick MUST have a precise time range (`window.start_ms`, `window.end_ms`).
+
+3) PLAN COVERAGE:
+   - Your `analysis_plan.points` MUST cover EVERY viral_kick.
+   - For each viral_kick, there must be at least 1 point whose t_window overlaps the kick range.
+   - If needed, add additional points (but keep total points <= 12).
+
+=== TASKS ===
+
 A) Causal reasoning:
 - Explain in one line why it goes viral.
 - Provide a short causal chain (max 8 steps).
@@ -95,7 +133,10 @@ C) Hook genome:
 - Identify hook_start_ms, hook_end_ms, strength (0-1).
 - Extract 4~8 microbeats with role, t_ms, description.
 
-D) Analysis plan seeds for deterministic CV measurement:
+D) Evidence anchors (comment_evidence_top5 + viral_kicks):
+- Follow the CRITICAL EVIDENCE REQUIREMENTS above.
+
+E) Analysis plan seeds for deterministic CV measurement:
 - Output analysis_plan.points (6~10 recommended, max 12).
 - Each point must include:
   - t_center_ms (int)
@@ -107,8 +148,9 @@ D) Analysis plan seeds for deterministic CV measurement:
 - Also output entity_hints dict:
   - key -> {{entity_type, description, appears_windows[], cv_priority}}
 
-E) Output schema_version as "unified_pass_llm.v1"
+F) Output schema_version as "unified_pass_llm.v2"
 
 OUTPUT JSON MUST MATCH THE PROVIDED JSON SCHEMA EXACTLY.
 Language for text fields: Korean (natural creator language).
 """.strip()
+
