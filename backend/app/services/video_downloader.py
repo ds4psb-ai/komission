@@ -7,7 +7,8 @@ import re
 import tempfile
 import asyncio
 from typing import Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 
 
 @dataclass
@@ -23,6 +24,12 @@ class VideoMetadata:
     description: str
     thumbnail_url: Optional[str] = None
     audio_url: Optional[str] = None
+    # v3.6 additions for metadata merge
+    upload_date: Optional[str] = None  # YYYYMMDD format from yt-dlp
+    comment_count: Optional[int] = None
+    share_count: Optional[int] = None
+    hashtags: List[str] = field(default_factory=list)
+
 
 
 class VideoDownloader:
@@ -64,13 +71,7 @@ class VideoDownloader:
         
         platform = self._get_platform(url)
 
-        # TikTok often fails with yt-dlp due to bot detection.
-        # Try direct extraction first, then fall back to yt-dlp.
-        if platform == "tiktok":
-            try:
-                return await self._download_tiktok_direct(url)
-            except Exception as e:
-                print(f"⚠️ Direct TikTok download failed, falling back to yt-dlp: {e}")
+        # TikTok/Instagram/YouTube - all use yt-dlp
         
         # Configure yt-dlp options
         ydl_opts = {
@@ -98,7 +99,8 @@ class VideoDownloader:
         if platform == 'tiktok':
             ydl_opts.update({
                 'format': 'best',
-                # TikTok often needs specific handling
+                # TikTok 봇 차단 우회: 브라우저 쿠키 필수
+                'cookiesfrombrowser': ('chrome',) if not cookies_from_browser else None,
             })
         elif platform == 'instagram':
             ydl_opts.update({
@@ -381,7 +383,12 @@ class VideoDownloader:
                 platform=self._get_platform(url),
                 description=info.get('description', ''),
                 thumbnail_url=info.get('thumbnail'),
-                audio_url=info.get('url'),  # For audio extraction if needed
+                audio_url=info.get('url'),
+                # v3.6 additions
+                upload_date=info.get('upload_date'),  # YYYYMMDD
+                comment_count=info.get('comment_count'),
+                share_count=info.get('repost_count'),  # TikTok uses repost_count
+                hashtags=(info.get('tags') or [])[:10],  # Max 10 hashtags
             )
             
             return file_path, metadata
@@ -402,9 +409,8 @@ class VideoDownloader:
         """Fetch metadata using YouTube Data API v3"""
         import httpx
         from datetime import timedelta
-        import isodate  # ISO 8601 duration parser (usually standard or simple regex override)
 
-        # Simple ISO8601 parser fallback if isodate not present
+        # Simple ISO8601 duration parser
         def parse_duration(duration_str):
             match = re.match(
                 r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', duration_str

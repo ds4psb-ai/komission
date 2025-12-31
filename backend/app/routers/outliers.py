@@ -706,20 +706,36 @@ def _translate_vdg_to_korean(analysis: dict) -> dict:
         "scenes": [],
     }
     
-    scenes = analysis.get("scenes", [])
+    scenes = analysis.get("scenes") or []
+    if not isinstance(scenes, list):
+        scenes = []
+    scenes = [scene for scene in scenes if isinstance(scene, dict)]
     result["scene_count"] = len(scenes)
     
     for i, scene in enumerate(scenes):
-        narrative = scene.get("narrative_unit", {})
-        setting = scene.get("setting", {})
-        visual_style = setting.get("visual_style", {})
-        audio_style = setting.get("audio_style", {})
-        shots = scene.get("shots", [])
+        narrative = scene.get("narrative_unit") or {}
+        setting = scene.get("setting") or {}
+        visual_style = setting.get("visual_style") or {}
+        audio_style = setting.get("audio_style") or {}
+        shots = scene.get("shots") or []
         
         # Calculate timing
-        time_start = scene.get("time_start", 0)
-        time_end = scene.get("time_end", 0)
-        duration = scene.get("duration_sec", time_end - time_start)
+        time_start = scene.get("time_start")
+        time_end = scene.get("time_end")
+        try:
+            time_start = float(time_start) if time_start is not None else 0.0
+        except (TypeError, ValueError):
+            time_start = 0.0
+        try:
+            time_end = float(time_end) if time_end is not None else 0.0
+        except (TypeError, ValueError):
+            time_end = 0.0
+
+        raw_duration = scene.get("duration_sec")
+        try:
+            duration = float(raw_duration) if raw_duration is not None else (time_end - time_start)
+        except (TypeError, ValueError):
+            duration = time_end - time_start
         result["total_duration"] += duration
         
         # Extract camera info from first shot
@@ -736,14 +752,15 @@ def _translate_vdg_to_korean(analysis: dict) -> dict:
             }
         
         # Extract audio events
-        audio_events = audio_style.get("audio_events", [])
+        audio_events = audio_style.get("audio_events") or []
         audio_descriptions = [
             {
                 "label": _translate_term(e.get("description", "")),
                 "label_en": e.get("description", ""),
                 "intensity": e.get("intensity", "medium"),
             }
-            for e in audio_events if e.get("description")
+            for e in audio_events
+            if isinstance(e, dict) and e.get("description")
         ]
         
         scene_data = {
@@ -785,8 +802,9 @@ def _translate_vdg_to_korean(analysis: dict) -> dict:
 def _extract_hook_pattern(analysis: dict) -> Optional[str]:
     """Extract hook pattern from gemini_analysis (VDG v3 schema)"""
     # 1. Direct hook_genome field
-    if "hook_genome" in analysis:
-        return analysis["hook_genome"].get("pattern")
+    hook_genome = analysis.get("hook_genome")
+    if isinstance(hook_genome, dict):
+        return hook_genome.get("pattern")
     
     # 2. VDG v3: scenes[0].narrative_unit.role (e.g., "Action", "Hook", "Setup")
     if "scenes" in analysis and len(analysis["scenes"]) > 0:
@@ -804,11 +822,15 @@ def _extract_hook_pattern(analysis: dict) -> Optional[str]:
 
 def _extract_hook_score(analysis: dict) -> Optional[float]:
     """Extract hook strength score"""
-    if "hook_genome" in analysis:
-        return analysis["hook_genome"].get("strength")
+    hook_genome = analysis.get("hook_genome")
+    if isinstance(hook_genome, dict):
+        return hook_genome.get("strength")
     if "metrics" in analysis:
-        score = analysis["metrics"].get("hook_strength") or analysis["metrics"].get("predicted_retention_score")
-        if score:
+        metrics = analysis["metrics"]
+        score = metrics.get("hook_strength")
+        if score is None:
+            score = metrics.get("predicted_retention_score")
+        if score is not None:
             return score
     # VDG v3: Use shots[0].confidence as proxy
     if "scenes" in analysis and len(analysis["scenes"]) > 0:
@@ -825,18 +847,28 @@ def _extract_hook_score(analysis: dict) -> Optional[float]:
 
 def _extract_hook_duration(analysis: dict) -> Optional[float]:
     """Extract hook duration (first scene end time)"""
-    if "hook_genome" in analysis:
-        return analysis["hook_genome"].get("duration_sec")
+    hook_genome = analysis.get("hook_genome")
+    if isinstance(hook_genome, dict):
+        return hook_genome.get("duration_sec")
     # VDG v3: scenes[0].duration_sec or time_end
     if "scenes" in analysis and len(analysis["scenes"]) > 0:
         first_scene = analysis["scenes"][0]
         if "duration_sec" in first_scene:
-            return float(first_scene["duration_sec"])
+            try:
+                return float(first_scene["duration_sec"])
+            except (TypeError, ValueError):
+                pass
         if "time_end" in first_scene:
-            return float(first_scene["time_end"])
+            try:
+                return float(first_scene["time_end"])
+            except (TypeError, ValueError):
+                pass
         # Legacy: end_time
         if "end_time" in first_scene:
-            return float(first_scene["end_time"])
+            try:
+                return float(first_scene["end_time"])
+            except (TypeError, ValueError):
+                pass
     return None
 
 def _extract_visual_patterns(analysis: dict) -> Optional[List[str]]:
@@ -869,9 +901,12 @@ def _extract_visual_patterns(analysis: dict) -> Optional[List[str]]:
 def _extract_audio_pattern(analysis: dict) -> Optional[str]:
     """Extract audio pattern from VDG with Korean translation"""
     # Direct audio field
-    if "audio" in analysis:
-        pattern = analysis["audio"].get("type") or analysis["audio"].get("style")
+    audio = analysis.get("audio")
+    if isinstance(audio, dict):
+        pattern = audio.get("type") or audio.get("style")
         return _translate_term(pattern) if pattern else None
+    if isinstance(audio, str):
+        return _translate_term(audio) if audio else None
     # VDG v3: scenes[].setting.audio_style
     if "scenes" in analysis:
         for scene in analysis["scenes"]:
@@ -884,7 +919,11 @@ def _extract_audio_pattern(analysis: dict) -> Optional[str]:
             # Check audio_events
             events = audio_style.get("audio_events", [])
             if events:
-                descriptions = [_translate_term(e.get("description")) for e in events if e.get("description")]
+                descriptions = [
+                    _translate_term(e.get("description"))
+                    for e in events
+                    if isinstance(e, dict) and e.get("description")
+                ]
                 if descriptions:
                     return ", ".join(descriptions[:2])
             # Legacy
@@ -925,18 +964,27 @@ def _extract_timing(analysis: dict) -> Optional[List[str]]:
     """Extract timing info from VDG scenes"""
     if "scenes" in analysis:
         timings = []
+
+        def _safe_float(value, fallback: float = 0.0) -> float:
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return fallback
+
         for scene in analysis["scenes"]:
             # VDG v3: time_start, time_end, duration_sec
             if "duration_sec" in scene:
                 timings.append(f"{scene['duration_sec']}s")
             elif "time_start" in scene and "time_end" in scene:
-                duration = float(scene["time_end"]) - float(scene["time_start"])
+                start = _safe_float(scene.get("time_start"))
+                end = _safe_float(scene.get("time_end"), start)
+                duration = end - start
                 timings.append(f"{duration:.1f}s")
             else:
                 # Legacy: start_time, end_time
-                start = scene.get("start_time", 0)
-                end = scene.get("end_time", float(start) + 2)
-                duration = float(end) - float(start)
+                start = _safe_float(scene.get("start_time"))
+                end = _safe_float(scene.get("end_time"), start + 2)
+                duration = end - start
                 timings.append(f"{duration:.1f}s")
         return timings
     return None
@@ -953,7 +1001,7 @@ def _extract_do_not(analysis: dict) -> Optional[List[str]]:
         for scene in analysis["scenes"]:
             audio_events = scene.get("setting", {}).get("audio_style", {}).get("audio_events", [])
             for event in audio_events:
-                if event.get("intensity") == "high":
+                if isinstance(event, dict) and event.get("intensity") == "high":
                     do_not.append(f"과도한 {event.get('description', '효과')} 사용 주의")
     return do_not if do_not else None
 

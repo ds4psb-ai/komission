@@ -38,14 +38,15 @@ export function RemixShell({ children, nodeId, nodeSummary }: RemixShellProps) {
 
         // Set outlier if we have node summary
         if (nodeSummary) {
+            const parsedGrowthRate = nodeSummary.performance_delta
+                ? parseFloat(nodeSummary.performance_delta.replace(/[^0-9.-]/g, ""))
+                : NaN;
             setOutlier({
                 nodeId: nodeSummary.node_id,
                 title: nodeSummary.title,
                 sourceUrl: nodeSummary.source_video_url || "",
                 platform: nodeSummary.platform as any,
-                growthRatePct: nodeSummary.performance_delta
-                    ? parseFloat(nodeSummary.performance_delta.replace(/[^0-9.-]/g, ""))
-                    : undefined,
+                growthRatePct: Number.isFinite(parsedGrowthRate) ? parsedGrowthRate : undefined,
             });
         }
     }, [nodeId, nodeSummary, routeTab, initFromRoute, setOutlier]);

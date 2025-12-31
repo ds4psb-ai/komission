@@ -218,43 +218,87 @@ class AudienceReaction(BaseModel):
     viral_signal: str = ""  # 왜 바이럴됐는지 핵심 이유
 
 # ==================== FOCUS WINDOW (v3.3) ====================
+# v3.6: Dict fields replaced with typed objects for Gemini structured output
+class HotspotScores(BaseModel):
+    """Typed hotspot scores (replaces Dict[str, float])"""
+    hook: float = 0.0
+    interest: float = 0.0
+    boundary: float = 0.0
+
+class SourceEvidence(BaseModel):
+    """Typed source evidence (replaces Dict[str, Any])"""
+    cue_type: str = ""
+    description: str = ""
+    evidence_list: List[str] = Field(default_factory=list)
+
 class FocusWindowHotspot(BaseModel):
     """구간별 주목도 분석"""
-    reasons: List[str] = Field(default_factory=list)  # ["hook", "cv_change", "scene_boundary"]
-    scores: Dict[str, float] = Field(default_factory=dict)  # {"hook": 0.9, "interest": 0.8}
+    reasons: List[str] = Field(default_factory=list)
+    scores: HotspotScores = Field(default_factory=HotspotScores)
     confidence: float = 0.8
-    source_evidence: Dict[str, Any] = Field(default_factory=dict)
+    source_evidence: SourceEvidence = Field(default_factory=SourceEvidence)
+
+class CompositionSpec(BaseModel):
+    """Typed composition (replaces Dict[str, Any])"""
+    grid: str = "center"
+    subject_size: str = "MS"
+
+class LightingSpec(BaseModel):
+    """Typed lighting (replaces Dict[str, str])"""
+    type: str = "natural"
+    intensity: str = "medium"
+
+class LensSpec(BaseModel):
+    """Typed lens (replaces Dict[str, str])"""
+    fov_class: str = "normal"
+    dof: str = "medium"
 
 class FocusWindowMiseEnScene(BaseModel):
     """구간 내 미장센 분석"""
-    composition: Dict[str, Any] = Field(default_factory=dict)  # grid, subject_size
-    lighting: Dict[str, str] = Field(default_factory=dict)  # type
-    lens: Dict[str, str] = Field(default_factory=dict)  # fov_class, dof
+    composition: CompositionSpec = Field(default_factory=CompositionSpec)
+    lighting: LightingSpec = Field(default_factory=LightingSpec)
+    lens: LensSpec = Field(default_factory=LensSpec)
     camera_move: str = "static"
+
+class EntityTraits(BaseModel):
+    """Typed entity traits (replaces Dict[str, Any])"""
+    pose: str = ""
+    emotion: str = "neutral"
+    outfit_color: str = ""
 
 class FocusWindowEntity(BaseModel):
     """구간 내 엔티티 (인물/객체)"""
     label: str
-    traits: Dict[str, Any] = Field(default_factory=dict)  # pose, emotion, outfit_color
-    role_in_window: str = "SUBJECT"  # SUBJECT, BACKGROUND, PROP
+    traits: EntityTraits = Field(default_factory=EntityTraits)
+    role_in_window: str = "SUBJECT"
+
+class FocusWindowTags(BaseModel):
+    """Typed tags (replaces Dict[str, List[str]])"""
+    narrative_roles: List[str] = Field(default_factory=list)
+    cinematic: List[str] = Field(default_factory=list)
 
 class FocusWindow(BaseModel):
     """특정 시간 구간의 집중 분석 (RL 보상 신호용)"""
     window_id: str
-    t_window: List[float] = Field(default_factory=list)  # [start_sec, end_sec]
+    t_window: List[float] = Field(default_factory=list)
     hotspot: FocusWindowHotspot = Field(default_factory=FocusWindowHotspot)
     mise_en_scene: FocusWindowMiseEnScene = Field(default_factory=FocusWindowMiseEnScene)
     entities: List[FocusWindowEntity] = Field(default_factory=list)
     parent_scene_id: Optional[str] = None
-    tags: Dict[str, List[str]] = Field(default_factory=dict)  # narrative_roles, cinematic
+    tags: FocusWindowTags = Field(default_factory=FocusWindowTags)
 
 # ==================== CROSS-SCENE ANALYSIS (v3.3) ====================
+class DirectorIntentEvidence(BaseModel):
+    """Typed evidence (replaces Dict[str, Any])"""
+    scenes: List[str] = Field(default_factory=list)
+    cues: List[str] = Field(default_factory=list)
+
 class DirectorIntent(BaseModel):
     """연출 의도 분석"""
-    technique: str = ""  # narrative_reveal, slow_long_take
-    intended_effect: str = ""  # comedic_punchline, stability/poise
+    technique: str = ""
+    intended_effect: str = ""
     rationale: str = ""
-    evidence: Dict[str, Any] = Field(default_factory=dict)  # scenes, cues
+    evidence: DirectorIntentEvidence = Field(default_factory=DirectorIntentEvidence)
 
 class EntityStateChange(BaseModel):
     """캐릭터/객체 상태 변화 추적"""
@@ -350,7 +394,5 @@ class VDG(BaseModel):
     # Audience Reaction
     audience_reaction: AudienceReaction = Field(default_factory=AudienceReaction)
     
-    # Legacy Fields (Frontend Backward Compatibility)
-    global_context: Optional[Dict[str, Any]] = None
-    scene_frames: Optional[List[Dict[str, Any]]] = None
+    # Note: Legacy fields (global_context, scene_frames) removed for Gemini structured output compatibility
 

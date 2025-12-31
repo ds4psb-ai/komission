@@ -33,7 +33,7 @@ class SchemaValidationError(Exception):
 
 
 # 지원되는 VDG 분석 스키마 버전
-SUPPORTED_VDG_VERSIONS = ["v3.0", "v3.1", "v3.2", "v3.5"]
+SUPPORTED_VDG_VERSIONS = ["v3.0", "v3.1", "v3.2", "v3.5", "v3.6"]
 
 # 지원되는 Evidence 스키마 버전
 SUPPORTED_EVIDENCE_VERSIONS = ["v1.0", "v1.1"]

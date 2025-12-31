@@ -17,7 +17,6 @@ from app.services.vdg_2pass.vdg_unified_pipeline import VDGUnifiedPipeline, anal
 from app.services.vdg_2pass.director_compiler import DirectorCompiler
 from app.schemas.vdg_v4 import VDGv4
 from app.schemas.vdg import VDG
-from app.schemas.vdg_v35 import VDGv35
 from app.services.video_downloader import video_downloader
 from app.validators.schema_validator import validate_vdg_analysis_schema, SchemaValidationError
 
@@ -266,6 +265,92 @@ VDG_PROMPT = """
 """
 
 
+def _get_analysis_depth_hints(duration_sec: float) -> str:
+    """영상 길이에 따른 분석 깊이 지침 생성 (v3.6)"""
+    
+    if duration_sec <= 15:
+        # 8-15초 초단편 (가장 세밀하게)
+        return """
+## 🎯 초단편 영상 분석 지침 (≤15초)
+이 영상은 매우 짧으므로 **극도로 세밀한 분석**이 필요합니다.
+
+### 필수 요구사항:
+- **Microbeats**: 최소 5개 (0.3~0.5초 단위)
+  - 모든 비트에 `t`, `role`, `cue`, `note` 상세 기술
+  - role: start → build → build → punch → end 순서 권장
+- **Keyframes**: 샷당 2-3개 (주요 동작/표정 변화 포인트)
+  - 각 keyframe에 `role`, `desc`, `t_rel_shot` 필수
+- **Focus Windows**: 4-5개 (2-3초 단위 구간)
+  - 시청자 주의 집중 순간마다 hotspot 분석
+- **Scenes**: 1-2개만 (너무 많이 나누지 말 것)
+- **Shots per Scene**: 1-3개 (컷 전환점 기준)
+"""
+    elif duration_sec <= 30:
+        # 15-30초 단편
+        return """
+## 🎯 단편 영상 분석 지침 (15-30초)
+
+### 필수 요구사항:
+- **Microbeats**: 최소 4개 (0.5~1초 단위)
+- **Keyframes**: 샷당 1-2개
+- **Focus Windows**: 4-6개 (3-5초 단위)
+- **Scenes**: 2-3개
+- **Shots per Scene**: 2-4개
+"""
+    elif duration_sec <= 60:
+        # 30-60초 표준 숏폼
+        return """
+## 🎯 표준 숏폼 분석 지침 (30-60초)
+
+### 필수 요구사항:
+- **Microbeats**: 최소 3개
+- **Keyframes**: 샷당 1-2개
+- **Focus Windows**: 5-8개 (5-10초 단위)
+- **Scenes**: 3-5개
+- **Shots per Scene**: 2-5개
+"""
+    else:
+        # 60초+ 롱폼
+        return """
+## ⚠️ 롱폼 영상 분석 지침 (>60초)
+이 영상은 숏폼 분석에 최적화되지 않습니다.
+주요 하이라이트 구간(훅, 클라이맥스, 엔딩)만 상세 분석하세요.
+"""
+
+
+def _build_enhanced_prompt(
+    duration_sec: float,
+    audience_comments: Optional[List[Dict[str, Any]]] = None
+) -> str:
+    """영상 길이와 댓글 기반 동적 프롬프트 생성 (v3.6)"""
+    
+    # 1. Duration-based depth hints
+    depth_hints = _get_analysis_depth_hints(duration_sec)
+    
+    # 2. Comments context (if available)
+    comments_section = ""
+    if audience_comments:
+        comments_text = "\n".join([
+            f"- [{c.get('likes', 0)} likes] {c.get('text', '')[:200]}"
+            for c in audience_comments[:10]
+        ])
+        comments_section = f"""
+## 📝 시청자 반응 컨텍스트 (Top Comments)
+실제 시청자들의 반응입니다. 이를 참고하여 viral_signal, audience_reaction을 분석하세요:
+
+{comments_text}
+"""
+    
+    # 3. Assemble final prompt
+    return f"""
+{depth_hints}
+{comments_section}
+
+---
+
+{VDG_PROMPT}
+"""
+
 class GeminiPipeline:
     def __init__(self):
         self.model = settings.GEMINI_MODEL
@@ -284,7 +369,7 @@ class GeminiPipeline:
         video_url: str, 
         node_id: str,
         audience_comments: Optional[List[Dict[str, Any]]] = None
-    ) -> VDGv35:
+    ) -> VDG:
         """
         Full pipeline: Download -> Upload -> Analyze (VDG) -> Parse -> Return
         
@@ -334,35 +419,24 @@ class GeminiPipeline:
                 )
             )
 
-            # 3. Build prompt with audience comments context
-            enhanced_prompt = VDG_PROMPT
+            # 3. Build duration-aware prompt (v3.6)
+            duration_sec = metadata.duration or 60.0  # Default to 60s if unknown
+            enhanced_prompt = _build_enhanced_prompt(
+                duration_sec=duration_sec,
+                audience_comments=audience_comments
+            )
+            logger.info(f"📏 Duration: {duration_sec}s → using depth-optimized prompt")
             if audience_comments:
-                comments_text = "\n".join([
-                    f"- [{c.get('likes', 0)} likes] {c.get('text', '')[:200]}"
-                    for c in audience_comments[:10]
-                ])
-                enhanced_prompt = f"""
-## AUDIENCE REACTIONS (Best Comments by Likes)
-The following are the top comments from real viewers. Use these to understand WHY this video went viral:
-
-{comments_text}
-
-Consider these reactions when analyzing the hook effectiveness, emotional impact, and virality factors.
-
----
-
-{VDG_PROMPT}
-"""
                 logger.info(f"📝 Including {len(audience_comments)} audience comments in analysis")
 
             # 4. Generate Analysis
-            logger.warning(f"🧠 Analyzing {node_id} with {self.model} (VDG v3.5)...")
+            logger.warning(f"🧠 Analyzing {node_id} with {self.model} (VDG v3.6)...")
 
             def _build_config(use_schema: bool) -> types.GenerateContentConfig:
                 if use_schema:
                     return types.GenerateContentConfig(
                         response_mime_type="application/json",
-                        response_schema=VDGv35.model_json_schema()
+                        response_schema=VDG.model_json_schema()
                     )
                 return types.GenerateContentConfig(response_mime_type="application/json")
 
@@ -420,9 +494,38 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                 result_json = self._sanitize_vdg_payload(result_json)
                 result_json["content_id"] = node_id
                 
+                # === v3.6: Merge accurate metadata from yt-dlp ===
+                # Duration (accurate from yt-dlp)
+                if metadata.duration > 0:
+                    result_json["duration_sec"] = metadata.duration
+                
+                # Upload date (format YYYYMMDD → YYYY-MM-DD)
+                if metadata.upload_date and len(metadata.upload_date) == 8:
+                    ud = metadata.upload_date
+                    result_json["upload_date"] = f"{ud[:4]}-{ud[4:6]}-{ud[6:8]}"
+                
+                # Metrics (real API values override Gemini guesses)
+                if "metrics" not in result_json:
+                    result_json["metrics"] = {}
+                if metadata.view_count > 0:
+                    result_json["metrics"]["view_count"] = metadata.view_count
+                if metadata.like_count > 0:
+                    result_json["metrics"]["like_count"] = metadata.like_count
+                if metadata.comment_count:
+                    result_json["metrics"]["comment_count"] = metadata.comment_count
+                if metadata.share_count:
+                    result_json["metrics"]["share_count"] = metadata.share_count
+                if metadata.hashtags:
+                    result_json["metrics"]["hashtags"] = metadata.hashtags
+                
+                # Platform (accurate from URL)
+                result_json["platform"] = metadata.platform
+                
+                logger.info(f"📊 Merged metadata: duration={metadata.duration}s, upload={metadata.upload_date}, views={metadata.view_count}")
+                
                 # PEGL v1.0: 스키마 버전 추가 (없으면)
                 if "schema_version" not in result_json:
-                    result_json["schema_version"] = "v3.5"
+                    result_json["schema_version"] = "v3.6"
                 
                 # PEGL v1.0: 스키마 검증 (실패 시 명시적 예외)
                 try:
@@ -434,9 +537,9 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                     logger.warning(f"Continuing despite schema validation failure for {node_id}")
                 
                 # Create VDG object
-                vdg = VDGv35(**result_json)
+                vdg = VDG(**result_json)
                 
-                # Note: VDGv35 doesn't have legacy fields (global_context, scene_frames)
+                # Note: VDG doesn't have legacy fields (global_context, scene_frames)
                 # Legacy field population skipped for v3.5
                 
                 # === VDG Quality Validation ===
@@ -499,7 +602,7 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
             logger.info(f"📥 [v5] Downloading {video_url}...")
             temp_path, metadata = await video_downloader.download(video_url)
             
-            duration_sec = metadata.get("duration", 0.0)
+            duration_sec = metadata.duration or 0.0
             if duration_sec == 0.0:
                 # Fallback: ffprobe로 측정
                 from app.services.vdg_2pass.unified_pass import get_video_duration_ms
@@ -703,7 +806,11 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
 
     def _sanitize_vdg_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Coerce known schema edge-cases from LLM output before Pydantic validation."""
-        scenes = payload.get("scenes", [])
+        scenes = payload.get("scenes") or []
+        if not isinstance(scenes, list):
+            scenes = []
+        scenes = [scene for scene in scenes if isinstance(scene, dict)]
+        payload["scenes"] = scenes
         for scene in scenes:
             setting = scene.get("setting") or {}
             audio_style = setting.get("audio_style") or {}
@@ -726,7 +833,10 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                 setting["audio_style"] = audio_style
                 scene["setting"] = setting
 
-        commerce = payload.get("commerce") or {}
+        commerce = payload.get("commerce")
+        if not isinstance(commerce, dict):
+            commerce = {}
+            payload["commerce"] = commerce
         service_mentions = commerce.get("service_mentions")
         if isinstance(service_mentions, list):
             normalized_services = []

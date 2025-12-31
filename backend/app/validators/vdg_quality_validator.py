@@ -33,6 +33,7 @@ class VDGQualityValidator:
     2. capsule_brief 완성도
     3. product_placement_guide 유무 (체험단용)
     4. hook_genome 완성도
+    5. duration 기반 풍부도 검증 (v3.6)
     """
     
     # 최소 품질 기준
@@ -40,9 +41,22 @@ class VDGQualityValidator:
     MIN_VARIABLE_ELEMENTS = 2
     MIN_SHOTLIST_ITEMS = 1
     
-    def validate_vdg(self, vdg_data: Dict[str, Any]) -> QualityResult:
+    # Duration 기반 최소 요구사항 (v3.6)
+    DURATION_REQUIREMENTS = {
+        # (max_duration, min_microbeats, min_keyframes_total, min_focus_windows)
+        15: (5, 4, 4),    # ≤15초: 초단편
+        30: (4, 3, 4),    # 15-30초: 단편
+        60: (3, 3, 5),    # 30-60초: 표준 숏폼
+        9999: (2, 2, 3),  # >60초: 롱폼 (최소 기준)
+    }
+    
+    def validate_vdg(self, vdg_data: Dict[str, Any], duration_sec: float = None) -> QualityResult:
         """
         전체 VDG 품질 검증
+        
+        Args:
+            vdg_data: VDG analysis result
+            duration_sec: Video duration for depth calibration (v3.6)
         
         Returns:
             QualityResult with overall score and issues
@@ -74,8 +88,20 @@ class VDGQualityValidator:
         issues.extend(hook_result["issues"])
         scores.append(hook_result["score"])
         
+        # 4. Duration 기반 풍부도 검증 (v3.6)
+        if duration_sec is None:
+            duration_sec = vdg_data.get("duration_sec", 60.0)
+        try:
+            duration_sec = float(duration_sec)
+        except (TypeError, ValueError):
+            duration_sec = 60.0
+        richness_result = self._validate_richness(vdg_data, duration_sec)
+        issues.extend(richness_result["issues"])
+        suggestions.extend(richness_result.get("suggestions", []))
+        scores.append(richness_result["score"])
+        
         # 전체 점수 계산 (가중 평균)
-        weights = [0.4, 0.3, 0.3]  # remix, capsule, hook
+        weights = [0.3, 0.2, 0.2, 0.3]  # remix, capsule, hook, richness
         overall_score = sum(s * w for s, w in zip(scores, weights))
         
         is_valid = overall_score >= 0.6 and len([i for i in issues if "CRITICAL" in i]) == 0
@@ -86,6 +112,61 @@ class VDGQualityValidator:
             issues=issues,
             suggestions=suggestions
         )
+    
+    def _validate_richness(self, vdg_data: Dict[str, Any], duration_sec: float) -> Dict:
+        """
+        Duration 기반 분석 풍부도 검증 (v3.6)
+        
+        짧은 영상일수록 더 세밀한 분석이 필요:
+        - microbeats 개수
+        - keyframes 총 개수
+        - focus_windows 개수
+        """
+        issues = []
+        suggestions = []
+        score = 1.0
+        
+        # Duration에 따른 최소 요구사항 결정
+        min_microbeats, min_keyframes, min_focus_windows = (2, 2, 3)  # 기본값
+        for max_dur, requirements in sorted(self.DURATION_REQUIREMENTS.items()):
+            if duration_sec <= max_dur:
+                min_microbeats, min_keyframes, min_focus_windows = requirements
+                break
+        
+        # Microbeats 체크
+        microbeats = vdg_data.get("hook_genome", {}).get("microbeats", [])
+        if len(microbeats) < min_microbeats:
+            issues.append(f"WARNING: microbeats {len(microbeats)}개 < 권장 {min_microbeats}개 (영상길이 {duration_sec}초 기준)")
+            suggestions.append(f"짧은 영상({duration_sec}초)에는 더 세밀한 훅 분석 필요")
+            score -= 0.2
+        
+        # Keyframes 총 개수 체크
+        total_keyframes = sum(
+            len(shot.get("keyframes", []))
+            for scene in vdg_data.get("scenes", [])
+            for shot in scene.get("shots", [])
+        )
+        if total_keyframes < min_keyframes:
+            issues.append(f"WARNING: keyframes 총 {total_keyframes}개 < 권장 {min_keyframes}개")
+            suggestions.append("샷 내 주요 동작/표정 변화 포인트 추가 필요")
+            score -= 0.2
+        
+        # Focus Windows 체크
+        focus_windows = vdg_data.get("focus_windows", [])
+        if len(focus_windows) < min_focus_windows:
+            issues.append(f"WARNING: focus_windows {len(focus_windows)}개 < 권장 {min_focus_windows}개")
+            suggestions.append("시청자 주의 집중 구간 분석 강화 필요")
+            score -= 0.2
+        
+        # 로깅
+        if issues:
+            logger.warning(f"📊 Richness check (duration={duration_sec}s): microbeats={len(microbeats)}, keyframes={total_keyframes}, focus_windows={len(focus_windows)}")
+        
+        return {
+            "score": max(0, score),
+            "issues": issues,
+            "suggestions": suggestions
+        }
     
     def _validate_remix_suggestions(self, suggestions: List[Dict]) -> Dict:
         """
