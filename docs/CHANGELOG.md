@@ -45,7 +45,25 @@
 - `/chat`: 2ms (401)
 - 목표 3초 대비 300배 이상 빠름
 
-### Git Commits (6개)
+### 🛡️ P0 Hardening (H1-H6)
+- **H1: GenAI Response Envelope**
+  - `GenAIResponse` dataclass: success/error/latency_ms/usage
+  - `GenAIErrorCode` enum: rate_limit, timeout, server_error 등 8종
+- **H2: Timeout + Retry + Backoff**
+  - 60s timeout, 3x retry, exponential backoff with jitter
+- **H3: Provenance Tracking**
+  - `PROMPT_VERSION` 상수 추가 (semantic_v4.1, visual_v4.1)
+  - `provenance.prompt_version`, `model_id`, `run_at` 설정
+- **H4: Session Log Idempotency**
+  - `add_intervention_idempotent()`: t_sec 버킷 중복 방지
+- **H5: Upload Outcome Two-Stage**
+  - `PromotionSafetyError` 예외
+  - `get_session_for_promotion()`: outcome 필수 검증
+- **H6: Agent Abuse Hardening**
+  - `INTENT_TOKEN_BUDGET`: 인텐트별 토큰 예산
+  - `INTENT_ALLOWED_ACTIONS`: 인텐트별 액션 화이트리스트
+
+### Git Commits (8개)
 - `883e782` fix: Remove all styled-jsx for Turbopack compatibility
 - `0aecb34` fix: Remove styled-jsx for Turbopack compatibility
 - `72372d6` feat: Add Sentry error monitoring to frontend
