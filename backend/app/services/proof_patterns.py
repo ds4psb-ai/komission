@@ -563,7 +563,7 @@ def create_proof_pack(
 # CONVENIENCE GETTERS
 # ====================
 
-def get_pattern_by_id(pattern_id: str) -> DNAInvariant | None:
+def get_pattern_by_id(pattern_id: str) -> Optional[DNAInvariant]:
     """Get a specific pattern by ID."""
     for p in TOP_3_PROOF_PATTERNS:
         if p.rule_id == pattern_id:
@@ -571,7 +571,7 @@ def get_pattern_by_id(pattern_id: str) -> DNAInvariant | None:
     return None
 
 
-def get_coach_line(pattern_id: str, tone: str = "friendly") -> str | None:
+def get_coach_line(pattern_id: str, tone: str = "friendly") -> Optional[str]:
     """Get coaching line for a pattern with specific tone."""
     pattern = get_pattern_by_id(pattern_id)
     if not pattern:
