@@ -8,7 +8,7 @@
  * - 단일 CTA (다음 액션)
  * - 실패/대기 항목 요약
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Activity, AlertCircle, CheckCircle, Clock, Play,
     RefreshCw, ChevronUp, ChevronDown, Loader2
@@ -39,12 +39,19 @@ export function SessionHUD({ className = '', collapsed: initialCollapsed = true 
     const [error, setError] = useState<string | null>(null);
     const [collapsed, setCollapsed] = useState(initialCollapsed);
     const [hasToken, setHasToken] = useState(false);
+    const isMountedRef = useRef(true);
 
     // SSR 안전 토큰 확인
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            setHasToken(!!localStorage.getItem('token'));
+        if (typeof window !== 'undefined' && isMountedRef.current) {
+            setHasToken(!!localStorage.getItem('access_token'));
         }
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     useEffect(() => {
@@ -57,25 +64,41 @@ export function SessionHUD({ className = '', collapsed: initialCollapsed = true 
 
     async function fetchHUD() {
         if (typeof window === 'undefined') return;
+        if (!isMountedRef.current) return;
 
         try {
-            setLoading(true);
-            const token = localStorage.getItem('token');
-            if (!token) return;
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                if (isMountedRef.current) {
+                    setHasToken(false);
+                    setData(null);
+                    setError(null);
+                    setLoading(false);
+                }
+                return;
+            }
 
+            if (isMountedRef.current) {
+                setLoading(true);
+            }
             const response = await fetch('/api/v1/ops/hud', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('Failed to fetch HUD');
             const hudData = await response.json();
+            if (!isMountedRef.current) return;
             setData(hudData);
             setError(null);
         } catch {
-            if (typeof window !== 'undefined' && localStorage.getItem('token')) {
-                setError('HUD unavailable');
+            if (typeof window !== 'undefined' && localStorage.getItem('access_token')) {
+                if (isMountedRef.current) {
+                    setError('HUD unavailable');
+                }
             }
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     }
 

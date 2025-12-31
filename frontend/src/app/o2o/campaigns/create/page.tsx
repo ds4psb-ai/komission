@@ -9,7 +9,7 @@
  * - POST /api/v1/o2o/admin/campaigns로 생성
  */
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
@@ -31,6 +31,8 @@ function CreateCampaignContent() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isMountedRef = useRef(true);
 
     // Form state
     const [campaignType, setCampaignType] = useState<string>("shipment");
@@ -53,6 +55,7 @@ function CreateCampaignContent() {
                 .then(res => res.ok ? res.json() : null)
                 .then(data => {
                     if (data) {
+                        if (!isMountedRef.current) return;
                         setVideoTitle(data.title);
                         setTitle(`${data.title || "영상"} 체험단`);
                         setCategory(data.category || "");
@@ -62,10 +65,22 @@ function CreateCampaignContent() {
         }
     }, [videoId]);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+            if (redirectTimeoutRef.current) {
+                clearTimeout(redirectTimeoutRef.current);
+                redirectTimeoutRef.current = null;
+            }
+        };
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        setError(null);
+        if (isMountedRef.current) {
+            setLoading(true);
+            setError(null);
+        }
 
         try {
             const res = await fetch("/api/v1/o2o/admin/campaigns", {
@@ -94,14 +109,21 @@ function CreateCampaignContent() {
                 throw new Error(data.detail || "캠페인 생성에 실패했습니다");
             }
 
+            if (!isMountedRef.current) return;
             setSuccess(true);
-            setTimeout(() => {
+            if (redirectTimeoutRef.current) {
+                clearTimeout(redirectTimeoutRef.current);
+            }
+            redirectTimeoutRef.current = setTimeout(() => {
                 router.push("/o2o");
             }, 2000);
         } catch (err) {
+            if (!isMountedRef.current) return;
             setError(err instanceof Error ? err.message : "오류가 발생했습니다");
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 

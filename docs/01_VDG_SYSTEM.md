@@ -1,32 +1,33 @@
-# VDG System v4.0: 2-Pass Pipeline Architecture (Final)
+# VDG System v4.0: Unified Pipeline Architecture (Final)
 
 **작성**: 2025-12-28  
-**Updated**: 2025-12-30  
-**목표**: VDG v4.0 2-Pass 파이프라인 + Director Pack + Audio Coaching 통합 문서
+**Updated**: 2025-12-31  
+**목표**: VDG v4.0 Unified Pipeline (Pro 1-Pass + CV) + Director Pack + Audio Coaching 통합 문서
 
 ---
 
-## 1) Overview: VDG v4.0 2-Pass Pipeline
+## 1) Overview: VDG v4.0 Unified Pipeline
 
 ```
 영상 + 댓글
      ↓
 ┌─────────────────────────────────────┐
-│  Pass 1: Semantic Pass (의미 해석)  │  ← 30초
-│  - 구조/의도/텍스트 내용            │
-│  - Entity Hints 구조화              │
+│  Pass 1: Pro LLM (의미/인과/Plan)   │  ← Gemini 3.0 Pro 1회
+│  - 10fps hook + 1fps full           │
+│  - Structured output (response_schema)│
+│  - Entity Hints → CV 전달           │
 │  - 댓글 기반 Mise-en-Scène 신호     │
 └────────────────┬────────────────────┘
-                 ↓  (Analysis Plan)
+                 ↓  (UnifiedPassLLMOutput)
 ┌─────────────────────────────────────┐
-│  Pass 2: Visual Pass (시각 측정)    │  ← 2분
+│  Pass 2: CV (결정론적 측정)          │  ← ffmpeg + OpenCV
+│  - 3 MVP 메트릭 (100% 재현 가능)    │
 │  - Plan 기반 프레임 추출            │
-│  - 구간 기반 측정 + 분포 통계       │
 │  - Metric Registry 검증             │
 └────────────────┬────────────────────┘
                  ↓
 ┌─────────────────────────────────────┐
-│  VDG Merger                         │
+│  VDG Merger / Orchestrator          │
 │  - Semantic-Visual 정합성 검증      │
 │  - Contract Candidates 생성         │
 └────────────────┬────────────────────┘
@@ -161,21 +162,26 @@ class DirectorPack(BaseModel):
 backend/app/
 ├── schemas/
 │   ├── vdg_v4.py             # VDG v4.0 schemas (881 lines)
+│   ├── vdg_unified_pass.py   # Unified Pass output (333 lines)
 │   ├── director_pack.py      # Director Pack (355 lines)
 │   └── metric_registry.py    # Metric SSoT (180 lines)
 │
 ├── services/
 │   ├── gemini_pipeline.py    # Main pipeline
+│   ├── genai_client.py       # google-genai SDK client
 │   ├── audio_coach.py        # Gemini 2.5 Flash Live
 │   └── evidence_updater.py   # RL weight adjustment
 │
 └── services/vdg_2pass/
-    ├── semantic_pass.py      # 1차: 의미 해석
-    ├── analysis_planner.py   # Plan 생성
-    ├── visual_pass.py        # 2차: 시각 측정
-    ├── vdg_merger.py         # 병합
-    ├── director_compiler.py  # Pack 컴파일 (810 lines)
-    └── frame_extractor.py    # Plan-based frames
+    ├── unified_pass.py       # Pass 1: Pro LLM (433 lines)
+    ├── cv_measurement_pass.py # Pass 2: CV (510 lines)
+    ├── vdg_unified_pipeline.py # 오케스트레이터 (380 lines)
+    ├── director_compiler.py  # Pack 컴파일러 (810 lines)
+    ├── frame_extractor.py    # Plan-based frames
+    └── prompts/
+        ├── unified_prompt.py # Pro 1-Pass 프롬프트
+        ├── semantic_prompt.py # (legacy)
+        └── visual_prompt.py  # (legacy)
 ```
 
 ---

@@ -12,15 +12,21 @@ export function RoyaltyChart({ transactions }: RoyaltyChartProps) {
     const data = useMemo(() => {
         // Group by Date (YYYY-MM-DD)
         const grouped = transactions.reduce((acc, tx) => {
-            const date = new Date(tx.created_at).toLocaleDateString();
-            acc[date] = (acc[date] || 0) + tx.points_earned;
+            const dateObj = new Date(tx.created_at);
+            if (Number.isNaN(dateObj.getTime())) return acc;
+            const key = dateObj.toISOString().slice(0, 10);
+            const label = dateObj.toLocaleDateString();
+            if (!acc[key]) {
+                acc[key] = { points: 0, label };
+            }
+            acc[key].points += tx.points_earned;
             return acc;
-        }, {} as Record<string, number>);
+        }, {} as Record<string, { points: number; label: string }>);
 
         // Sort by date and convert to array
         return Object.entries(grouped)
-            .map(([date, points]) => ({ date, points }))
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .map(([dateKey, value]) => ({ date: value.label, dateKey, points: value.points }))
+            .sort((a, b) => a.dateKey.localeCompare(b.dateKey))
             .slice(-30); // Last 30 days usually
     }, [transactions]);
 
@@ -41,7 +47,10 @@ export function RoyaltyChart({ transactions }: RoyaltyChartProps) {
                         dataKey="date"
                         stroke="#ffffff40"
                         tick={{ fontSize: 10 }}
-                        tickFormatter={(value) => value.split('.').slice(1).join('/')}
+                        tickFormatter={(value) => {
+                            const parts = value.split('.');
+                            return parts.length > 1 ? parts.slice(1).join('/') : value;
+                        }}
                     />
                     <YAxis stroke="#ffffff40" tick={{ fontSize: 10 }} />
                     <Tooltip

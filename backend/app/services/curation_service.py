@@ -9,13 +9,15 @@ from __future__ import annotations
 
 import logging
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 from statistics import median
 from typing import Dict, Any, Optional, List, Tuple
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.utils.time import utcnow
 
 from app.models import (
     CurationDecision,
@@ -172,7 +174,7 @@ async def record_curation_decision(
         remix_node_id=remix_node_id,
         curator_id=curator_id,
         decision_type=decision_type,
-        decision_at=datetime.now(timezone.utc),
+        decision_at=utcnow(),
         vdg_snapshot=vdg_analysis,
         extracted_features=extracted_features,
         curator_notes=curator_notes,
@@ -504,7 +506,7 @@ async def learn_curation_rules_from_decisions(
                     rule.conditions = conditions
                     rule.sample_size = len(features_list)
                     rule.priority = len(features_list)
-                    rule.updated_at = datetime.now(timezone.utc)
+                    rule.updated_at = utcnow()
                 updated += 1
                 action = "updated"
             else:

@@ -127,7 +127,7 @@ export function HeroSection({
                     {/* Title */}
                     <div>
                         <h1 className="text-xl font-black text-white line-clamp-2">{title}</h1>
-                        {viewCount && (
+                        {typeof viewCount === 'number' && (
                             <p className="text-sm text-white/50 mt-1">
                                 👁️ {viewCount >= 1000 ? `${(viewCount / 1000).toFixed(0)}K` : viewCount} views
                             </p>

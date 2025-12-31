@@ -43,6 +43,7 @@ from app.schemas.director_pack import (
     Policy,
     CoachLineTemplates
 )
+from app.utils.time import utcnow
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -369,7 +370,7 @@ class AudioCoach:
                         rule_id=rule.rule_id,
                         command=cmd,
                         current_time=current_time,
-                        timestamp=datetime.utcnow(),
+                        timestamp=utcnow(),
                         tone=self._tone,
                         priority=priority,
                         checkpoint_id=self._get_current_checkpoint_id(current_time)
@@ -464,7 +465,7 @@ class AudioCoach:
         self._violation_log.append(ViolationEvent(
             rule_id=rule_id,
             current_time=current_time,
-            timestamp=datetime.utcnow(),
+            timestamp=utcnow(),
             severity=severity
         ))
         
@@ -725,7 +726,7 @@ class AudioCoach:
                 rule_id=rule_id,
                 command=command_text,
                 current_time=now - (self._session_start_time or now),
-                timestamp=datetime.utcnow(),
+                timestamp=utcnow(),
                 tone=self._tone,
                 priority="command",
                 checkpoint_id=None

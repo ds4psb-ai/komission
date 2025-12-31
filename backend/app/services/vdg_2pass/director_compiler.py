@@ -33,7 +33,8 @@ from app.schemas.director_pack import (
     Scoring
 )
 import uuid
-from datetime import datetime
+
+from app.utils.time import iso_now_z
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,7 @@ class DirectorCompiler:
                 goal=f"VDG {actual_pattern_id} 기반 실시간 촬영 코칭",
                 pack_meta=PackMeta(
                     pack_id=pack_id,
-                    generated_at=datetime.utcnow().isoformat() + "Z",
+                    generated_at=iso_now_z(),
                     compiler_version=pack_version,
                     source_refs=[
                         SourceRef(

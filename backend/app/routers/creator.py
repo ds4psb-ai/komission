@@ -4,17 +4,18 @@ Handles creator submissions for pattern-based videos.
 """
 from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 
 from app.database import get_db
 from app.models import (
     User, CreatorSubmission, CreatorSubmissionStatus, 
-    PatternLibrary, OutlierItem
+    PatternLibrary, OutlierItem, OutlierItemStatus, OutlierSource
 )
 from app.routers.auth import get_current_user
+from app.utils.time import utcnow
 
 router = APIRouter(prefix="/api/v1/creator", tags=["creator"])
 
@@ -82,8 +83,6 @@ async def submit_video(
     Note: This does NOT auto-create OutlierItem. Use existing /outliers API
     or O2O campaign flow for metric tracking integration.
     """
-    from datetime import datetime
-    
     # Validate pattern exists
     pattern_result = await db.execute(
         select(PatternLibrary).where(PatternLibrary.pattern_id == request.pattern_id)
@@ -113,7 +112,7 @@ async def submit_video(
         creator_notes=request.creator_notes,
         invariant_checklist=request.invariant_checklist,
         status=CreatorSubmissionStatus.PENDING,  # Awaits admin promotion
-        submitted_at=datetime.utcnow(),
+        submitted_at=utcnow(),
     )
     
     db.add(submission)
@@ -258,24 +257,63 @@ async def promote_submission(
         select(User).where(User.id == submission.user_id)
     )
     user = user_result.scalar_one_or_none()
-    
+
+    from app.utils.url_normalizer import normalize_video_url
+    canonical_url = normalize_video_url(submission.video_url, submission.platform)
+
+    conditions = [OutlierItem.video_url == submission.video_url]
+    if canonical_url:
+        conditions.append(OutlierItem.canonical_url == canonical_url)
+
+    existing_item_result = await db.execute(
+        select(OutlierItem).where(or_(*conditions))
+    )
+    existing_item = existing_item_result.scalar_one_or_none()
+    if existing_item:
+        submission.outlier_item_id = existing_item.id
+        submission.status = CreatorSubmissionStatus.TRACKING
+        submission.tracking_started_at = utcnow()
+        await db.commit()
+
+        return PromoteResponse(
+            submission_id=str(submission.id),
+            outlier_item_id=str(existing_item.id),
+            status="TRACKING",
+            message="✅ 제출이 승격되었습니다. 14일간 지표를 추적합니다."
+        )
+
+    source_result = await db.execute(
+        select(OutlierSource).where(OutlierSource.name == "creator_submission")
+    )
+    source = source_result.scalar_one_or_none()
+    if not source:
+        source = OutlierSource(
+            name="creator_submission",
+            base_url="internal",
+            auth_type="none",
+            auth_config=None,
+        )
+        db.add(source)
+        await db.flush()
+
     # Create OutlierItem
     outlier_item = OutlierItem(
         id=uuid_module.uuid4(),
-        source_url=submission.video_url,
+        source_id=source.id,
+        external_id=f"creator_{submission.id}",
+        video_url=submission.video_url,
         platform=submission.platform,
         category=pattern.category if pattern else "creator_submission",
         title=f"[Creator] {user.display_name or user.email if user else 'Unknown'} - {submission.pattern_id}",
-        author_name=user.display_name or user.email if user else "Unknown",
         view_count=0,
         like_count=0,
         outlier_score=0.0,
-        outlier_tier="creator",
-        status="selected",
+        outlier_tier=None,
+        status=OutlierItemStatus.SELECTED,
         analysis_status="pending",
-        source="creator_submission",
-        collected_at=datetime.utcnow(),
-        metadata={
+        crawled_at=utcnow(),
+        canonical_url=canonical_url,
+        raw_payload={
             "pattern_id": submission.pattern_id,
             "creator_notes": submission.creator_notes,
             "invariant_checklist": submission.invariant_checklist,
@@ -289,7 +327,7 @@ async def promote_submission(
     # Update submission
     submission.outlier_item_id = outlier_item.id
     submission.status = CreatorSubmissionStatus.TRACKING
-    submission.tracking_started_at = datetime.utcnow()
+    submission.tracking_started_at = utcnow()
     
     await db.commit()
     

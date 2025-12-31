@@ -9,19 +9,15 @@ Tracks creator behavior for RL policy improvement:
 - form_start/form_submit: Campaign application flow
 - share: Shared content
 """
-from datetime import datetime
 from typing import Optional, List
-from uuid import UUID, uuid4
+from datetime import datetime
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
 
 from app.utils.time import utcnow
-from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
 
 from app.database import get_db
 from app.models import User
@@ -192,4 +188,3 @@ async def get_creator_fingerprint(
     
     fingerprint = await fingerprint_service.calculate_fingerprint(user_id, db)
     return fingerprint.to_dict()
-

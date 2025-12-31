@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { AppHeader } from '@/components/AppHeader';
 import { api, Pipeline } from '@/lib/api';
 import { useRouter } from 'next/navigation';
@@ -25,21 +25,35 @@ export default function PipelineMarketplacePage() {
     const [pipelines, setPipelines] = useState<Pipeline[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         loadPipelines();
     }, []);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     const loadPipelines = async () => {
         try {
-            setError(null);
+            if (isMountedRef.current) {
+                setError(null);
+            }
             const list = await api.listPublicPipelines();
+            if (!isMountedRef.current) return;
             setPipelines(list);
         } catch (e) {
             console.warn('공개 파이프라인 로드 실패', e);
-            setError('공개 파이프라인 로드 실패');
+            if (isMountedRef.current) {
+                setError('공개 파이프라인 로드 실패');
+            }
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 

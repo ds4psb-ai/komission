@@ -44,6 +44,17 @@ export function PatternGuidePanel({ patternId, onClose }: PatternGuidePanelProps
     } | null>(null);
 
     useEffect(() => {
+        setCheckedRules(new Set());
+        setShowGuideCard(false);
+        setShowSubmitForm(false);
+        setVideoUrl('');
+        setCreatorNotes('');
+        setSubmitMessage(null);
+        setSubmitting(false);
+    }, [patternId]);
+
+    useEffect(() => {
+        let cancelled = false;
         if (!patternId) {
             setPattern(null);
             return;
@@ -54,8 +65,10 @@ export function PatternGuidePanel({ patternId, onClose }: PatternGuidePanelProps
             setError(null);
             try {
                 const data = await api.getPatternDetail(patternId);
+                if (cancelled) return;
                 setPattern(data);
             } catch (e: any) {
+                if (cancelled) return;
                 setError(e.message || '패턴을 불러올 수 없습니다');
                 // Fallback mock for demo
                 setPattern({
@@ -80,16 +93,25 @@ export function PatternGuidePanel({ patternId, onClose }: PatternGuidePanelProps
                     created_at: new Date().toISOString(),
                 });
             } finally {
-                setLoading(false);
+                if (!cancelled) {
+                    setLoading(false);
+                }
             }
         };
 
         loadPattern();
+        return () => {
+            cancelled = true;
+        };
     }, [patternId]);
 
     // Phase 6: Load related O2O campaigns and performance stats
     useEffect(() => {
+        let cancelled = false;
         if (!pattern) return;
+
+        setRelatedCampaigns([]);
+        setPerformanceStats(null);
 
         const loadCampaignsAndStats = async () => {
             try {
@@ -99,6 +121,7 @@ export function PatternGuidePanel({ patternId, onClose }: PatternGuidePanelProps
                     c.status === 'recruiting' &&
                     (!c.category || c.category === pattern.category)
                 );
+                if (cancelled) return;
                 setRelatedCampaigns(filtered.slice(0, 3));
 
                 // Extract performance from mutation_strategy._creator_feedback
@@ -111,6 +134,7 @@ export function PatternGuidePanel({ patternId, onClose }: PatternGuidePanelProps
                     ).length;
                     const successRate = `${Math.round((successCount / feedback.length) * 100)}%`;
 
+                    if (cancelled) return;
                     setPerformanceStats({
                         avgViews,
                         successRate,
@@ -123,6 +147,9 @@ export function PatternGuidePanel({ patternId, onClose }: PatternGuidePanelProps
         };
 
         loadCampaignsAndStats();
+        return () => {
+            cancelled = true;
+        };
     }, [pattern]);
 
     if (!patternId) return null;
@@ -402,12 +429,15 @@ export function PatternGuidePanel({ patternId, onClose }: PatternGuidePanelProps
                                                         : videoUrl.includes('instagram') ? 'instagram'
                                                             : 'youtube';
 
+                                                    const token = api.getToken();
+                                                    const headers: HeadersInit = {
+                                                        'Content-Type': 'application/json',
+                                                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                                    };
+
                                                     const response = await fetch('/api/v1/creator/submissions', {
                                                         method: 'POST',
-                                                        headers: {
-                                                            'Content-Type': 'application/json',
-                                                            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-                                                        },
+                                                        headers,
                                                         body: JSON.stringify({
                                                             pattern_id: patternId,
                                                             video_url: videoUrl,

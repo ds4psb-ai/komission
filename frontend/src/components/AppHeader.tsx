@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-    { href: "/trending", label: "트렌딩", icon: TrendingUp },
+    { href: "/", label: "홈", icon: TrendingUp },
     { href: "/for-you", label: "추천", icon: Sparkles },
     { href: "/boards", label: "실험", icon: FlaskConical },
     { href: "/knowledge/hooks", label: "훅", icon: Zap },

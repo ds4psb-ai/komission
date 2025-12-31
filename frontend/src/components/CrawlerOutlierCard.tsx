@@ -110,6 +110,7 @@ function formatNumber(num: number): string {
  */
 function formatRelativeTime(dateString: string): string {
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '-';
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -228,16 +229,18 @@ export function CrawlerOutlierCard({
                             <Eye className="w-3.5 h-3.5" />
                             {formatNumber(item.view_count)}
                         </span>
-                        {item.like_count && (
+                        {typeof item.like_count === 'number' && (
                             <span className="flex items-center gap-1">
                                 <Heart className="w-3.5 h-3.5" />
                                 {formatNumber(item.like_count)}
                             </span>
                         )}
-                        <span className="flex items-center gap-1">
-                            <TrendingUp className="w-3.5 h-3.5" />
-                            {(item.engagement_rate * 100).toFixed(1)}%
-                        </span>
+                        {typeof item.engagement_rate === 'number' && (
+                            <span className="flex items-center gap-1">
+                                <TrendingUp className="w-3.5 h-3.5" />
+                                {(item.engagement_rate * 100).toFixed(1)}%
+                            </span>
+                        )}
                     </div>
 
                     {/* Creator Baseline Comparison */}

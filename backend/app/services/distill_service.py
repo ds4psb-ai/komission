@@ -17,9 +17,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from app.utils.time import iso_now, generate_short_id
+from app.utils.time import iso_now, generate_short_id, utcnow
 from app.schemas.vdg_v4 import ContentCluster, ClusterKid
 from app.services.cluster_service import get_cluster_service
 
@@ -379,7 +379,7 @@ class DistillRunService:
         if not run.pack_id:
             raise ValueError(f"No Pack generated for {run_id}")
         
-        now = datetime.utcnow()
+        now = utcnow()
         canary_end = now + timedelta(days=duration_days)
         
         run.canary_start = iso_now()

@@ -129,6 +129,13 @@ export function GoogleLoginButtonCustom({
 }) {
     const [internalLoading, setInternalLoading] = useState(false);
     const isLoading = externalLoading || internalLoading;
+    const isMountedRef = React.useRef(true);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const handleClick = useCallback(async () => {
         if (!GOOGLE_CLIENT_ID) {
@@ -136,7 +143,9 @@ export function GoogleLoginButtonCustom({
             return;
         }
 
-        setInternalLoading(true);
+        if (isMountedRef.current) {
+            setInternalLoading(true);
+        }
 
         try {
             // Load Google GSI if not already loaded
@@ -161,7 +170,9 @@ export function GoogleLoginButtonCustom({
                     } else {
                         onError?.(new Error('No credential received'));
                     }
-                    setInternalLoading(false);
+                    if (isMountedRef.current) {
+                        setInternalLoading(false);
+                    }
                 },
                 ux_mode: 'popup',
             });
@@ -170,9 +181,11 @@ export function GoogleLoginButtonCustom({
         } catch (error) {
             console.error('Google Sign-In error:', error);
             onError?.(error instanceof Error ? error : new Error('Unknown error'));
-            setInternalLoading(false);
+            if (isMountedRef.current) {
+                setInternalLoading(false);
+            }
         }
-    }, [onSuccess, onError]);
+    }, [onSuccess, onError, isMountedRef]);
 
     return (
         <button

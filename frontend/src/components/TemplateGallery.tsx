@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -83,20 +83,30 @@ export function TemplateGallery() {
     const router = useRouter();
     const [pipelines, setPipelines] = useState<Pipeline[]>([]);
     const [loading, setLoading] = useState(true);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         const loadTemplates = async () => {
             try {
                 const list = await api.listPublicPipelines();
+                if (!isMountedRef.current) return;
                 setPipelines(list.slice(0, 6));
             } catch (err) {
                 console.warn("템플릿 로드 실패:", err);
             } finally {
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setLoading(false);
+                }
             }
         };
 
         loadTemplates();
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     const templates = useMemo<TemplateCard[]>(() => {

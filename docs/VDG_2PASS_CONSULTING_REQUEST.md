@@ -198,4 +198,4 @@ config = {
 
 > **연락처**: Komission 팀
 > **프로젝트**: K-숏폼 크리에이터 지원 플랫폼
-> **기술 스택**: Python 3.13, FastAPI, google-genai, Next.js 16
+> **기술 스택**: Python 3.12+, FastAPI, google-genai, Next.js 16

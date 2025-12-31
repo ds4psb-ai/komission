@@ -5,10 +5,10 @@ Reads Evidence -> Generates Decision -> Writes to Sheet
 import json
 import logging
 import uuid
-from datetime import datetime
 from typing import Optional, Dict, Any
 from app.services.sheet_manager import SheetManager
 from app.services.gemini_pipeline import gemini_pipeline
+from app.utils.time import utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ class OpalEngine:
             # Enrich with IDs
             result["parent_id"] = evidence_group["parent_id"]
             result["decision_id"] = str(uuid.uuid4())
-            result["created_at"] = datetime.now().isoformat()
+            result["created_at"] = utcnow().isoformat()
             
             return result
         except json.JSONDecodeError as e:

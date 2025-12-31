@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
@@ -16,6 +16,7 @@ export default function RoyaltyHistoryPage() {
     const [history, setHistory] = useState<RoyaltyTransaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>('all');
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
@@ -29,19 +30,30 @@ export default function RoyaltyHistoryPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [authLoading, isAuthenticated, filter]);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     async function loadData() {
-        setLoading(true);
+        if (isMountedRef.current) {
+            setLoading(true);
+        }
         try {
             const [summaryData, historyData] = await Promise.all([
                 api.getMyRoyalty(),
                 api.getRoyaltyHistory(filter === 'all' ? undefined : filter)
             ]);
+            if (!isMountedRef.current) return;
             setSummary(summaryData);
             setHistory(historyData);
         } catch (e) {
             console.error(e);
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     }
 
@@ -128,11 +140,16 @@ export default function RoyaltyHistoryPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {history.map((tx) => (
+                                {history.map((tx) => {
+                                    const createdAt = new Date(tx.created_at);
+                                    const isValidDate = !Number.isNaN(createdAt.getTime());
+                                    const dateLabel = isValidDate ? createdAt.toLocaleDateString() : '-';
+                                    const timeLabel = isValidDate ? createdAt.toLocaleTimeString() : '-';
+                                    return (
                                     <tr key={tx.id} className="hover:bg-white/5 transition-colors group">
                                         <td className="p-6 text-sm text-white/60 font-mono">
-                                            {new Date(tx.created_at).toLocaleDateString()}
-                                            <div className="text-xs text-white/20">{new Date(tx.created_at).toLocaleTimeString()}</div>
+                                            {dateLabel}
+                                            <div className="text-xs text-white/20">{timeLabel}</div>
                                         </td>
                                         <td className="p-6">
                                             <span className={`inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-bold uppercase ${tx.reason === 'fork' ? 'bg-emerald-500/20 text-emerald-400' : tx.reason === 'view_milestone' ? 'bg-blue-500/20 text-blue-400' : tx.reason === 'k_success' ? 'bg-purple-500/20 text-purple-400' : 'bg-white/10 text-white/60'}`}>
@@ -160,7 +177,8 @@ export default function RoyaltyHistoryPage() {
                                             )}
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     )}

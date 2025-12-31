@@ -38,7 +38,7 @@ class SimpleCache {
         this.cache.set(key, {
             data,
             timestamp: now,
-            expiresAt: now + (ttl || this.defaultTTL),
+            expiresAt: now + (ttl ?? this.defaultTTL),
         });
     }
 
@@ -53,7 +53,11 @@ class SimpleCache {
      * 패턴으로 삭제 (예: 'outliers:*')
      */
     deleteByPattern(pattern: string): void {
-        const regex = new RegExp('^' + pattern.replace('*', '.*'));
+        const escaped = pattern
+            .split('*')
+            .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+            .join('.*');
+        const regex = new RegExp('^' + escaped);
         for (const key of this.cache.keys()) {
             if (regex.test(key)) {
                 this.cache.delete(key);
@@ -160,7 +164,7 @@ export async function staleWhileRevalidate<T>(
     const entry = (apiCache as any).cache.get(key) as CacheEntry<T> | undefined;
 
     // 캐시 없음 - 새로 fetch
-    if (!cached || !entry) {
+    if (cached === null || !entry) {
         const data = await fetchFn();
         apiCache.set(key, data, maxAge);
         return { data, isStale: false };

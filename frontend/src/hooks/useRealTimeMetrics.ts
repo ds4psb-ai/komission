@@ -37,9 +37,16 @@ export function useRealTimeMetrics({
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const shouldReconnectRef = useRef(true);
 
     const connect = useCallback(() => {
         if (!userId || !enabled) return;
+
+        shouldReconnectRef.current = true;
+        if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+        }
 
         // Use relative WebSocket URL for Next.js proxy
         const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -79,11 +86,12 @@ export function useRealTimeMetrics({
                     // Handle incremental update
                     setMetrics(prev => {
                         if (!prev) return prev;
-                        const data = message.data as { node_id: string; new_views: number };
+                        const data = message.data as { node_id?: string; new_views?: number };
+                        const increment = typeof data.new_views === 'number' ? data.new_views : 1;
                         return {
                             ...prev,
-                            total_views: prev.total_views + 1,
-                            today_views: prev.today_views + 1,
+                            total_views: prev.total_views + increment,
+                            today_views: prev.today_views + increment,
                         };
                     });
                 } else if (message.type === 'points_update') {
@@ -102,8 +110,12 @@ export function useRealTimeMetrics({
             }
         };
 
-        ws.onerror = (error) => {
-            console.error('❌ WebSocket error:', error);
+        ws.onerror = () => {
+            // WebSocket errors are common in dev (backend may not have WS endpoint)
+            // Fail silently - the onclose handler will attempt reconnect
+            if (process.env.NODE_ENV === 'development') {
+                console.warn('WebSocket connection failed (this is normal if metrics endpoint is not available)');
+            }
         };
 
         ws.onclose = () => {
@@ -113,10 +125,11 @@ export function useRealTimeMetrics({
             // Clear ping interval
             if (pingIntervalRef.current) {
                 clearInterval(pingIntervalRef.current);
+                pingIntervalRef.current = null;
             }
 
             // Attempt reconnect after 5 seconds
-            if (enabled) {
+            if (enabled && shouldReconnectRef.current) {
                 reconnectTimeoutRef.current = setTimeout(() => {
                     console.log('🔄 Attempting reconnect...');
                     connect();
@@ -126,11 +139,14 @@ export function useRealTimeMetrics({
     }, [userId, enabled, onMetricsUpdate]);
 
     const disconnect = useCallback(() => {
+        shouldReconnectRef.current = false;
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
         }
         if (pingIntervalRef.current) {
             clearInterval(pingIntervalRef.current);
+            pingIntervalRef.current = null;
         }
         if (wsRef.current) {
             wsRef.current.close();

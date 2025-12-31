@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { useSearchParams, useParams } from "next/navigation";
 import { useSessionStore } from "@/stores/useSessionStore";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api, type QuestRecommendation } from "@/lib/api";
 import dynamic from "next/dynamic";
 
@@ -48,6 +48,7 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
     const [isStarting, setIsStarting] = useState(false);
     const [showCelebration, setShowCelebration] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -62,10 +63,19 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
         return () => media.removeListener(update);
     }, []);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     const handleStartFilming = async () => {
-        setIsStarting(true);
+        if (isMountedRef.current) {
+            setIsStarting(true);
+        }
         try {
             const forkedNode = await api.forkRemixNode(nodeId);
+            if (!isMountedRef.current) return;
             setRunCreated({ runId: forkedNode.node_id, forkNodeId: forkedNode.node_id });
             setRunStatus("shooting");
         } catch (error) {
@@ -73,7 +83,9 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
             const message = error instanceof Error ? error.message : "촬영 시작에 실패했습니다.";
             alert(message);
         } finally {
-            setIsStarting(false);
+            if (isMountedRef.current) {
+                setIsStarting(false);
+            }
         }
     };
 

@@ -152,12 +152,14 @@ function AnalysisOverlay({ analysis, visible }: { analysis?: VideoAnalysis; visi
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-white">{analysis.hook_pattern}</span>
-                        {analysis.hook_score && (
+                        {typeof analysis.hook_score === 'number' && (
                             <span className="px-1.5 py-0.5 bg-cyan-500/20 rounded text-[10px] text-cyan-300 font-mono">
-                                {analysis.hook_score}/10
+                                {analysis.hook_score < 1
+                                    ? `${(analysis.hook_score * 10).toFixed(1)}/10`
+                                    : `${analysis.hook_score}/10`}
                             </span>
                         )}
-                        {analysis.hook_duration_sec && (
+                        {typeof analysis.hook_duration_sec === 'number' && (
                             <span className="text-[10px] text-white/50">
                                 <Clock className="w-3 h-3 inline" /> {analysis.hook_duration_sec}s
                             </span>
@@ -180,7 +182,7 @@ function AnalysisOverlay({ analysis, visible }: { analysis?: VideoAnalysis; visi
             )}
 
             {/* Engagement Peak */}
-            {analysis.engagement_peak_sec && (
+            {typeof analysis.engagement_peak_sec === 'number' && (
                 <div className="flex items-center gap-2 text-[10px] text-emerald-400">
                     <Sparkles className="w-3 h-3" />
                     Peak engagement at {analysis.engagement_peak_sec}s
@@ -385,13 +387,13 @@ export function VirloVideoCard({
                                 <Eye className="w-3 h-3" />
                                 {formatNumber(video.view_count)}
                             </span>
-                            {video.like_count && (
+                            {typeof video.like_count === 'number' && (
                                 <span className="flex items-center gap-1">
                                     <Heart className="w-3 h-3" />
                                     {formatNumber(video.like_count)}
                                 </span>
                             )}
-                            {video.engagement_rate && (
+                            {typeof video.engagement_rate === 'number' && (
                                 <span className="flex items-center gap-1 text-emerald-400">
                                     <TrendingUp className="w-3 h-3" />
                                     {(video.engagement_rate * 100).toFixed(1)}%
@@ -400,7 +402,7 @@ export function VirloVideoCard({
                         </div>
 
                         {/* Hook Duration Badge */}
-                        {video.analysis?.hook_duration_sec && (
+                        {typeof video.analysis?.hook_duration_sec === 'number' && (
                             <div className="px-2 py-1 rounded-full bg-cyan-500/20 backdrop-blur-sm text-[10px] text-cyan-300 font-mono">
                                 🎯 {video.analysis.hook_duration_sec}s hook
                             </div>

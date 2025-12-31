@@ -1,0 +1,62 @@
+{
+  "platform": "tiktok",
+  "duration_ms": 18000,
+  "hook_genome": {
+    "strength": 0.82,
+    "start_sec": 0.0,
+    "end_sec": 2.5,
+    "microbeats": [
+      {
+        "beat": "setup",
+        "timestamp_ms": 500
+      },
+      {
+        "beat": "twist",
+        "timestamp_ms": 1500
+      }
+    ]
+  },
+  "viral_kicks": [
+    {
+      "mechanism": "surprise"
+    }
+  ],
+  "comment_evidence": [
+    {
+      "signal_type": "relatable"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "description": "Opening hook"
+    }
+  ],
+  "causal_reasoning": {
+    "causal_chain": [
+      {
+        "cause": "unexpected reveal",
+        "effect": "rewatches"
+      }
+    ],
+    "replication_recipe": [
+      {
+        "step": "open with a strong hook"
+      }
+    ]
+  },
+  "mise_en_scene_signals": [
+    {
+      "type": "close_up"
+    }
+  ],
+  "focus_windows": [
+    {
+      "metrics": {
+        "cv.motion_blur": {
+          "value": 0.12
+        }
+      }
+    }
+  ]
+}

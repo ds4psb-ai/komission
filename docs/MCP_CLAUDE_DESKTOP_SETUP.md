@@ -1,6 +1,7 @@
 # Komission MCP Server - Claude Desktop 연동 가이드
 
-**Updated**: 2025-12-30
+**Updated**: 2025-12-31 (v2)  
+**MCP Spec**: 2025-11-25 | **FastMCP**: 2.14+
 
 ---
 
@@ -63,6 +64,7 @@ Claude Desktop 완전히 종료 후 재시작
 | `komission://evidence/{pattern_id}` | Evidence 요약 (댓글+신호+지표) |
 | `komission://recurrence/{cluster_id}` | 재등장 lineage (배치 계산 결과) |
 | `komission://vdg/{outlier_id}` | VDG 분석 결과 (품질 스코어) |
+| `komission://director-pack/{outlier_id}` | Director Pack (VDG v4 기반, on-demand 생성) |
 
 ---
 
@@ -73,6 +75,9 @@ Claude Desktop 완전히 종료 후 재시작
 | `search_patterns` | L1/L2 패턴 검색 | 자동 승인 |
 | `generate_source_pack` | NotebookLM 소스팩 생성 | **명시적 동의** |
 | `reanalyze_vdg` | VDG 재분석 요청 (비용 발생) | **명시적 동의** |
+| `smart_pattern_analysis` | 패턴 데이터 제공 (Claude 분석용) | 자동 승인 |
+| `ai_batch_analysis` | 배치 데이터 제공 (Claude 비교용) | 자동 승인 |
+| `get_pattern_performance` | 성과 데이터 제공 | 자동 승인 |
 
 ### 4.1 search_patterns
 ```python
@@ -81,7 +86,8 @@ search_patterns(
     category: str = None, # beauty, food, tech 등
     platform: str = None, # tiktok, shorts, reels
     min_tier: str = "C",  # 최소 티어 (S/A/B/C)
-    limit: int = 10       # 최대 결과 수 (max 50)
+    limit: int = 10,      # 최대 결과 수 (max 50)
+    output_format: str = "markdown" # markdown | json
 )
 ```
 
@@ -91,7 +97,8 @@ generate_source_pack(
     outlier_ids: list[str],    # UUID 목록
     pack_name: str,            # 팩 이름
     include_comments: bool = True,
-    include_vdg: bool = True
+    include_vdg: bool = True,
+    output_format: str = "markdown" # markdown | json
 )
 ```
 
@@ -102,6 +109,34 @@ reanalyze_vdg(
     force: bool = False # 완료된 것도 재분석
 )
 ```
+
+### 4.4 smart_pattern_analysis (데이터 제공)
+```python
+smart_pattern_analysis(
+    outlier_id: str,           # 분석할 outlier UUID
+    analysis_type: str = "full"  # full | basic | vdg_only
+)
+```
+> 구조화된 패턴 데이터를 반환합니다. Claude가 이 데이터를 받아서 자체 분석합니다.  
+> **서버 비용 $0** - Claude의 토큰으로 분석.
+
+### 4.5 ai_batch_analysis (배치 데이터 제공)
+```python
+ai_batch_analysis(
+    outlier_ids: list[str],    # UUID 목록 (2-10개)
+    focus: str = "comparison"  # comparison | trends | strategy
+)
+```
+> 여러 패턴의 비교 데이터를 반환합니다. Claude가 트렌드와 공통점을 분석합니다.
+
+### 4.6 get_pattern_performance (성과 데이터)
+```python
+get_pattern_performance(
+    outlier_id: str,    # outlier UUID
+    period: str = "30d" # 7d | 30d | 90d
+)
+```
+> 성과 지표 테이블을 반환합니다. Claude가 성과를 평가합니다.
 
 ---
 
@@ -115,7 +150,40 @@ reanalyze_vdg(
 
 ---
 
-## 6. 테스트
+## 6. 핵심 사용 패턴 (권장)
+
+### 6.1 Claude가 분석하도록 하기
+
+```
+사용자: "이 패턴 분석해줘" (outlier_id 제공)
+   ↓
+Claude: smart_pattern_analysis 도구 호출
+   ↓
+서버: 구조화된 데이터 반환 (조회수, 성장률, VDG 등)
+   ↓
+Claude: 데이터를 보고 자체 분석 (서버 비용 $0)
+   ↓
+사용자: AI 분석 결과 확인
+```
+
+**예시 대화:**
+```
+사용자: "Komission에서 이 패턴이 왜 성공했는지 분석해줘"
+Claude: [도구 호출: smart_pattern_analysis]
+Claude: "조회수 10만, 성장률 1300%로 S-Tier입니다. 성공 요인은..."
+```
+
+### 6.2 여러 패턴 비교
+
+```
+사용자: "이 3개 패턴 비교해줘"
+Claude: [도구 호출: ai_batch_analysis]
+Claude: "3개 패턴의 공통점은..."
+```
+
+---
+
+## 7. 테스트
 
 ### 6.1 독립 실행 테스트
 ```bash
@@ -163,15 +231,121 @@ Komission에서 beauty 카테고리 패턴을 검색해줘
 | Audio Coaching 적합성 | ❌ | ✅ |
 
 ### MCP 활용 가능 영역 (Audio Coaching 아닌)
-- `komission://pack/{pack_id}` - Director Pack 조회 (선택적)
-- `generate_pack` - Pack 생성 도구 (선택적)
+- `komission://director-pack/{outlier_id}` - Director Pack 조회 (VDG v4 기반, 선택적)
 
 ---
 
 ## 9. Reference
 
-- MCP 서버 코드: `backend/app/mcp_server.py` (786줄)
+- MCP 서버 코드: `backend/app/mcp_server.py` (922줄)
 - Audio Coach: `backend/app/services/audio_coach.py` (842줄)
-- FastMCP 문서: https://github.com/jlowin/fastmcp
-- MCP 2025-06-18 스펙: https://modelcontextprotocol.io
+- FastMCP 문서: https://gofastmcp.com
+- MCP 2025-11-25 스펙: https://modelcontextprotocol.io
 
+---
+
+## 10. FastMCP 2.14+ 가이드 (2025-11-25 스펙)
+
+### 10.1 주요 신기능
+
+| 기능 | 설명 | 상태 |
+|------|------|------|
+| **Background Tasks** | `task=True` 데코레이터로 장기 작업 진행률 보고 | ✅ 적용 |
+| **Progress 의존성** | `Progress` 의존성 주입으로 진행률 추적 | ✅ 적용 |
+| **Elicitation** | 서버가 사용자에게 추가 입력 요청 | ✅ 적용 |
+| **Server Composition** | 여러 MCP 서버 모듈 조합 | 향후 고려 |
+| **Structured Output** | Pydantic 모델 반환 (`SearchResponse`, `SourcePackResponse`) | ✅ 적용 |
+
+### 10.2 Background Task + Progress 패턴 (적용됨)
+
+```python
+from fastmcp.dependencies import Progress
+
+@mcp.tool(task=True)  # Background Task 활성화
+async def reanalyze_vdg(
+    outlier_id: str,
+    force: bool = False,
+    progress: Progress = Progress()  # 의존성 주입
+) -> str:
+    await progress.set_total(4)
+    await progress.set_message("Validating outlier ID")
+    # ... 검증 로직
+    await progress.increment()
+    
+    await progress.set_message("Queuing for re-analysis")
+    # ... 큐 등록
+    await progress.increment()
+    return result
+```
+
+### 10.3 Elicitation (적용됨)
+
+서버가 도구 실행 중 사용자에게 추가 정보를 요청하는 MCP 2025-06-18 신기능:
+
+**적용된 도구**:
+- `generate_source_pack`: 20개 초과 선택 시 확인 요청
+- `reanalyze_vdg`: `force=True` 시 비용 확인 요청
+
+```python
+from fastmcp import Context
+from fastmcp.server.context import AcceptedElicitation
+
+ELICITATION_THRESHOLD = 20
+
+@mcp.tool()
+async def generate_source_pack(
+    outlier_ids: list[str],
+    pack_name: str,
+    ctx: Context = None
+):
+    if len(outlier_ids) > ELICITATION_THRESHOLD and ctx:
+        response = await ctx.elicit(
+            message=f"⚠️ {len(outlier_ids)}개의 아웃라이어가 선택되었습니다. 계속하시겠습니까?",
+            response_type=bool
+        )
+        
+        if not isinstance(response, AcceptedElicitation) or not response.data:
+            return "❌ 작업이 취소되었습니다."
+```
+
+### 10.4 Transport Layer
+
+| Transport | 사용 케이스 | 설정 |
+|-----------|------------|------|
+| **stdio** | Claude Desktop 로컬 연동 (현재) | `mcp.run()` |
+| **Streamable HTTP** | 원격 MCP 서버 | `python -m app.mcp.http_server` |
+
+#### Streamable HTTP 실행
+
+```bash
+# 개발 모드
+cd backend
+python -m app.mcp.http_server
+
+# Docker 배포
+docker-compose -f docker-compose.mcp.yml up -d
+```
+
+#### 클라이언트 연결 (원격)
+
+```json
+{
+  "mcpServers": {
+    "komission": {
+      "transport": "http",
+      "url": "https://api.komission.io/mcp"
+    }
+  }
+}
+```
+
+> ⚠️ SSE(Server-Sent Events)는 2025-03-26 스펙에서 deprecated됨
+
+### 10.5 2025 Best Practices
+
+1. **Background Tasks**: `task=True` + `Progress` 의존성 주입
+2. **보안**: OAuth 2.1 + PKCE (원격 배포 시 필수)
+3. **입력 검증**: Pydantic strict validation
+4. **비동기**: `async` 도구 선언 필수
+5. **모듈화**: 도메인별 마이크로 서버 분리
+6. **에러 처리**: JSON-RPC 2.0 에러 코드 사용

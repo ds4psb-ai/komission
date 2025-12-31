@@ -17,6 +17,7 @@ from app.services.vdg_2pass.vdg_unified_pipeline import VDGUnifiedPipeline, anal
 from app.services.vdg_2pass.director_compiler import DirectorCompiler
 from app.schemas.vdg_v4 import VDGv4
 from app.schemas.vdg import VDG
+from app.schemas.vdg_v35 import VDGv35
 from app.services.video_downloader import video_downloader
 from app.validators.schema_validator import validate_vdg_analysis_schema, SchemaValidationError
 
@@ -283,7 +284,7 @@ class GeminiPipeline:
         video_url: str, 
         node_id: str,
         audience_comments: Optional[List[Dict[str, Any]]] = None
-    ) -> VDG:
+    ) -> VDGv35:
         """
         Full pipeline: Download -> Upload -> Analyze (VDG) -> Parse -> Return
         
@@ -355,13 +356,13 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                 logger.info(f"📝 Including {len(audience_comments)} audience comments in analysis")
 
             # 4. Generate Analysis
-            logger.warning(f"🧠 Analyzing {node_id} with {self.model} (VDG v3.0)...")
+            logger.warning(f"🧠 Analyzing {node_id} with {self.model} (VDG v3.5)...")
 
             def _build_config(use_schema: bool) -> types.GenerateContentConfig:
                 if use_schema:
                     return types.GenerateContentConfig(
                         response_mime_type="application/json",
-                        response_json_schema=VDG.model_json_schema()
+                        response_schema=VDGv35.model_json_schema()
                     )
                 return types.GenerateContentConfig(response_mime_type="application/json")
 
@@ -421,7 +422,7 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                 
                 # PEGL v1.0: 스키마 버전 추가 (없으면)
                 if "schema_version" not in result_json:
-                    result_json["schema_version"] = "v3.2"
+                    result_json["schema_version"] = "v3.5"
                 
                 # PEGL v1.0: 스키마 검증 (실패 시 명시적 예외)
                 try:
@@ -433,10 +434,10 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                     logger.warning(f"Continuing despite schema validation failure for {node_id}")
                 
                 # Create VDG object
-                vdg = VDG(**result_json)
+                vdg = VDGv35(**result_json)
                 
-                # === ADAPTER: Populate Legacy Fields ===
-                self._populate_legacy_fields(vdg)
+                # Note: VDGv35 doesn't have legacy fields (global_context, scene_frames)
+                # Legacy field population skipped for v3.5
                 
                 # === VDG Quality Validation ===
                 try:

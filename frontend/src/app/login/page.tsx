@@ -13,6 +13,7 @@ function LoginContent() {
     const { login, isLoading: authLoading } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
 
     // 3D Tilt State
     const cardRef = useRef<HTMLDivElement>(null);
@@ -31,6 +32,12 @@ function LoginContent() {
             setError('세션이 만료되었습니다. 다시 로그인해 주세요.');
         }
     }, [isSessionExpired]);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!cardRef.current) return;
@@ -53,8 +60,10 @@ function LoginContent() {
     };
 
     const handleGoogleSuccess = async (credential: string) => {
-        setIsLoading(true);
-        setError(null);
+        if (isMountedRef.current) {
+            setIsLoading(true);
+            setError(null);
+        }
         try {
             await login(credential);
             // Check for stored redirect path from authGate
@@ -70,9 +79,13 @@ function LoginContent() {
             }
         } catch (err) {
             console.error('Login failed:', err);
-            setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
+            if (isMountedRef.current) {
+                setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
+            }
         } finally {
-            setIsLoading(false);
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
         }
     };
 

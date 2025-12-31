@@ -170,6 +170,8 @@ class Neo4jGraph:
                             mutation_data = json.loads(mutation_data)
                         except:
                             pass
+                    if not isinstance(mutation_data, dict):
+                        mutation_data = {}
                     
                     recommendations.append({
                         "mutation_strategy": mutation_data,
@@ -257,4 +259,3 @@ class Neo4jGraph:
         ]
 
 neo4j_graph = Neo4jGraph()
-

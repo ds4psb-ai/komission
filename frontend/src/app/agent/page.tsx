@@ -69,12 +69,21 @@ function generateSessionId(): string {
     return `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function escapeHtml(input: string): string {
+    return input
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 // Simple markdown-like formatting
 function formatMessage(content: string): React.ReactNode {
     const lines = content.split('\n');
     return lines.map((line, i) => {
         // Bold: **text**
-        let formatted: React.ReactNode = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        let formatted = escapeHtml(line).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         // Code: `text`
         formatted = String(formatted).replace(/`(.+?)`/g, '<code class="px-1.5 py-0.5 bg-white/10 rounded text-purple-300 text-xs">$1</code>');
         // Lists: - item or • item
@@ -250,6 +259,8 @@ export default function AgentPage() {
     const [error, setError] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isMountedRef = useRef(true);
 
     // Initialize session and load persisted messages
     useEffect(() => {
@@ -294,6 +305,16 @@ export default function AgentPage() {
         loadSuggestions();
     }, []);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+            if (retryTimeoutRef.current) {
+                clearTimeout(retryTimeoutRef.current);
+                retryTimeoutRef.current = null;
+            }
+        };
+    }, []);
+
     const clearChat = () => {
         setMessages([]);
         localStorage.removeItem(`${STORAGE_KEY}_messages`);
@@ -312,6 +333,7 @@ export default function AgentPage() {
             if (response.ok) {
                 const data = await response.json();
                 if (data.suggestions?.length) {
+                    if (!isMountedRef.current) return;
                     setSuggestions(data.suggestions);
                 }
             }
@@ -337,6 +359,7 @@ export default function AgentPage() {
         }
 
         setIsLoading(true);
+        let scheduledRetry = false;
 
         try {
             const token = api.getToken();
@@ -370,9 +393,11 @@ export default function AgentPage() {
                 actions: data.actions || []
             };
 
+            if (!isMountedRef.current) return;
             setMessages(prev => [...prev, assistantMessage]);
 
             if (data.suggestions?.length) {
+                if (!isMountedRef.current) return;
                 setSuggestions(prev => [
                     ...data.suggestions.map((text: string, i: number) => ({
                         id: `dynamic_${i}`,
@@ -386,10 +411,18 @@ export default function AgentPage() {
             console.error('Chat error:', err);
 
             if (retryCount < MAX_RETRY_ATTEMPTS) {
-                setTimeout(() => sendMessage(text, retryCount + 1), 1000);
+                scheduledRetry = true;
+                if (retryTimeoutRef.current) {
+                    clearTimeout(retryTimeoutRef.current);
+                }
+                retryTimeoutRef.current = setTimeout(() => {
+                    if (!isMountedRef.current) return;
+                    sendMessage(text, retryCount + 1);
+                }, 1000);
                 return;
             }
 
+            if (!isMountedRef.current) return;
             setError('응답을 받지 못했어요. 잠시 후 다시 시도해주세요.');
             setMessages(prev => [...prev, {
                 id: generateMessageId(),
@@ -398,6 +431,8 @@ export default function AgentPage() {
                 timestamp: new Date()
             }]);
         } finally {
+            if (scheduledRetry) return;
+            if (!isMountedRef.current) return;
             setIsLoading(false);
             inputRef.current?.focus();
         }

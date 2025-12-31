@@ -29,13 +29,13 @@ Usage:
 """
 import uuid
 import logging
-from datetime import datetime
 from typing import Dict, Optional, List, Literal
 
 from app.schemas.session_log import (
     SessionLog, InterventionEvent, OutcomeEvent, 
     UploadOutcome, SessionCompleteLog
 )
+from app.utils.time import utcnow
 from app.services.proof_patterns import (
     TOP_3_PROOF_PATTERNS, get_pattern_by_id, 
     get_coach_line, create_proof_pack, PATTERN_IDS,
@@ -129,7 +129,7 @@ class CoachingSessionService:
             pack_id=pack_id,
             assignment=assignment.assignment,
             holdout_group=assignment.holdout_group,
-            started_at=datetime.now()
+            started_at=utcnow()
         )
         
         # Store in memory (TODO: persist to DB)
@@ -151,7 +151,7 @@ class CoachingSessionService:
         session = complete_log.session
         
         # Update end time
-        session.ended_at = datetime.now()
+        session.ended_at = utcnow()
         session.duration_sec = (session.ended_at - session.started_at).total_seconds()
         
         # Calculate aggregated metrics
@@ -172,7 +172,7 @@ class CoachingSessionService:
         t_sec: float,
         metric_value: float,
         evidence_id: str = None,
-        evidence_type: Literal["frame", "audio", "text"] = "video"
+        evidence_type: Literal["frame", "audio", "text"] = "frame"
     ) -> Optional[InterventionEvent]:
         """
         Evaluate a rule and potentially trigger intervention.
@@ -256,7 +256,9 @@ class CoachingSessionService:
         rule_id: str,
         t_sec: float,
         compliance: Optional[bool],
-        compliance_unknown_reason: Optional[str] = None,
+        compliance_unknown_reason: Optional[
+            Literal["occluded", "out_of_frame", "no_audio", "ambiguous", "timeout"]
+        ] = None,
         metric_value_after: Optional[float] = None
     ) -> Optional[OutcomeEvent]:
         """
@@ -311,7 +313,9 @@ class CoachingSessionService:
         session_id: str,
         uploaded: bool,
         upload_platform: Optional[str] = None,
-        early_views_bucket: Optional[str] = None,
+        early_views_bucket: Optional[
+            Literal["0-100", "100-1K", "1K-10K", "10K-100K", "100K+"]
+        ] = None,
         self_rating: Optional[int] = None
     ) -> Optional[UploadOutcome]:
         """Record upload result for session."""

@@ -7,7 +7,7 @@ import csv
 import io
 import asyncio
 import math
-from datetime import datetime as dt
+from app.utils.time import utcnow, days_ago
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,11 +53,12 @@ async def resolve_short_url(url: str):
     Used by frontend to embed TikTok videos from short links.
     """
     from app.services.social_metadata import normalize_url
+    from app.utils.url_normalizer import normalize_video_url
     
     result = normalize_url(url, expand_short=True)
     return {
         "original_url": url,
-        "canonical_url": result["canonical_url"],
+        "canonical_url": normalize_video_url(result["canonical_url"], result["platform"]),
         "platform": result["platform"],
         "content_id": result["content_id"],
     }
@@ -230,6 +231,7 @@ async def list_outliers(
     category: Optional[str] = None,
     platform: Optional[str] = None,
     tier: Optional[str] = None,
+    status: Optional[str] = None,
     freshness: Optional[str] = Query(default="7d"),
     sort_by: Optional[str] = Query(default="outlier_score"),
     limit: int = Query(default=50, le=200),
@@ -248,9 +250,14 @@ async def list_outliers(
         query = query.where(OutlierItem.platform == platform)
     if tier:
         query = query.where(OutlierItem.outlier_tier == tier)
+    if status:
+        # Map status string to enum (case-insensitive)
+        status_upper = status.upper()
+        status_enum = getattr(OutlierItemStatus, status_upper, None)
+        if status_enum:
+            query = query.where(OutlierItem.status == status_enum)
     
     # Freshness filter
-    from app.utils.time import utcnow, days_ago
     if freshness == "24h":
         from datetime import timedelta
         cutoff = utcnow() - timedelta(hours=24)
@@ -293,7 +300,7 @@ async def list_outliers(
                 "creator_avg_views": 10000,  # TODO: Calculate from creator data
                 "engagement_rate": (i.like_count or 0) / max(i.view_count or 1, 1),
                 "crawled_at": i.crawled_at.isoformat() if i.crawled_at else None,
-                "status": i.status.value if i.status else "pending",
+                "status": i.status.value.lower() if i.status else "pending",
                 # VDG Analysis Gate
                 "analysis_status": i.analysis_status or "pending",
                 "promoted_to_node_id": str(i.promoted_to_node_id) if i.promoted_to_node_id else None,
@@ -353,7 +360,13 @@ async def create_item_manual(
     current_user: User = Depends(require_curator),
     db: AsyncSession = Depends(get_db)
 ):
-    """관리자 수동 아웃라이어 등록 (링크 기반)"""
+    """관리자 수동 아웃라이어 등록 (링크 기반)
+    
+    TikTok URL인 경우 자동으로 메타데이터 추출:
+    - view_count, like_count, share_count
+    - thumbnail_url (oEmbed 사용)
+    - title (description)
+    """
     external_id = f"manual_{hashlib.sha256(item.video_url.encode('utf-8')).hexdigest()}"
     existing = await db.execute(
         select(OutlierItem).where(OutlierItem.external_id == external_id)
@@ -364,18 +377,140 @@ async def create_item_manual(
 
     source_name = (item.source_name or "manual").strip() or "manual"
     source = await _get_or_create_source(db, source_name)
+    
+    # TikTok 메타데이터 자동 추출
+    view_count = item.view_count or 0
+    like_count = item.like_count
+    share_count = item.share_count
+    thumbnail_url = item.thumbnail_url
+    title = item.title
+    comment_count = 0
+    
+    if 'tiktok' in item.platform.lower():
+        try:
+            from app.services.tiktok_extractor import extract_tiktok_complete
+            import httpx
+            
+            print(f"🔍 TikTok 메타데이터 자동 추출: {item.video_url[:50]}...")
+            tiktok_data = await extract_tiktok_complete(item.video_url, include_comments=False)
+            
+            # 추출 성공 시 메타데이터 사용
+            if tiktok_data.get('view_count', 0) > 0:
+                view_count = tiktok_data['view_count']
+                like_count = tiktok_data.get('like_count', like_count)
+                share_count = tiktok_data.get('share_count', share_count)
+                title = tiktok_data.get('title') or title
+                print(f"✅ 추출 성공: {view_count:,} views, {like_count:,} likes")
+            
+            # oEmbed로 썸네일 가져오기
+            if not thumbnail_url:
+                try:
+                    async with httpx.AsyncClient(timeout=10) as client:
+                        oembed_url = f"https://www.tiktok.com/oembed?url={item.video_url}"
+                        resp = await client.get(oembed_url)
+                        if resp.status_code == 200:
+                            oembed_data = resp.json()
+                            thumbnail_url = oembed_data.get('thumbnail_url')
+                            if thumbnail_url:
+                                print(f"📷 썸네일: {thumbnail_url[:50]}...")
+                except Exception as te:
+                    print(f"⚠️ oEmbed 실패: {te}")
+                    
+        except Exception as e:
+            print(f"⚠️ TikTok 메타데이터 추출 실패: {e}")
+            # 실패해도 계속 진행 (기본값 사용)
+
+    elif 'youtube' in item.platform.lower():
+        # YouTube 메타데이터 자동 추출 (Data API v3)
+        try:
+            from app.crawlers.youtube import YouTubeCrawler
+            import re
+            
+            # video_id 추출
+            video_id_match = re.search(r'(?:v=|shorts/|youtu\.be/)([^&?/]+)', item.video_url)
+            if video_id_match:
+                video_id = video_id_match.group(1)
+                print(f"🔍 YouTube 메타데이터 자동 추출: {video_id}...")
+                
+                with YouTubeCrawler() as crawler:
+                    details = crawler._get_video_details([video_id])
+                    
+                    if details:
+                        video = details[0]
+                        snippet = video.get('snippet', {})
+                        statistics = video.get('statistics', {})
+                        
+                        view_count = int(statistics.get('viewCount', 0))
+                        like_count = int(statistics.get('likeCount', 0))
+                        comment_count = int(statistics.get('commentCount', 0))
+                        title = snippet.get('title') or title
+                        
+                        # 썸네일: maxres > high > medium
+                        thumbs = snippet.get('thumbnails', {})
+                        thumbnail_url = (
+                            thumbs.get('maxres', {}).get('url') or
+                            thumbs.get('high', {}).get('url') or
+                            thumbs.get('medium', {}).get('url') or
+                            thumbnail_url
+                        )
+                        
+                        print(f"✅ YouTube 추출: {view_count:,} views, {like_count:,} likes")
+                        
+        except Exception as e:
+            print(f"⚠️ YouTube 메타데이터 추출 실패: {e}")
+
+    # P0: outlier_score 자동 계산
+    outlier_score = None
+    outlier_tier = 'C'  # 기본값
+    
+    if view_count and view_count > 0:
+        # 크리에이터 평균 조회수 추정 (없으면 10,000 기본값)
+        creator_avg_views = 10000
+        
+        # 추출된 작성자 ID로 기존 데이터 조회 시도
+        if 'tiktok' in item.platform.lower():
+            try:
+                # 같은 플랫폼의 기존 아이템들 평균 조회수 참조
+                from sqlalchemy import func as sqlfunc
+                avg_result = await db.execute(
+                    select(sqlfunc.avg(OutlierItem.view_count))
+                    .where(OutlierItem.platform == 'tiktok')
+                    .where(OutlierItem.view_count > 0)
+                )
+                db_avg = avg_result.scalar()
+                if db_avg and db_avg > 0:
+                    creator_avg_views = int(db_avg * 0.1)  # 평균의 10%를 기준으로
+            except Exception:
+                pass
+        
+        # outlier_score 계산 (조회수 / 크리에이터 평균)
+        outlier_score = round(view_count / max(creator_avg_views, 1), 2)
+        
+        # tier 자동 결정
+        if outlier_score >= 500:
+            outlier_tier = 'S'
+        elif outlier_score >= 200:
+            outlier_tier = 'A'
+        elif outlier_score >= 100:
+            outlier_tier = 'B'
+        else:
+            outlier_tier = 'C'
+        
+        print(f"📊 자동 계산: score={outlier_score}x, tier={outlier_tier}")
 
     new_item = OutlierItem(
         source_id=source.id,
         external_id=external_id,
         video_url=item.video_url,
-        title=item.title,
-        thumbnail_url=item.thumbnail_url,
+        title=title,
+        thumbnail_url=thumbnail_url,
         platform=item.platform,
         category=item.category,
-        view_count=item.view_count,
-        like_count=item.like_count,
-        share_count=item.share_count,
+        view_count=view_count,
+        like_count=like_count,
+        share_count=share_count,
+        outlier_score=outlier_score,
+        outlier_tier=outlier_tier,
         growth_rate=item.growth_rate,
         status=OutlierItemStatus.PENDING,
     )
@@ -427,7 +562,7 @@ async def get_outlier_item(
         "view_count": item.view_count,
         "like_count": item.like_count,
         "growth_rate": item.growth_rate,
-        "status": item.status.value if item.status else None,
+        "status": item.status.value.lower() if item.status else None,
         "promoted_to_node_id": str(item.promoted_to_node_id) if item.promoted_to_node_id else None,
         "crawled_at": item.crawled_at.isoformat() if item.crawled_at else None,
         "outlier_tier": item.outlier_tier,
@@ -1075,10 +1210,10 @@ async def update_item_status(
     if not item:
         raise HTTPException(status_code=404, detail="Outlier item not found")
     
-    try:
-        item.status = OutlierItemStatus(new_status)
-    except ValueError:
+    status_enum = getattr(OutlierItemStatus, new_status.upper(), None)
+    if not status_enum:
         raise HTTPException(status_code=400, detail=f"Invalid status: {new_status}")
+    item.status = status_enum
     
     await db.commit()
     return {"updated": True, "new_status": new_status}
@@ -1179,22 +1314,29 @@ async def promote_to_parent(
         rule_followed=rule_followed,
     )
     
-    # VDG 분석은 Admin 승인 후에만 실행됨 (analysis_status = pending)
+    # VDG 분석 자동 실행 (승격 즉시)
+    item.analysis_status = "analyzing"
     await db.commit()
     await db.refresh(node)
 
-    # ❌ Auto-analysis REMOVED - Admin must approve first
-    # 기존: background_tasks.add_task(trigger_auto_analysis, ...)
-    # 이제: Admin이 /approve 호출 시에만 분석 실행
+    # ✅ Auto-analysis ENABLED - VDG 분석 즉시 시작
+    if item.video_url:
+        background_tasks.add_task(
+            _run_vdg_analysis_with_comments,
+            item_id=str(item.id),
+            node_id=node.node_id,
+            video_url=item.video_url,
+            platform=item.platform,
+        )
 
     return {
         "promoted": True,
         "item_id": item_id,
         "node_id": node.node_id,
         "remix_id": str(node.id),
-        "analysis_status": "pending",  # Admin 승인 대기
-        "decision_type": decision_type.value,  # 큐레이션 결정 유형
-        "message": "VDG 분석을 시작하려면 Admin 승인이 필요합니다. POST /outliers/items/{item_id}/approve",
+        "analysis_status": "analyzing",  # 즉시 분석 시작
+        "decision_type": decision_type.value,
+        "message": "VDG 분석이 자동으로 시작됩니다.",
     }
 
 
@@ -1273,7 +1415,7 @@ def _item_to_response(item: OutlierItem) -> OutlierItemResponse:
         view_count=item.view_count,
         like_count=item.like_count,
         growth_rate=item.growth_rate,
-        status=item.status,
+        status=item.status.value.lower() if item.status else "pending",
         promoted_to_node_id=str(item.promoted_to_node_id) if item.promoted_to_node_id else None,
         campaign_eligible=item.campaign_eligible,
         crawled_at=item.crawled_at,
@@ -1424,8 +1566,6 @@ async def approve_vdg_analysis(
     
     비용이 발생하는 Gemini API 호출을 Admin 승인 후에만 실행함.
     """
-    from datetime import datetime
-    
     result = await db.execute(
         select(OutlierItem).where(OutlierItem.id == UUID(item_id))
     )
@@ -1449,7 +1589,6 @@ async def approve_vdg_analysis(
     # Update approval status
     item.analysis_status = "approved"
     item.approved_by = current_user.id
-    from app.utils.time import utcnow
     item.approved_at = utcnow()
     await db.commit()
     
@@ -1558,10 +1697,18 @@ async def _run_vdg_analysis_with_comments(
                     item.analysis_status = "analyzing"
                     await db.commit()
             else:
-                # 3. Extract best comments (YouTube/TikTok API) - REQUIRED GATE
+                # 3. Extract best comments (TikTok: TikTokUnifiedExtractor, Others: comment_extractor)
                 try:
-                    from app.services.comment_extractor import extract_best_comments
-                    best_comments = await extract_best_comments(video_url, platform, limit=5)
+                    if platform.lower() == "tiktok":
+                        # Use sophisticated TikTok extractor (UNIVERSAL_DATA JSON parsing)
+                        from app.services.tiktok_extractor import extract_tiktok_complete
+                        tiktok_data = await extract_tiktok_complete(video_url, include_comments=True)
+                        best_comments = tiktok_data.get("top_comments", [])
+                        print(f"📝 TikTok unified extractor: {len(best_comments)} comments, source={tiktok_data.get('source')}")
+                    else:
+                        # YouTube/Instagram: use comment_extractor
+                        from app.services.comment_extractor import extract_best_comments
+                        best_comments = await extract_best_comments(video_url, platform, limit=10)
                     
                     if not best_comments:
                         raise ValueError("No comments extracted - empty result")
@@ -1668,7 +1815,7 @@ async def _run_vdg_analysis_with_comments(
                 variant_age_days = None
                 novelty_decay_score = None
                 burstiness_index = None
-                reference_time = item.crawled_at if item and item.crawled_at else dt.utcnow()
+                reference_time = item.crawled_at if item and item.crawled_at else utcnow()
                 if cluster_id:
                     first_seen_result = await db.execute(
                         select(func.min(NotebookLibraryEntry.created_at))
@@ -1746,7 +1893,7 @@ async def _run_vdg_analysis_with_comments(
                     
                     evidence = EvidenceSnapshot(
                         parent_node_id=node.id,
-                        snapshot_date=dt.utcnow(),
+                        snapshot_date=utcnow(),
                         period="baseline",
                         depth1_summary=depth1_summary,
                         top_mutation_type="hook",

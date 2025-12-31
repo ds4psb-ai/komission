@@ -74,11 +74,15 @@ class VideoDownloader:
         
         # Configure yt-dlp options
         ydl_opts = {
-            'format': 'best[ext=mp4]/best',
+            # Download video+audio (max 720p for faster download), merge to mp4
+            'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720]/best',
+            'merge_output_format': 'mp4',  # Ensure output is mp4
             'outtmpl': os.path.join(self.output_dir, '%(id)s.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
+            # Solve YouTube JS challenge using deno
+            'remote_components': ['ejs:github'],
         }
         
         # Cookie support for authenticated content

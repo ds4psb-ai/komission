@@ -7,9 +7,8 @@
  * 입력: Decision (parent_id, experiment)
  * 출력: Template Seed (hook, shotlist, audio, scene, timing, do_not)
  */
-import { memo, useState, useCallback } from "react";
+import { memo, useState, useCallback, useEffect, useRef } from "react";
 import { Handle, Position } from "@xyflow/react";
-import { api } from "@/lib/api";
 
 interface SeedParams {
     hook?: string;
@@ -33,15 +32,30 @@ export const TemplateSeedNode = memo(({ data }: { data: TemplateSeedNodeData }) 
     const [error, setError] = useState<string | null>(null);
     const [seed, setSeed] = useState<SeedParams | null>(data.seed || null);
     const status = data.status || (seed ? 'done' : 'idle');
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        setSeed(data.seed ?? null);
+    }, [data.seed]);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const generateSeed = useCallback(async () => {
         if (!data.parentId) {
-            setError('Parent ID가 필요합니다');
+            if (isMountedRef.current) {
+                setError('Parent ID가 필요합니다');
+            }
             return;
         }
 
-        setLoading(true);
-        setError(null);
+        if (isMountedRef.current) {
+            setLoading(true);
+            setError(null);
+        }
 
         try {
             const response = await fetch('/api/v1/template-seeds/generate', {
@@ -57,13 +71,17 @@ export const TemplateSeedNode = memo(({ data }: { data: TemplateSeedNodeData }) 
             if (!response.ok) throw new Error('시드 생성 실패');
 
             const result = await response.json();
+            if (!isMountedRef.current) return;
             if (result.success && result.seed?.seed_params) {
                 setSeed(result.seed.seed_params);
             }
         } catch (e) {
+            if (!isMountedRef.current) return;
             setError(e instanceof Error ? e.message : '오류 발생');
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     }, [data.parentId, data.clusterId]);
 

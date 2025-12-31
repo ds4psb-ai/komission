@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, use, useRef } from 'react';
 import { api, EvidenceBoardDetail, BoardItem } from '@/lib/api';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -33,21 +33,33 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
     const unwrappedParams = use(params);
     const [board, setBoard] = useState<EvidenceBoardDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         const loadBoard = async () => {
             try {
                 const data = await api.getBoard(unwrappedParams.id);
+                if (!isMountedRef.current) return;
                 setBoard(data);
             } catch (e) {
                 console.warn("Board API failed, using mock:", e);
-                setBoard({ ...MOCK_BOARD, id: unwrappedParams.id });
+                if (isMountedRef.current) {
+                    setBoard({ ...MOCK_BOARD, id: unwrappedParams.id });
+                }
             } finally {
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setLoading(false);
+                }
             }
         };
         loadBoard();
     }, [unwrappedParams.id]);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     if (loading) return <div className="min-h-screen flex items-center justify-center text-white/50">로딩중...</div>;
     if (!board) return <div className="min-h-screen flex items-center justify-center text-white/50">보드를 찾을 수 없습니다</div>;

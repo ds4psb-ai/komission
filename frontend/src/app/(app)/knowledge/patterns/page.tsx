@@ -9,7 +9,7 @@
  * - citations: 출처
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { api, PatternLibraryItem, PatternLibraryResponse } from '@/lib/api';
 import { BookOpen, Clock, ArrowRight, Lightbulb, Repeat } from 'lucide-react';
@@ -69,9 +69,16 @@ export default function PatternLibraryPage() {
     const [library, setLibrary] = useState<PatternLibraryResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         loadPatterns();
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     const loadPatterns = async () => {
@@ -79,12 +86,16 @@ export default function PatternLibraryPage() {
             const data = await api.getPatternLibrary({ limit: 50 });
             // Use real data if available, otherwise fallback to mock
             const hasData = data.patterns?.length > 0;
+            if (!isMountedRef.current) return;
             setLibrary(hasData ? data : MOCK_LIBRARY);
         } catch (e) {
             console.warn("Pattern Library API failed, using mock:", e);
+            if (!isMountedRef.current) return;
             setLibrary(MOCK_LIBRARY);
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 

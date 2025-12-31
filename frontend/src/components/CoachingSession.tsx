@@ -89,6 +89,10 @@ export function CoachingSession({
     const streamRef = useRef<MediaStream | null>(null);
     const wsRef = useRef<WebSocket | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const timeoutRefs = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+    const isRecordingRef = useRef(false);
+    const recordingTimeRef = useRef(0);
+    const isMountedRef = useRef(true);
 
     // Mobile detection
     useEffect(() => {
@@ -112,6 +116,12 @@ export function CoachingSession({
         };
     }, [isOpen]);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     const initSession = async () => {
         try {
             // 1. Start camera
@@ -132,6 +142,7 @@ export function CoachingSession({
                     voice_style: 'friendly'
                 });
 
+                if (!isMountedRef.current) return;
                 setSessionId(sessionData.session_id);
                 setAssignment(sessionData.assignment);
                 setHoldoutGroup(sessionData.holdout_group);
@@ -148,13 +159,16 @@ export function CoachingSession({
             } catch (apiErr) {
                 // Fallback: create dummy session for demo
                 console.warn('API failed, using demo mode:', apiErr);
+                if (!isMountedRef.current) return;
                 setSessionId(`demo-session-${Date.now()}`);
                 setRules(getDemoRules(mode));
             }
 
         } catch (err) {
             console.error('Failed to init session:', err);
-            setError('카메라 접근이 거부되었습니다.');
+            if (isMountedRef.current) {
+                setError('카메라 접근이 거부되었습니다.');
+            }
         }
     };
 
@@ -187,36 +201,19 @@ export function CoachingSession({
             clearInterval(timerRef.current);
             timerRef.current = null;
         }
-        setIsRecording(false);
-        setRecordingTime(0);
+        if (timeoutRefs.current.length > 0) {
+            timeoutRefs.current.forEach(clearTimeout);
+            timeoutRefs.current = [];
+        }
+        isRecordingRef.current = false;
+        recordingTimeRef.current = 0;
+        if (isMountedRef.current) {
+            setIsRecording(false);
+            setRecordingTime(0);
+        }
     };
 
-    const startRecording = useCallback(() => {
-        setIsRecording(true);
-        setRecordingTime(0);
-
-        // Start timer
-        timerRef.current = setInterval(() => {
-            setRecordingTime(prev => prev + 1);
-        }, 1000);
-
-        // Simulate coaching feedback (demo mode)
-        simulateCoaching();
-    }, []);
-
-    const stopRecording = useCallback(() => {
-        setIsRecording(false);
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-        }
-
-        if (sessionId && onComplete) {
-            onComplete(sessionId);
-        }
-    }, [sessionId, onComplete]);
-
-    const simulateCoaching = () => {
+    const simulateCoaching = useCallback(() => {
         // P1: Demo coaching with event logging
         const feedbacks = [
             { message: "좋아요! 카메라를 정면으로 봐주세요", type: 'instruction' as const, delay: 2000, rule: rules[0] },
@@ -226,8 +223,9 @@ export function CoachingSession({
         ];
 
         feedbacks.forEach(({ message, type, delay, rule }, index) => {
-            setTimeout(async () => {
-                if (!isRecording || !sessionId) return;
+            const timeoutId = setTimeout(async () => {
+                if (!isRecordingRef.current || !sessionId) return;
+                if (!isMountedRef.current) return;
 
                 const currentRule = rule || rules[index % rules.length];
                 if (!currentRule) return;
@@ -236,56 +234,69 @@ export function CoachingSession({
                 const ruleResult = type === 'praise' ? 'passed' : 'violated';
                 const shouldIntervene = type === 'instruction';
 
+                const tVideo = recordingTimeRef.current;
+
                 try {
                     // P1: Log rule_evaluated (ALWAYS, even without intervention)
                     await api.logRuleEvaluated(sessionId, {
                         rule_id: currentRule.rule_id,
-                        ap_id: `ap_${currentRule.rule_id}_${recordingTime}`,
+                        ap_id: `ap_${currentRule.rule_id}_${tVideo}`,
                         checkpoint_id: currentCheckpoint,
                         result: ruleResult,
-                        t_video: recordingTime,
+                        t_video: tVideo,
                         intervention_triggered: shouldIntervene && assignment !== 'control',
                     });
+
+                    if (!isMountedRef.current) return;
 
                     // P1: Only deliver coaching for non-control group
                     if (assignment === 'control') {
                         // Control group: silent evaluation only
                         console.log(`🔬 Control: ${currentRule.rule_id} = ${ruleResult} (no coaching)`);
-                        setProgress(prev => Math.min(prev + 20, 100));
+                        if (isMountedRef.current) {
+                            setProgress(prev => Math.min(prev + 20, 100));
+                        }
                         return;
                     }
 
                     // Coached group: deliver feedback
                     if (shouldIntervene) {
                         const interventionId = `iv_${Date.now()}_${index}`;
-                        setCurrentInterventionId(interventionId);
+                        if (isMountedRef.current) {
+                            setCurrentInterventionId(interventionId);
+                        }
 
                         // Log intervention
                         await api.logIntervention(sessionId, {
                             intervention_id: interventionId,
                             rule_id: currentRule.rule_id,
-                            ap_id: `ap_${currentRule.rule_id}_${recordingTime}`,
+                            ap_id: `ap_${currentRule.rule_id}_${tVideo}`,
                             checkpoint_id: currentCheckpoint,
-                            t_video: recordingTime,
+                            t_video: tVideo,
                             command_text: message,
                         });
+                        if (!isMountedRef.current) return;
                     }
 
                     // Update UI
                     const feedback: CoachingFeedback = { message, type, rule_id: currentRule.rule_id, timestamp: Date.now() };
-                    setCurrentFeedback(feedback);
-                    setFeedbackHistory(prev => [...prev.slice(-4), feedback]);
-                    setProgress(prev => Math.min(prev + 20, 100));
+                    if (isMountedRef.current) {
+                        setCurrentFeedback(feedback);
+                        setFeedbackHistory(prev => [...prev.slice(-4), feedback]);
+                        setProgress(prev => Math.min(prev + 20, 100));
+                    }
 
                     // Update rule status
-                    setRules(prev => {
-                        const updated = [...prev];
-                        const idx = updated.findIndex(r => r.rule_id === currentRule.rule_id);
-                        if (idx >= 0) {
-                            updated[idx].status = type === 'praise' ? 'passed' : 'pending';
-                        }
-                        return updated;
-                    });
+                    if (isMountedRef.current) {
+                        setRules(prev => {
+                            const updated = [...prev];
+                            const idx = updated.findIndex(r => r.rule_id === currentRule.rule_id);
+                            if (idx >= 0) {
+                                updated[idx].status = type === 'praise' ? 'passed' : 'pending';
+                            }
+                            return updated;
+                        });
+                    }
 
                     // Log outcome for praised rules (compliance detected)
                     if (type === 'praise' && currentInterventionId) {
@@ -300,8 +311,46 @@ export function CoachingSession({
                     console.error('Event logging failed:', err);
                 }
             }, delay);
+            timeoutRefs.current.push(timeoutId);
         });
-    };
+    }, [assignment, currentCheckpoint, rules, sessionId, isMountedRef]);
+
+    const startRecording = useCallback(() => {
+        setIsRecording(true);
+        setRecordingTime(0);
+        isRecordingRef.current = true;
+        recordingTimeRef.current = 0;
+
+        // Start timer
+        timerRef.current = setInterval(() => {
+            setRecordingTime(prev => {
+                const next = prev + 1;
+                recordingTimeRef.current = next;
+                return next;
+            });
+        }, 1000);
+
+        // Simulate coaching feedback (demo mode)
+        simulateCoaching();
+    }, [simulateCoaching]);
+
+    const stopRecording = useCallback(() => {
+        setIsRecording(false);
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+        if (timeoutRefs.current.length > 0) {
+            timeoutRefs.current.forEach(clearTimeout);
+            timeoutRefs.current = [];
+        }
+        isRecordingRef.current = false;
+        recordingTimeRef.current = 0;
+
+        if (sessionId && onComplete) {
+            onComplete(sessionId);
+        }
+    }, [sessionId, onComplete]);
 
     if (!isOpen) return null;
 

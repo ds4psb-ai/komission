@@ -1,9 +1,9 @@
 # Docs Index: Structure + Dependencies + SoR Rules
 
-**작성**: 2025-12-28 (Updated: 2025-12-30 Consolidation)  
+**작성**: 2025-12-28 (Updated: 2025-12-31 VDG Unified Pipeline)  
 **목표**: 문서 체계/범주/의존관계/SoR 규칙을 단일 인덱스로 고정
 
-> **Note**: 2025-12-30 문서 통합 작업으로 5개 문서 삭제됨 (백업: `docs_backup_20251230/`)
+> **Note**: 2025-12-31 VDG Unified Pipeline 문서 통합 반영
 
 ---
 

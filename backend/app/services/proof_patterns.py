@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import logging
 
+from app.utils.time import utcnow
 from app.schemas.director_pack import (
     DirectorPack, PackMeta, SourceRef, TargetSpec, RuntimeContract,
     Persona, Scoring, DNAInvariant, TimeScope, RuleSpec,
@@ -66,7 +67,7 @@ class EvaluationResult:
     
     # 메타
     t_sec: float = 0.0
-    evaluated_at: datetime = field(default_factory=datetime.now)
+    evaluated_at: datetime = field(default_factory=utcnow)
     error_message: Optional[str] = None
     
     @property
@@ -498,8 +499,8 @@ def create_proof_pack(
         pattern_id=pattern_id,
         goal=goal,
         pack_meta=PackMeta(
-            pack_id=f"proof_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            generated_at=datetime.now().isoformat(),
+            pack_id=f"proof_{utcnow().strftime('%Y%m%d_%H%M%S')}",
+            generated_at=utcnow().isoformat(),
             compiler_version="proof_patterns_v1",
             source_refs=[
                 SourceRef(evidence_refs=["proof_playbook_v1"])

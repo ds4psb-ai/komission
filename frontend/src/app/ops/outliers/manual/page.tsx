@@ -6,7 +6,7 @@
  * Allows curators to manually add TikTok/Shorts URLs to the outlier database
  * Supports: TikTok, YouTube Shorts, Instagram Reels
  */
-import { useState, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -43,6 +43,13 @@ export default function ManualOutlierPage() {
     const [category, setCategory] = useState("meme");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [result, setResult] = useState<SubmitResult | null>(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     // Auto-detect platform from URL
     const detectedPlatform = PLATFORMS.find(p => videoUrl.includes(p.urlPattern))?.id || null;
@@ -51,8 +58,10 @@ export default function ManualOutlierPage() {
         e.preventDefault();
         if (!videoUrl.trim() || !detectedPlatform) return;
 
-        setIsSubmitting(true);
-        setResult(null);
+        if (isMountedRef.current) {
+            setIsSubmitting(true);
+            setResult(null);
+        }
 
         try {
             const response = await fetch("/api/v1/outliers/items/manual", {
@@ -68,25 +77,33 @@ export default function ManualOutlierPage() {
             const data = await response.json();
 
             if (response.ok) {
-                setResult({
-                    success: true,
-                    message: `✅ 등록 완료! ${data.title || 'Outlier'} (${data.outlier_tier || 'N/A'}-Tier)`,
-                    itemId: data.id,
-                });
-                setVideoUrl("");
+                if (isMountedRef.current) {
+                    setResult({
+                        success: true,
+                        message: `✅ 등록 완료! ${data.title || 'Outlier'} (${data.outlier_tier || 'N/A'}-Tier)`,
+                        itemId: data.id,
+                    });
+                    setVideoUrl("");
+                }
             } else {
-                setResult({
-                    success: false,
-                    message: data.detail || "등록 실패",
-                });
+                if (isMountedRef.current) {
+                    setResult({
+                        success: false,
+                        message: data.detail || "등록 실패",
+                    });
+                }
             }
         } catch {
-            setResult({
-                success: false,
-                message: "네트워크 오류",
-            });
+            if (isMountedRef.current) {
+                setResult({
+                    success: false,
+                    message: "네트워크 오류",
+                });
+            }
         } finally {
-            setIsSubmitting(false);
+            if (isMountedRef.current) {
+                setIsSubmitting(false);
+            }
         }
     };
 

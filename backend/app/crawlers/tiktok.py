@@ -1,4 +1,14 @@
 """
+==============================================================================
+⚠️ ISOLATED: Apify TikTok Crawler (유료 API - 현재 미사용)
+==============================================================================
+NOTE: This crawler uses Apify's paid API. Currently not in use.
+To activate: Set APIFY_API_TOKEN environment variable.
+
+Alternative (active): app/services/virlo_scraper.py (free Virlo API)
+Alternative (active): app/services/tiktok_extractor.py (direct extraction)
+==============================================================================
+
 TikTok Crawler using Apify API
 
 Since TikTok Research API requires academic affiliation,

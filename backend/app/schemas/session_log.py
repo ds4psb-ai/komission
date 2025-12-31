@@ -21,8 +21,8 @@ Used for:
 """
 from datetime import datetime
 from typing import Literal, Optional, List, Dict
-from pydantic import BaseModel, Field, field_validator, model_validator
-import hashlib
+from pydantic import BaseModel, Field
+from app.utils.time import utcnow
 
 
 # ====================
@@ -90,7 +90,7 @@ class InterventionEvent(BaseModel):
     metric_value: Optional[float] = None
     metric_threshold: Optional[float] = None
     
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=utcnow)
 
 
 # ====================
@@ -126,7 +126,7 @@ class OutcomeEvent(BaseModel):
     # Time since intervention
     latency_sec: Optional[float] = None  # 개입 후 몇 초 뒤 관찰
     
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=utcnow)
 
 
 # ====================
@@ -156,7 +156,7 @@ class UploadOutcome(BaseModel):
     self_rating_reason: Optional[str] = None
     
     # Outcome timestamp
-    recorded_at: datetime = Field(default_factory=datetime.now)
+    recorded_at: datetime = Field(default_factory=utcnow)
 
 
 # ====================

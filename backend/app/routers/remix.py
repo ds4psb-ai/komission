@@ -248,7 +248,7 @@ async def analyze_node_video(
             audience_comments = await extract_best_comments(
                 node.source_video_url, 
                 node.platform or "youtube", 
-                limit=5
+                limit=10
             )
             print(f"📝 Extracted {len(audience_comments)} comments for {node_id}")
         except Exception as ce:

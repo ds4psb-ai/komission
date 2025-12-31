@@ -3,13 +3,20 @@
 /**
  * ConsentDemo - 동의 UI 테스트 페이지
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useConsent } from '@/contexts/ConsentContext';
 import { Database, RefreshCw, AlertCircle } from 'lucide-react';
 
 export default function ConsentDemoPage() {
     const { requestConsent, executeWithConsent, consentHistory, isPending } = useConsent();
     const [result, setResult] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     // 동의 후 직접 실행
     const handleGenerateSourcePack = async () => {
@@ -22,10 +29,12 @@ export default function ConsentDemoPage() {
             }
         );
 
-        if (success) {
-            setResult(`Source Pack 생성 완료: ${JSON.stringify(success)}`);
-        } else {
-            setResult('사용자가 취소했습니다.');
+        if (isMountedRef.current) {
+            if (success) {
+                setResult(`Source Pack 생성 완료: ${JSON.stringify(success)}`);
+            } else {
+                setResult('사용자가 취소했습니다.');
+            }
         }
     };
 
@@ -39,10 +48,12 @@ export default function ConsentDemoPage() {
             }
         );
 
-        if (success) {
-            setResult(`VDG 재분석 요청됨: ${JSON.stringify(success)}`);
-        } else {
-            setResult('사용자가 취소했습니다.');
+        if (isMountedRef.current) {
+            if (success) {
+                setResult(`VDG 재분석 요청됨: ${JSON.stringify(success)}`);
+            } else {
+                setResult('사용자가 취소했습니다.');
+            }
         }
     };
 
@@ -55,10 +66,12 @@ export default function ConsentDemoPage() {
             details: ['외부 서비스에 데이터 전송', '응답 시간은 상황에 따라 다름'],
         });
 
-        if (consented) {
-            setResult('커스텀 작업: 동의함');
-        } else {
-            setResult('커스텀 작업: 거부함');
+        if (isMountedRef.current) {
+            if (consented) {
+                setResult('커스텀 작업: 동의함');
+            } else {
+                setResult('커스텀 작업: 거부함');
+            }
         }
     };
 

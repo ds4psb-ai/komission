@@ -6,7 +6,7 @@
  * 무거운 컴포넌트를 지연 로딩하여 초기 번들 크기 최소화
  */
 import dynamic from 'next/dynamic';
-import { ComponentType, ReactNode } from 'react';
+import { ComponentType, ReactNode, useEffect, useState } from 'react';
 
 // 로딩 스피너
 const LoadingSpinner = () => (
@@ -104,9 +104,6 @@ export function DeferredRender({
     if (!show) return null;
     return <>{children}</>;
 }
-
-// useState, useEffect import
-import { useState, useEffect } from 'react';
 
 export default {
     LazyReactFlowCanvas,

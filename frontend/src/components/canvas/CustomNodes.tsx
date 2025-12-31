@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useRouter } from 'next/navigation';
 import { RemixNode } from '@/lib/api';
@@ -46,6 +46,21 @@ export const SourceNode = memo(({ data }: { data: SourceNodeData }) => {
     const [title, setTitle] = useState('');
     const [loading, setLoading] = useState(false);
     const [verified, setVerified] = useState(!!data.platform || !!data.outlier);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        setUrl(data.url || '');
+    }, [data.url]);
+
+    useEffect(() => {
+        setVerified(!!data.platform || !!data.outlier);
+    }, [data.platform, data.outlier]);
 
     // If it's an outlier node, it's already verified
     if (data.outlier) {
@@ -100,14 +115,19 @@ export const SourceNode = memo(({ data }: { data: SourceNodeData }) => {
 
     const handleSubmit = async () => {
         if (!url || !data.onSubmit) return;
-        setLoading(true);
+        if (isMountedRef.current) {
+            setLoading(true);
+        }
         try {
             await data.onSubmit(url, title || 'New Source');
+            if (!isMountedRef.current) return;
             setVerified(true);
         } catch (e) {
             console.error(e);
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 
@@ -175,22 +195,47 @@ export const ProcessNode = memo(({ data }: { data: ProcessNodeData }) => {
     const [running, setRunning] = useState(false);
     const [logs, setLogs] = useState<string[]>(data.logs || ['> 입력 대기 중...']);
     const [done, setDone] = useState(data.status === 'done');
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (data.logs !== undefined) {
+            setLogs(data.logs);
+        }
+    }, [data.logs]);
+
+    useEffect(() => {
+        if (!data.status) return;
+        setDone(data.status === 'done');
+        setRunning(data.status === 'running');
+    }, [data.status]);
 
     const handleAnalyze = async () => {
         if (!data.nodeId || !data.onAnalyze) {
             setLogs(['⚠️ 먼저 소스 노드를 연결하세요']);
             return;
         }
-        setRunning(true);
-        setLogs(['> Gemini 분석 시작...', '> 시각적 DNA 추출 중...']);
+        if (isMountedRef.current) {
+            setRunning(true);
+            setLogs(['> Gemini 분석 시작...', '> 시각적 DNA 추출 중...']);
+        }
         try {
             await data.onAnalyze(data.nodeId);
+            if (!isMountedRef.current) return;
             setLogs(['> 분석 완료!', '> Claude 브리프 생성됨!', '✓ 파이프라인 완료']);
             setDone(true);
         } catch (e) {
+            if (!isMountedRef.current) return;
             setLogs(['❌ 파이프라인 실패', `오류: ${e}`]);
         } finally {
-            setRunning(false);
+            if (isMountedRef.current) {
+                setRunning(false);
+            }
         }
     };
 
@@ -405,8 +450,12 @@ export const CrawlerOutlierNode = memo(({ data }: { data: CrawlerOutlierNodeData
                             {multiplier}x
                         </span>
                     )}
-                    <span className="text-white/40">•</span>
-                    <span>{(outlier.engagement_rate * 100).toFixed(1)}% Eng</span>
+                    {typeof outlier.engagement_rate === 'number' && (
+                        <>
+                            <span className="text-white/40">•</span>
+                            <span>{(outlier.engagement_rate * 100).toFixed(1)}% Eng</span>
+                        </>
+                    )}
                 </div>
 
                 {/* Action Buttons */}

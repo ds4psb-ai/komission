@@ -1,4 +1,4 @@
-# VDG v4.0 Final Architecture (2024-12-30)
+# VDG v4.0 Final Architecture (2025-12-31)
 
 > **Consulting Reference Document**  
 > AI가 발전해도 규칙은 명확하게 유지되는 구조
@@ -11,10 +11,13 @@
 영상 + 댓글
      ↓
 ┌─────────────────────────────────────┐
-│  VDG 2-Pass Pipeline                │
-│  ├─ Semantic Pass (의미)            │
-│  ├─ Analysis Planner (예산)         │
-│  └─ Visual Pass (시각)              │
+│  VDG Unified Pipeline               │
+│  ├─ Pass 1: Pro LLM (의미/인과/Plan)│  ← Gemini 3.0 Pro 1회
+│  │   - 10fps hook + 1fps full       │
+│  │   - Structured output            │
+│  └─ Pass 2: CV (결정론적 측정)       │  ← ffmpeg + OpenCV
+│       - 3 MVP metrics               │
+│       - 100% 재현 가능              │
 └────────────────┬────────────────────┘
                  ↓
 ┌─────────────────────────────────────┐
@@ -112,21 +115,26 @@ c864ab2  feat: VDG v4.0 2-pass protocol and Director Pack v1.0
 ```
 schemas/
 ├── vdg_v4.py              # VDG v4.0 schemas (881 lines)
+├── vdg_unified_pass.py    # Unified Pass output schema (333 lines)
 ├── director_pack.py       # Director Pack schemas (355 lines)
 ├── metric_registry.py     # Metric SSoT (180 lines)
 
 services/
 ├── gemini_pipeline.py     # Main pipeline
+├── genai_client.py        # google-genai SDK client (130 lines)
 ├── audio_coach.py         # Gemini 2.5 Flash Live
 ├── evidence_updater.py    # RL weight adjustment + SignalTracker
 
 services/vdg_2pass/
-├── semantic_pass.py       # 1차: 의미 해석
-├── analysis_planner.py    # Plan 생성 (예산/병합)
-├── visual_pass.py         # 2차: 시각 측정
-├── vdg_merger.py          # Semantic-Visual 병합
-├── director_compiler.py   # VDG → Pack 변환
+├── unified_pass.py        # Pass 1: Pro LLM (의미/인과/Plan) - 433 lines
+├── cv_measurement_pass.py # Pass 2: CV 결정론적 측정 - 510 lines
+├── vdg_unified_pipeline.py # 오케스트레이터 - 380 lines
+├── director_compiler.py   # VDG → Pack 컴파일러 - 810 lines
 ├── frame_extractor.py     # Plan-based frame extraction
+├── prompts/               # 프롬프트 템플릿
+│   ├── unified_prompt.py  # Pro 1-Pass 프롬프트
+│   ├── semantic_prompt.py # (legacy)
+│   └── visual_prompt.py   # (legacy)
 
 routers/
 ├── outliers.py            # Outlier CRUD + Duplicate Prevention

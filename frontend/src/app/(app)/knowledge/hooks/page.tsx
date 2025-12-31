@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { api, HookLibraryResponse, HookPattern } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { Zap, Eye, Volume2, Clock, ArrowRight } from 'lucide-react';
@@ -34,9 +34,16 @@ export default function HookLibraryPage() {
     const [library, setLibrary] = useState<HookLibraryResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         loadHooks();
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     const loadHooks = async () => {
@@ -44,12 +51,17 @@ export default function HookLibraryPage() {
             const data = await api.getHookLibrary({ limit: 50 });
             const hasQualityData = data.top_hooks?.length > 0 &&
                 data.top_hooks.some(h => h.confidence_score > 50);
+            if (!isMountedRef.current) return;
             setLibrary(hasQualityData ? data : MOCK_LIBRARY);
         } catch (e) {
             console.warn("Hook API failed, using mock:", e);
-            setLibrary(MOCK_LIBRARY);
+            if (isMountedRef.current) {
+                setLibrary(MOCK_LIBRARY);
+            }
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 

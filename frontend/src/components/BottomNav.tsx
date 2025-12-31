@@ -16,7 +16,7 @@ import {
 
 // Role-based nav items
 const CREATOR_NAV = [
-    { href: '/trending', label: 'Trending', icon: TrendingUp },
+    { href: '/', label: 'Home', icon: TrendingUp },
     { href: '/for-you', label: 'For You', icon: Sparkles },
     { href: '/session/shoot', label: 'Shoot', icon: Camera },
     { href: '/my', label: 'My', icon: User },
@@ -39,7 +39,7 @@ export function BottomNav({ role = 'creator' }: BottomNavProps) {
 
     // Check for active state
     const isActive = (href: string) => {
-        if (href === '/trending' && pathname === '/') return true;
+        if (href === '/' && pathname === '/') return true;
         if (href === '/for-you' && pathname === '/for-you') return true;
         if (pathname === href) return true;
         if (href !== '/' && href !== '/for-you' && pathname.startsWith(href)) return true;

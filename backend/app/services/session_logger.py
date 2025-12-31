@@ -11,10 +11,10 @@ MVP: In-memory 저장 → 추후 DB 마이그레이션
 P1 Roadmap: 세션 로깅 인프라
 """
 import logging
-from datetime import datetime
 from typing import Dict, List, Optional
 from collections import defaultdict
 
+from app.utils.time import iso_now
 from app.schemas.session_events import (
     SessionEvent,
     RuleEvaluatedEvent,
@@ -78,7 +78,7 @@ class SessionLogger:
             "pack_id": pack_id,
             "assignment": assignment,
             "holdout_group": holdout_group,
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": iso_now(),
         }
         logger.info(f"📊 Session started: {session_id} (assignment={assignment}, holdout={holdout_group})")
         return self._sessions[session_id]

@@ -80,11 +80,16 @@ export function VirloGrid({
     if (search) {
         const searchLower = search.toLowerCase();
         filteredVideos = filteredVideos.filter(v =>
-            v.title?.toLowerCase().includes(searchLower) ||
-            v.creator?.toLowerCase().includes(searchLower) ||
-            v.category?.toLowerCase().includes(searchLower)
+            (v.title ?? '').toLowerCase().includes(searchLower) ||
+            (v.creator ?? '').toLowerCase().includes(searchLower) ||
+            (v.category ?? '').toLowerCase().includes(searchLower)
         );
     }
+
+    const getTimeMs = (value?: string) => {
+        const time = value ? Date.parse(value) : NaN;
+        return Number.isNaN(time) ? 0 : time;
+    };
 
     // Sort videos
     filteredVideos = [...filteredVideos].sort((a, b) => {
@@ -94,7 +99,7 @@ export function VirloGrid({
             case 'engagement':
                 return (b.engagement_rate || 0) - (a.engagement_rate || 0);
             case 'recent':
-                return new Date(b.crawled_at || 0).getTime() - new Date(a.crawled_at || 0).getTime();
+                return getTimeMs(b.crawled_at) - getTimeMs(a.crawled_at);
             case 'multiplier':
                 const aMulti = a.creator_avg_views ? a.view_count / a.creator_avg_views : 0;
                 const bMulti = b.creator_avg_views ? b.view_count / b.creator_avg_views : 0;

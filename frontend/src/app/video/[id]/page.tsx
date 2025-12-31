@@ -8,7 +8,7 @@
  * - Left: Video embed player
  * - Right: Viral Guide + Experience Campaign options (conditional)
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppHeader } from '@/components/AppHeader';
@@ -134,11 +134,14 @@ function VideoEmbed({ video }: { video: VideoDetail }) {
 
     // Resolve short link via API
     useEffect(() => {
+        let isActive = true;
+
         if (isShortLink && !resolvedVideoId && !isResolving) {
             setIsResolving(true);
             fetch(`/api/v1/outliers/utils/resolve-url?url=${encodeURIComponent(video.video_url)}`)
                 .then(res => res.json())
                 .then(data => {
+                    if (!isActive) return;
                     if (data.content_id) {
                         setResolvedVideoId(data.content_id);
                     } else {
@@ -146,12 +149,19 @@ function VideoEmbed({ video }: { video: VideoDetail }) {
                     }
                 })
                 .catch(() => {
+                    if (!isActive) return;
                     setResolveFailed(true);
                 })
                 .finally(() => {
-                    setIsResolving(false);
+                    if (isActive) {
+                        setIsResolving(false);
+                    }
                 });
         }
+
+        return () => {
+            isActive = false;
+        };
     }, [isShortLink, video.video_url, resolvedVideoId, isResolving]);
 
     // Try direct extraction first
@@ -231,12 +241,11 @@ function ViralGuidePanel({ analysis }: { analysis?: VideoAnalysis }) {
                         <Target className="w-4 h-4 text-cyan-400" />
                         <span className="text-sm font-bold text-white">🎣 훅 패턴</span>
                     </div>
-                    {analysis.hook_score && (
+                    {typeof analysis.hook_score === 'number' && (
                         <span className="px-2 py-0.5 bg-cyan-500/20 rounded text-xs text-cyan-300 font-mono">
-                            {typeof analysis.hook_score === 'number' && analysis.hook_score < 1
+                            {analysis.hook_score < 1
                                 ? `${(analysis.hook_score * 10).toFixed(1)}/10`
-                                : `${analysis.hook_score}/10`
-                            }
+                                : `${analysis.hook_score}/10`}
                         </span>
                     )}
                 </div>
@@ -246,7 +255,7 @@ function ViralGuidePanel({ analysis }: { analysis?: VideoAnalysis }) {
                             analysis.hook_pattern === 'unboxing' ? '언박싱' :
                                 analysis.hook_pattern || '-'}
                 </div>
-                {analysis.hook_duration_sec && (
+                {typeof analysis.hook_duration_sec === 'number' && (
                     <div className="flex items-center gap-1 text-xs text-white/60">
                         <Clock className="w-3 h-3" />
                         처음 {analysis.hook_duration_sec}초 안에 시청자 잡기
@@ -399,16 +408,30 @@ export default function VideoDetailPage() {
     const [video, setVideo] = useState<VideoDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [copied, setCopied] = useState(false);
+    const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isMountedRef = useRef(true);
     const [showCoaching, setShowCoaching] = useState(false);
     const [coachingMode, setCoachingMode] = useState<'homage' | 'variation' | 'campaign'>('variation');
     const [showModeSelector, setShowModeSelector] = useState(false);
 
     useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+            if (copiedTimeoutRef.current) {
+                clearTimeout(copiedTimeoutRef.current);
+                copiedTimeoutRef.current = null;
+            }
+        };
+    }, []);
+
+    useEffect(() => {
         async function loadVideo() {
             // First check if it's a demo video
             if (DEMO_VIDEOS[videoId]) {
-                setVideo(DEMO_VIDEOS[videoId]);
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setVideo(DEMO_VIDEOS[videoId]);
+                    setLoading(false);
+                }
                 return;
             }
 
@@ -417,6 +440,7 @@ export default function VideoDetailPage() {
                 const res = await fetch(`/api/v1/outliers/items/${videoId}`);
                 if (res.ok) {
                     const data = await res.json();
+                    if (!isMountedRef.current) return;
                     setVideo({
                         id: data.id,
                         video_url: data.video_url,
@@ -458,18 +482,32 @@ export default function VideoDetailPage() {
             }
 
             // Fallback to demo if API fails
-            setVideo(DEMO_VIDEOS['demo-tiktok-1']);
-            setLoading(false);
+            if (isMountedRef.current) {
+                setVideo(DEMO_VIDEOS['demo-tiktok-1']);
+                setLoading(false);
+            }
         }
 
         loadVideo();
     }, [videoId]);
 
-    const handleCopyLink = () => {
-        if (video) {
-            navigator.clipboard.writeText(video.video_url);
+    const handleCopyLink = async () => {
+        if (!video) return;
+
+        try {
+            if (!navigator.clipboard?.writeText) {
+                alert('클립보드를 사용할 수 없습니다. 주소를 직접 복사해주세요.');
+                return;
+            }
+            await navigator.clipboard.writeText(video.video_url);
             setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            if (copiedTimeoutRef.current) {
+                clearTimeout(copiedTimeoutRef.current);
+            }
+            copiedTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+        } catch (e) {
+            console.error('Failed to copy link:', e);
+            alert('링크 복사에 실패했습니다.');
         }
     };
 
@@ -551,8 +589,18 @@ export default function VideoDetailPage() {
 
                                 <div className="flex items-center gap-4 text-sm text-white/50">
                                     <span className="flex items-center gap-1"><Eye className="w-4 h-4" />{(video.view_count / 1000000).toFixed(1)}M</span>
-                                    {video.like_count && <span className="flex items-center gap-1"><Heart className="w-4 h-4" />{(video.like_count / 1000000).toFixed(1)}M</span>}
-                                    {video.engagement_rate && <span className="flex items-center gap-1 text-emerald-400"><TrendingUp className="w-4 h-4" />{(video.engagement_rate * 100).toFixed(1)}%</span>}
+                                    {typeof video.like_count === 'number' && (
+                                        <span className="flex items-center gap-1">
+                                            <Heart className="w-4 h-4" />
+                                            {(video.like_count / 1000000).toFixed(1)}M
+                                        </span>
+                                    )}
+                                    {typeof video.engagement_rate === 'number' && (
+                                        <span className="flex items-center gap-1 text-emerald-400">
+                                            <TrendingUp className="w-4 h-4" />
+                                            {(video.engagement_rate * 100).toFixed(1)}%
+                                        </span>
+                                    )}
                                 </div>
 
                                 {video.tags && (

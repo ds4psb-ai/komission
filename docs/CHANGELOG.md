@@ -1,6 +1,53 @@
 # CHANGELOG
 
-> VDG v4.0 2-Pass Pipeline + Audio Coaching 개발 이력
+> VDG v4.0 Unified Pipeline + Audio Coaching 개발 이력
+
+---
+
+## 2025-12-31 (Documentation & Page Cleanup)
+
+### 📝 문서 최신화
+- **10개 문서 업데이트**: VDG Unified Pipeline 반영
+- `ARCHITECTURE_FINAL.md`: File Structure + Pipeline 다이어그램
+- `01_VDG_SYSTEM.md`: Overview 다이어그램 + File Structure
+- `00_DOCS_INDEX.md`: 날짜 + 신규 문서 반영
+- `18_PAGE_IA_REDESIGN.md`: /trending 삭제 반영
+
+### 🔧 Virlo → Ops 파이프라인 브릿지 (하드닝)
+- `virlo_scraper.py`: Supabase RPC 엔드포인트 수정
+  - `get_viral_outliers_fresh_v2` 엔드포인트 사용
+  - `sort_by_param=fresh_content` (타임아웃 방지)
+  - Supabase anon key 하드코딩
+- **`discover_and_enrich_urls()` 신규 함수**:
+  - Virlo 발견 → `OutlierCrawlItem` 변환 → Ops 파이프라인 저장
+  - `OutlierItemStatus.PENDING` enum 사용 (하드닝)
+  - `outlier_tier` 자동 계산 (S/A/B/C)
+- `scripts/run_virlo_bridge.sh`: 실행 스크립트 추가
+
+### 🔌 MCP 문서 보강 (2025 리서치)
+- `MCP_CLAUDE_DESKTOP_SETUP.md`: FastMCP 2.0 섹션 추가
+  - Background Tasks, Context Object, Transport Layer
+  - 2025 Best Practices (OAuth 2.1, RBAC, async)
+- `16_NEXT_STEP_ROADMAP.md`: MCP 통합 전략 업데이트
+  - FastMCP 2.0 신기능 활용 계획
+  - 보안 강화 로드맵 (2025)
+
+### 🧹 Page Structure Cleanup
+- **`/trending` 페이지 삭제**: `/` (홈)으로 통합
+- **Navigation 업데이트**:
+  - `AppHeader.tsx`: "트렌딩" → "홈"
+  - `CollapsibleSidebar.tsx`: "트렌딩" → "홈"
+  - `BottomNav.tsx`: "Trending" → "Home"
+  - `discover/page.tsx`: `/trending` → `/` 리다이렉트
+
+### 🔐 Ops 권한 가드 추가
+- `/ops/outliers` 페이지에 curator/admin 권한 가드
+- 비로그인: `/login` 리다이렉트
+- 일반 유저: "접근 권한 없음" UI 표시
+
+### 🛡️ 기타 수정
+- `useRealTimeMetrics.ts`: WebSocket 에러 graceful 처리
+- `ted.taeeun.kim@gmail.com`: admin 권한 영구 부여
 
 ---
 

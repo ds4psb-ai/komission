@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 
 interface FilmingGuideProps {
     isOpen: boolean;
@@ -43,9 +43,20 @@ export function FilmingGuide({
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const chunksRef = useRef<Blob[]>([]);
+    const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // Beat interval in ms
     const beatInterval = (60 / bpm) * 1000;
+
+    const cleanupRecorder = useCallback(() => {
+        if (!mediaRecorderRef.current) return;
+        mediaRecorderRef.current.ondataavailable = null;
+        mediaRecorderRef.current.onstop = null;
+        if (mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+        mediaRecorderRef.current = null;
+    }, []);
 
     // Mobile detection
     useEffect(() => {
@@ -64,11 +75,16 @@ export function FilmingGuide({
     // Cleanup on unmount
     useEffect(() => {
         return () => {
+            if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+                countdownIntervalRef.current = null;
+            }
+            cleanupRecorder();
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach(track => track.stop());
             }
         };
-    }, []);
+    }, [cleanupRecorder]);
 
     // ESC to close
     useEffect(() => {
@@ -111,6 +127,11 @@ export function FilmingGuide({
             startCamera();
         } else if (!isOpen) {
             // Cleanup when closed
+            if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+                countdownIntervalRef.current = null;
+            }
+            cleanupRecorder();
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach(track => track.stop());
                 streamRef.current = null;
@@ -121,7 +142,7 @@ export function FilmingGuide({
             setRecordedBlob(null);
             setShowSyncUI(false);
         }
-    }, [isOpen, isMobile, startCamera]);
+    }, [isOpen, isMobile, startCamera, cleanupRecorder]);
 
     // Recording timer
     useEffect(() => {
@@ -140,23 +161,6 @@ export function FilmingGuide({
 
         return () => clearInterval(timer);
     }, [isRecording, bpm, duration]);
-
-    // Start countdown then record
-    const startCountdown = useCallback(() => {
-        setCountdown(3);
-
-        const countdownInterval = setInterval(() => {
-            setCountdown(prev => {
-                if (prev === null || prev <= 1) {
-                    clearInterval(countdownInterval);
-                    setCountdown(null);
-                    startRecording();
-                    return null;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-    }, []);
 
     // Start actual recording
     const startRecording = useCallback(() => {
@@ -192,6 +196,30 @@ export function FilmingGuide({
         }
     }, []);
 
+    // Start countdown then record
+    const startCountdown = useCallback(() => {
+        setCountdown(3);
+
+        if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+        }
+
+        countdownIntervalRef.current = setInterval(() => {
+            setCountdown(prev => {
+                if (prev === null || prev <= 1) {
+                    if (countdownIntervalRef.current) {
+                        clearInterval(countdownIntervalRef.current);
+                        countdownIntervalRef.current = null;
+                    }
+                    setCountdown(null);
+                    startRecording();
+                    return null;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    }, [startRecording]);
+
     // Stop recording
     const stopRecording = useCallback(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -211,6 +239,19 @@ export function FilmingGuide({
         }
         onClose();
     }, [recordedBlob, syncOffset, onRecordingComplete, onClose]);
+
+    const recordedUrl = useMemo(() => {
+        if (!recordedBlob) return null;
+        return URL.createObjectURL(recordedBlob);
+    }, [recordedBlob]);
+
+    useEffect(() => {
+        return () => {
+            if (recordedUrl) {
+                URL.revokeObjectURL(recordedUrl);
+            }
+        };
+    }, [recordedUrl]);
 
     if (!isOpen) return null;
 
@@ -329,7 +370,7 @@ export function FilmingGuide({
 
                             {/* Preview */}
                             <video
-                                src={URL.createObjectURL(recordedBlob)}
+                                src={recordedUrl ?? undefined}
                                 controls
                                 className="w-full rounded-lg mb-6"
                             />

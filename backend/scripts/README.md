@@ -13,6 +13,11 @@ python backend/scripts/run_real_evidence_loop.py
 ```
 
 Other utilities:
+- `audit_pipeline_contracts.py` — contract/enum/status alignment audit (read-only)
+- `audit_pipeline_state.py` — non-VDG pipeline state audit (read-only)
+- `auto_curation_flow.py` — promote/reject pending outliers with simple rules (dry-run by default)
+- `export_vdg_golden.py` — export completed VDG analyses into golden fixtures
+- `replay_vdg_golden.py` — replay VDG golden fixtures and validate basic contracts
 - `run_platform_crawlers.py` — YouTube/TikTok/Instagram → DB ingest (auto)
 - `run_crawler.py` — crawler → DB ingest (SoR)
 - `run_selector.py` — DB outliers → Parent Candidates (Sheet)

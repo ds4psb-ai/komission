@@ -26,7 +26,6 @@ import { AppHeader } from '@/components/AppHeader';
 import { SessionHUD } from '@/components/canvas/SessionHUD';
 import { api, Pipeline } from '@/lib/api';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
-import { usePipelineHandlers } from '@/hooks/usePipelineHandlers';
 import { useAuth } from '@/lib/auth';
 import { useAuthGate, AUTH_ACTIONS } from '@/lib/useAuthGate';
 import { OutlierSelector, type OutlierItem } from '@/components/canvas/OutlierSelector';
@@ -70,8 +69,13 @@ const createCapsuleDefinition = (): CapsuleDefinition => ({
     params: defaultCapsuleDefinition.params?.map((param) => ({ ...param })),
 });
 
-// Generate unique ID using UUID
-const generateNodeId = () => `node_${crypto.randomUUID().slice(0, 8)}`;
+// Generate unique ID using UUID (fallback for older browsers)
+const generateNodeId = () => {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+        return `node_${crypto.randomUUID().slice(0, 8)}`;
+    }
+    return `node_${Math.random().toString(36).slice(2, 10)}`;
+};
 
 function CanvasFlow() {
     const router = useRouter();
@@ -126,13 +130,34 @@ function CanvasFlow() {
 
     // Toast state (simple inline implementation)
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+    const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const edgeTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+    const isMountedRef = useRef(true);
 
     // Auth gate for protected actions
     const { requireAuth } = useAuthGate();
 
     const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+        if (!isMountedRef.current) return;
         setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+        }
+        toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
+    }, [isMountedRef]);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+            if (toastTimeoutRef.current) {
+                clearTimeout(toastTimeoutRef.current);
+                toastTimeoutRef.current = null;
+            }
+            if (edgeTimeoutsRef.current.length > 0) {
+                edgeTimeoutsRef.current.forEach(clearTimeout);
+                edgeTimeoutsRef.current = [];
+            }
+        };
     }, []);
 
     // Track dirty state
@@ -146,9 +171,12 @@ function CanvasFlow() {
     useEffect(() => {
         if (templateId) {
             const loadTemplate = async () => {
-                setIsLoading(true);
+                if (isMountedRef.current) {
+                    setIsLoading(true);
+                }
                 try {
                     const pipeline = await api.loadPipeline(templateId);
+                    if (!isMountedRef.current) return;
                     const { nodes: loadedNodes, edges: loadedEdges } = pipeline.graph_data as any;
                     setNodes(loadedNodes || []);
                     setEdges(loadedEdges || []);
@@ -159,18 +187,22 @@ function CanvasFlow() {
                     console.error(e);
                     showToast('템플릿 로드 실패', 'error');
                 } finally {
-                    setIsLoading(false);
+                    if (isMountedRef.current) {
+                        setIsLoading(false);
+                    }
                 }
             };
             loadTemplate();
         }
-    }, [templateId, setNodes, setEdges, showToast]);
+    }, [templateId, setNodes, setEdges, showToast, isMountedRef]);
 
     // AI Onboarding: Auto-setup from sourceUrl
     useEffect(() => {
         if (sourceUrl && !templateId) {
             const autoSetup = async () => {
-                setIsLoading(true);
+                if (isMountedRef.current) {
+                    setIsLoading(true);
+                }
                 showToast('🔍 AI가 영상을 분석중입니다...', 'info');
 
                 try {
@@ -191,6 +223,7 @@ function CanvasFlow() {
                         platform
                     });
 
+                    if (!isMountedRef.current) return;
                     setCreatedNodeId(remixNode.node_id);
 
                     // 3. Create the complete pipeline visually
@@ -239,8 +272,10 @@ function CanvasFlow() {
                         },
                     ];
 
-                    setNodes(newNodes);
-                    setEdges(newEdges);
+                    if (isMountedRef.current) {
+                        setNodes(newNodes);
+                        setEdges(newEdges);
+                    }
 
                     // 4. Auto-trigger Gemini analysis
                     showToast('⚡ Gemini 분석을 시작합니다...', 'info');
@@ -252,19 +287,23 @@ function CanvasFlow() {
                     }
 
                     // Clear URL from browser history to prevent re-trigger
-                    router.replace('/canvas', { scroll: false });
+                    if (isMountedRef.current) {
+                        router.replace('/canvas', { scroll: false });
+                    }
 
                 } catch (e) {
                     console.error(e);
                     showToast('URL 처리 실패. 수동으로 시도해주세요.', 'error');
                 } finally {
-                    setIsLoading(false);
+                    if (isMountedRef.current) {
+                        setIsLoading(false);
+                    }
                 }
             };
 
             autoSetup();
         }
-    }, [sourceUrl, templateId, setNodes, setEdges, showToast, router]);
+    }, [sourceUrl, templateId, setNodes, setEdges, showToast, router, isMountedRef]);
 
     // History Hook
     const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo();
@@ -319,22 +358,25 @@ function CanvasFlow() {
                 source_video_url: url,
                 platform: url.includes('tiktok') ? 'tiktok' : url.includes('instagram') ? 'instagram' : 'youtube'
             });
+            if (!isMountedRef.current) return;
             setCreatedNodeId(node.node_id);
             showToast(`소스 등록 완료: ${node.node_id}`, 'success');
 
             // Update nodes with the created node ID
-            setNodes((nds) =>
-                nds.map((n) =>
-                    n.type === 'process' || n.type === 'output'
-                        ? { ...n, data: { ...n.data, nodeId: node.node_id } }
-                        : n
-                )
-            );
+            if (isMountedRef.current) {
+                setNodes((nds) =>
+                    nds.map((n) =>
+                        n.type === 'process' || n.type === 'output'
+                            ? { ...n, data: { ...n.data, nodeId: node.node_id } }
+                            : n
+                    )
+                );
+            }
         } catch (e) {
             showToast(e instanceof Error ? e.message : '노드 생성 실패', 'error');
             throw e;
         }
-    }, [setNodes, showToast]);
+    }, [setNodes, showToast, isMountedRef]);
 
     const handleAnalyze = useCallback(async (nodeId: string) => {
         try {
@@ -372,7 +414,9 @@ function CanvasFlow() {
             setIsPublic(publicStatus);
         }
 
-        setIsSaving(true);
+        if (isMountedRef.current) {
+            setIsSaving(true);
+        }
         try {
             const graphData = reactFlowInstance?.toObject();
 
@@ -388,30 +432,40 @@ function CanvasFlow() {
                     graph_data: graphData,
                     is_public: publicStatus
                 });
+                if (!isMountedRef.current) return;
                 setPipelineId(newPipeline.id);
                 showToast('파이프라인 저장 완료!', 'success');
             }
-            setIsDirty(false);
+            if (isMountedRef.current) {
+                setIsDirty(false);
+            }
         } catch (e) {
             showToast('파이프라인 저장 실패', 'error');
             console.error(e);
         } finally {
-            setIsSaving(false);
+            if (isMountedRef.current) {
+                setIsSaving(false);
+            }
         }
-    }, [nodes, pipelineId, pipelineTitle, isPublic, reactFlowInstance, showToast]);
+    }, [nodes, pipelineId, pipelineTitle, isPublic, reactFlowInstance, showToast, requireAuth, isMountedRef]);
 
     const handleLoadList = useCallback(async () => {
-        setIsLoading(true);
+        if (isMountedRef.current) {
+            setIsLoading(true);
+        }
         try {
             const list = await api.listPipelines();
+            if (!isMountedRef.current) return;
             setSavedPipelines(list);
             setShowLoadModal(true);
         } catch (e) {
             showToast('파이프라인 목록 로드 실패', 'error');
         } finally {
-            setIsLoading(false);
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
         }
-    }, [showToast]);
+    }, [showToast, isMountedRef]);
 
     const handleLoad = useCallback(async (id: string) => {
         // Confirm if canvas has unsaved changes
@@ -419,9 +473,12 @@ function CanvasFlow() {
             return;
         }
 
-        setIsLoading(true);
+        if (isMountedRef.current) {
+            setIsLoading(true);
+        }
         try {
             const pipeline = await api.loadPipeline(id);
+            if (!isMountedRef.current) return;
             const { nodes: loadedNodes, edges: loadedEdges } = pipeline.graph_data as any;
 
             setNodes(loadedNodes || []);
@@ -435,9 +492,11 @@ function CanvasFlow() {
         } catch (e) {
             showToast('파이프라인 로드 실패', 'error');
         } finally {
-            setIsLoading(false);
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
         }
-    }, [setNodes, setEdges, isDirty, showToast]);
+    }, [setNodes, setEdges, isDirty, showToast, isMountedRef]);
 
     const handleExport = useCallback((nodeId: string) => {
         router.push(`/remix/${nodeId}`);
@@ -491,7 +550,7 @@ function CanvasFlow() {
                         addNode('guide', guidePos, { ...guideData, forceId: guideId });
 
                         // Connect Capsule -> Guide
-                        setTimeout(() => {
+                        const timeoutId = setTimeout(() => {
                             setEdges((eds) => addEdge({
                                 id: `e_${newNode.id}-${guideId}`,
                                 source: newNode.id,
@@ -500,7 +559,9 @@ function CanvasFlow() {
                                 style: { stroke: '#06b6d4', strokeWidth: 2 }
                             } as any, eds));
                             showToast('✨ Guide Node가 자동 생성되었습니다.', 'success');
+                            edgeTimeoutsRef.current = edgeTimeoutsRef.current.filter(id => id !== timeoutId);
                         }, 100);
+                        edgeTimeoutsRef.current.push(timeoutId);
                     }
                 }),
                 ...(type === 'guide' && {
@@ -515,15 +576,17 @@ function CanvasFlow() {
                     status: 'pending' as const,
                     onGenerateDecision: async () => {
                         // Step 1: Set to generating state
-                        setNodes(nds => nds.map(n => {
-                            if (n.id === newNode.id) {
-                                return {
-                                    ...n,
-                                    data: { ...n.data, status: 'generating' }
-                                };
-                            }
-                            return n;
-                        }));
+                        if (isMountedRef.current) {
+                            setNodes(nds => nds.map(n => {
+                                if (n.id === newNode.id) {
+                                    return {
+                                        ...n,
+                                        data: { ...n.data, status: 'generating' }
+                                    };
+                                }
+                                return n;
+                            }));
+                        }
 
                         // Step 2: Call Opal API via template-seeds/generate
                         try {
@@ -533,6 +596,47 @@ function CanvasFlow() {
                             });
 
                             if (response.success && response.seed) {
+                                if (isMountedRef.current) {
+                                    setNodes(nds => nds.map(n => {
+                                        if (n.id === newNode.id) {
+                                            return {
+                                                ...n,
+                                                data: {
+                                                    ...n.data,
+                                                    status: 'decided',
+                                                    decision: {
+                                                        conclusion: `${response.seed?.seed_params?.hook || 'AI 생성'} 기반 실험 제안`,
+                                                        rationale: [
+                                                            "Top performing hook pattern identified",
+                                                            "Aligned with retention metrics (+15%)",
+                                                            "Category benchmark surpassed in initial tests"
+                                                        ],
+                                                        experiment: {
+                                                            id: response.seed?.seed_id || `exp_${Date.now()}`,
+                                                            target_metric: "CTR",
+                                                            variants: [
+                                                                { name: "Control", mutation: "Original (변경 없음)" },
+                                                                { name: "Test A", mutation: response.seed?.seed_params?.shotlist?.[0] || "AI 제안" },
+                                                                { name: "Test B", mutation: response.seed?.seed_params?.shotlist?.[1] || "AI 변형" }
+                                                            ]
+                                                        },
+                                                        confidence: 0.85,
+                                                        seed: response.seed
+                                                    }
+                                                }
+                                            };
+                                        }
+                                        return n;
+                                    }));
+                                }
+                                showToast('✅ Opal: 실험 계획 생성 완료!', 'success');
+                            } else {
+                                throw new Error(response.error || 'Generation failed');
+                            }
+                        } catch (error) {
+                            console.error('Opal generation failed:', error);
+                            // Fallback to mock data on error
+                            if (isMountedRef.current) {
                                 setNodes(nds => nds.map(n => {
                                     if (n.id === newNode.id) {
                                         return {
@@ -541,65 +645,28 @@ function CanvasFlow() {
                                                 ...n.data,
                                                 status: 'decided',
                                                 decision: {
-                                                    conclusion: `${response.seed?.seed_params?.hook || 'AI 생성'} 기반 실험 제안`,
+                                                    conclusion: "API 오류로 기본 실험 계획을 표시합니다.",
                                                     rationale: [
-                                                        "Top performing hook pattern identified",
-                                                        "Aligned with retention metrics (+15%)",
-                                                        "Category benchmark surpassed in initial tests"
+                                                        "Service temporarily unavailable",
+                                                        "Fallback to safe-mode experiment templates",
+                                                        "Manual review recommended"
                                                     ],
                                                     experiment: {
-                                                        id: response.seed?.seed_id || `exp_${Date.now()}`,
+                                                        id: `exp_${Date.now()}`,
                                                         target_metric: "CTR",
                                                         variants: [
                                                             { name: "Control", mutation: "Original (변경 없음)" },
-                                                            { name: "Test A", mutation: response.seed?.seed_params?.shotlist?.[0] || "AI 제안" },
-                                                            { name: "Test B", mutation: response.seed?.seed_params?.shotlist?.[1] || "AI 변형" }
+                                                            { name: "Test A", mutation: "Hook 강화 (0-3초)" },
                                                         ]
                                                     },
-                                                    confidence: 0.85,
-                                                    seed: response.seed
+                                                    confidence: 0.5
                                                 }
                                             }
                                         };
                                     }
                                     return n;
                                 }));
-                                showToast('✅ Opal: 실험 계획 생성 완료!', 'success');
-                            } else {
-                                throw new Error(response.error || 'Generation failed');
                             }
-                        } catch (error) {
-                            console.error('Opal generation failed:', error);
-                            // Fallback to mock data on error
-                            setNodes(nds => nds.map(n => {
-                                if (n.id === newNode.id) {
-                                    return {
-                                        ...n,
-                                        data: {
-                                            ...n.data,
-                                            status: 'decided',
-                                            decision: {
-                                                conclusion: "API 오류로 기본 실험 계획을 표시합니다.",
-                                                rationale: [
-                                                    "Service temporarily unavailable",
-                                                    "Fallback to safe-mode experiment templates",
-                                                    "Manual review recommended"
-                                                ],
-                                                experiment: {
-                                                    id: `exp_${Date.now()}`,
-                                                    target_metric: "CTR",
-                                                    variants: [
-                                                        { name: "Control", mutation: "Original (변경 없음)" },
-                                                        { name: "Test A", mutation: "Hook 강화 (0-3초)" },
-                                                    ]
-                                                },
-                                                confidence: 0.5
-                                            }
-                                        }
-                                    };
-                                }
-                                return n;
-                            }));
                             showToast('⚠️ API 오류: 기본 계획으로 대체', 'error');
                         }
                     }
@@ -613,7 +680,7 @@ function CanvasFlow() {
             setCreatedNodeId(data.id || data.node_id);
             showToast(`선택된 노드: ${data.title}`, 'success');
         }
-    }, [setNodes, handleSourceSubmit, handleAnalyze, handleExport, createdNodeId, nodes, edges, takeSnapshot, showToast]);
+    }, [setNodes, handleSourceSubmit, handleAnalyze, handleExport, createdNodeId, nodes, edges, takeSnapshot, showToast, isMountedRef]);
 
     const onDrop = useCallback(
         (event: React.DragEvent) => {

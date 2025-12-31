@@ -9,7 +9,7 @@ Calculates creator personality/style based on implicit signals:
 Based on PDR FR-010: 암묵 신호 기반 스타일 추정
 """
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.utils.time import utcnow, days_ago
 from typing import Dict, List, Optional, Any
@@ -219,6 +219,18 @@ class CreatorFingerprintService:
             return "minimalist"
         
         return "neutral"
+
+    def _parse_event_timestamp(self, raw_timestamp: str) -> Optional[datetime]:
+        """Parse ISO timestamps safely and normalize to naive UTC."""
+        if not raw_timestamp:
+            return None
+        try:
+            parsed = datetime.fromisoformat(raw_timestamp.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
     
     def _calculate_confidence(self, events: List[dict]) -> float:
         """Calculate confidence score based on signal quantity and quality."""
@@ -229,11 +241,11 @@ class CreatorFingerprintService:
         diversity_boost = min(0.2, len(event_types) * 0.05)
         
         # Boost for recent activity
-        recent_events = [
-            e for e in events 
-            if datetime.fromisoformat(e.get("timestamp", "2020-01-01")) 
-               > days_ago(7)
-        ]
+        recent_events = []
+        for event in events:
+            timestamp = self._parse_event_timestamp(event.get("timestamp", ""))
+            if timestamp and timestamp > days_ago(7):
+                recent_events.append(event)
         recency_boost = 0.1 if len(recent_events) > 3 else 0
         
         return round(min(1.0, base_confidence + diversity_boost + recency_boost), 2)

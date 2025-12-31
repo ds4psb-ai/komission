@@ -14,7 +14,7 @@
 // SSR 비활성화 - localStorage 사용
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AppHeader } from '@/components/AppHeader';
 import { SessionHUD } from '@/components/SessionHUD';
 import {
@@ -76,25 +76,38 @@ export default function OpsConsolePage() {
     const [uploading, setUploading] = useState<string | null>(null);
     const [clusters, setClusters] = useState<ClusterInfo[]>([]);
     const [p2Progress, setP2Progress] = useState<P2Progress | null>(null);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     async function fetchData() {
         try {
-            setLoading(true);
+            if (isMountedRef.current) {
+                setLoading(true);
+            }
 
             // SSR 방지
             if (typeof window === 'undefined') {
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setLoading(false);
+                }
                 return;
             }
 
             const token = localStorage.getItem('access_token');
             if (!token) {
-                setError('로그인이 필요합니다');
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setError('로그인이 필요합니다');
+                    setLoading(false);
+                }
                 return;
             }
 
@@ -108,11 +121,17 @@ export default function OpsConsolePage() {
 
             if (!statusRes.ok || !runsRes.ok) {
                 if (statusRes.status === 401 || runsRes.status === 401) {
-                    setError('관리자 권한이 필요합니다');
+                    if (isMountedRef.current) {
+                        setError('관리자 권한이 필요합니다');
+                    }
                 } else {
-                    setError('데이터를 불러오지 못했습니다');
+                    if (isMountedRef.current) {
+                        setError('데이터를 불러오지 못했습니다');
+                    }
                 }
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setLoading(false);
+                }
                 return;
             }
 
@@ -121,15 +140,19 @@ export default function OpsConsolePage() {
                 runsRes.json(),
             ]);
 
+            if (!isMountedRef.current) return;
             setStatus(statusData);
             setRuns(runsData);
+            setError(null);
 
             // Fetch Source Packs (with API fallback)
             try {
                 const packsData = await api.getSourcePacks({ limit: 10 });
+                if (!isMountedRef.current) return;
                 setSourcePacks(packsData.source_packs || []);
             } catch (e) {
                 console.warn("Source Packs API failed:", e);
+                if (!isMountedRef.current) return;
                 setSourcePacks([]);
             }
 
@@ -138,6 +161,7 @@ export default function OpsConsolePage() {
                 const clustersRes = await fetch('/api/v1/clusters', { headers });
                 if (clustersRes.ok) {
                     const clustersData = await clustersRes.json();
+                    if (!isMountedRef.current) return;
                     setClusters((clustersData.clusters || []).map((c: any) => ({
                         cluster_id: c.cluster_id,
                         cluster_name: c.cluster_name,
@@ -155,22 +179,35 @@ export default function OpsConsolePage() {
                 const progressRes = await fetch('/api/v1/clusters/p2-progress', { headers });
                 if (progressRes.ok) {
                     const progressData = await progressRes.json();
+                    if (!isMountedRef.current) return;
                     setP2Progress(progressData);
                 }
             } catch (e) {
                 console.warn("P2 Progress API failed:", e);
             }
         } catch {
-            setError('서버 연결 실패');
+            if (isMountedRef.current) {
+                setError('서버 연결 실패');
+            }
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     }
 
     async function handleRetry(runId: string) {
-        setRetrying(runId);
+        if (isMountedRef.current) {
+            setRetrying(runId);
+        }
         try {
             const token = localStorage.getItem('access_token');
+            if (!token) {
+                if (isMountedRef.current) {
+                    setError('로그인이 필요합니다');
+                }
+                return;
+            }
             const res = await fetch(`/api/v1/ops/runs/${runId}/retry`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -179,14 +216,19 @@ export default function OpsConsolePage() {
                 fetchData();
             }
         } finally {
-            setRetrying(null);
+            if (isMountedRef.current) {
+                setRetrying(null);
+            }
         }
     }
 
     async function handleUploadToNotebook(packId: string) {
-        setUploading(packId);
+        if (isMountedRef.current) {
+            setUploading(packId);
+        }
         try {
             const result = await api.uploadSourcePackToNotebook(packId);
+            if (!isMountedRef.current) return;
             if (result.success) {
                 alert(`✅ NotebookLM 업로드 완료: ${result.message}`);
                 fetchData(); // Refresh to update notebook_id status
@@ -194,9 +236,12 @@ export default function OpsConsolePage() {
                 alert(`❌ 업로드 실패: ${result.message}`);
             }
         } catch (e: any) {
+            if (!isMountedRef.current) return;
             alert(`❌ 오류: ${e.message || '알 수 없는 오류'}`);
         } finally {
-            setUploading(null);
+            if (isMountedRef.current) {
+                setUploading(null);
+            }
         }
     }
 
@@ -500,7 +545,7 @@ export default function OpsConsolePage() {
                                                     <div className="font-medium text-white">{run.run_type}</div>
                                                     <div className="text-xs text-white/40">
                                                         {run.started_at ? new Date(run.started_at).toLocaleString('ko-KR') : '-'}
-                                                        {run.duration_sec && ` · ${Math.round(run.duration_sec)}s`}
+                                                        {typeof run.duration_sec === 'number' && ` · ${Math.round(run.duration_sec)}s`}
                                                     </div>
                                                 </div>
                                             </div>

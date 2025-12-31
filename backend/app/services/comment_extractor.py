@@ -14,7 +14,6 @@ import tempfile
 import asyncio
 from typing import List, Optional, Dict, Any
 from pathlib import Path
-from pathlib import Path
 
 # Try to import YouTube API
 try:
@@ -92,12 +91,18 @@ class CommentExtractor:
             if method == "comment_list":
                 return await self._extract_tiktok_comment_list(video_url, limit)
 
-            # Auto mode: Playwright (optimized) → yt-dlp
+            # Auto mode: API (comment_list) → Playwright → yt-dlp
+            # API method is most reliable - uses /api/comment/list/ with cookies
+            comments = await self._extract_tiktok_comment_list(video_url, limit)
+            if comments:
+                return comments
+            
+            # Fallback to Playwright DOM scraping
             comments = await self._extract_tiktok_playwright(video_url, limit)
             if comments:
                 return comments
             
-            # Fallback to yt-dlp
+            # Last resort: yt-dlp
             comments = await self._extract_via_ytdlp(video_url, platform, limit)
             if comments:
                 return comments

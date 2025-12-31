@@ -4,11 +4,10 @@ Optimist vs Skeptic -> Transcript -> Final Verdict
 """
 import json
 import uuid
-from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 from app.services.sheet_manager import SheetManager
 from app.services.gemini_pipeline import gemini_pipeline
-from app.config import settings
+from app.utils.time import utcnow
 
 class DebateEngine:
     def __init__(self, sheet_manager: SheetManager):
@@ -106,7 +105,7 @@ class DebateEngine:
             0,
             "Debate Consensus",
             "debate_" + verdict.lower(),
-            datetime.now().isoformat()
+            utcnow().isoformat()
         ]
         
         self.sheet_manager.append_data("VDG_Decision", [row])

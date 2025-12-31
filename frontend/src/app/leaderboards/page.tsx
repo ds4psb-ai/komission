@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { api, GamificationLeaderboardEntry, Badge, StreakInfo, DailyMission } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
@@ -11,9 +11,16 @@ export default function LeaderboardPage() {
     const [myStreak, setMyStreak] = useState<StreakInfo | null>(null);
     const [dailyMissions, setDailyMissions] = useState<DailyMission[]>([]);
     const [loading, setLoading] = useState(true);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         loadData();
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     async function loadData() {
@@ -24,6 +31,7 @@ export default function LeaderboardPage() {
                 api.getMyStreak().catch(() => null),
                 api.getDailyMissions().catch(() => []),
             ]);
+            if (!isMountedRef.current) return;
             setLeaderboard(leaderboardData);
             setMyBadges(badgesData);
             setMyStreak(streakData);
@@ -31,7 +39,9 @@ export default function LeaderboardPage() {
         } catch (err) {
             console.error("Failed to load leaderboard:", err);
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     }
 

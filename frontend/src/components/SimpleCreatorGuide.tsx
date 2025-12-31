@@ -28,18 +28,26 @@ export function SimpleCreatorGuide({ patternId, onApply }: SimpleCreatorGuidePro
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let cancelled = false;
         const load = async () => {
             try {
                 setLoading(true);
                 const data = await api.getPatternDetail(patternId);
+                if (cancelled) return;
                 setPattern(data);
             } catch (e) {
                 console.error('Failed to load pattern:', e);
+                if (cancelled) return;
             } finally {
-                setLoading(false);
+                if (!cancelled) {
+                    setLoading(false);
+                }
             }
         };
         load();
+        return () => {
+            cancelled = true;
+        };
     }, [patternId]);
 
     if (loading) {

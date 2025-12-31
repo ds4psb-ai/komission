@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api, OutlierItem } from "@/lib/api";
 import { VDGCard } from "@/components/canvas/VDGCard";
 
@@ -14,20 +14,26 @@ interface AnalysisStatusBadgeProps {
  * Shows the current VDG analysis status with appropriate styling
  */
 export function AnalysisStatusBadge({ status, size = "sm" }: AnalysisStatusBadgeProps) {
-    const styles = {
+    const styles: Record<string, string> = {
         pending: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
         approved: "bg-blue-500/20 text-blue-300 border-blue-500/30",
         analyzing: "bg-purple-500/20 text-purple-300 border-purple-500/30 animate-pulse",
         completed: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
         skipped: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
+        comments_pending_review: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+        comments_failed: "bg-red-500/20 text-red-300 border-red-500/30",
+        comments_ready: "bg-teal-500/20 text-teal-300 border-teal-500/30",
     };
 
-    const labels = {
+    const labels: Record<string, string> = {
         pending: "⏳ 대기",
         approved: "✅ 승인됨",
         analyzing: "🔄 분석중",
         completed: "🎉 완료",
         skipped: "⏭️ 스킵",
+        comments_pending_review: "💬 검토대기",
+        comments_failed: "❌ 댓글실패",
+        comments_ready: "💬 댓글준비",
     };
 
     const sizeClass = size === "sm" ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1";
@@ -51,6 +57,13 @@ interface VDGApprovalButtonProps {
 export function VDGApprovalButton({ item, onApproved }: VDGApprovalButtonProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     // Only show for promoted items with pending analysis
     if (item.status !== "promoted" || item.analysis_status !== "pending") {
@@ -58,8 +71,10 @@ export function VDGApprovalButton({ item, onApproved }: VDGApprovalButtonProps) 
     }
 
     const handleApprove = async () => {
-        setLoading(true);
-        setError(null);
+        if (isMountedRef.current) {
+            setLoading(true);
+            setError(null);
+        }
         try {
             const response = await api.approveVDGAnalysis(item.id);
             if (response.approved) {
@@ -68,12 +83,18 @@ export function VDGApprovalButton({ item, onApproved }: VDGApprovalButtonProps) 
                     ...item,
                     analysis_status: "approved" as OutlierItem["analysis_status"],
                 };
-                onApproved?.(updatedItem);
+                if (isMountedRef.current) {
+                    onApproved?.(updatedItem);
+                }
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : "승인 실패");
+            if (isMountedRef.current) {
+                setError(err instanceof Error ? err.message : "승인 실패");
+            }
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 

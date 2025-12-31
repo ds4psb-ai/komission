@@ -1,6 +1,6 @@
 """
-MCP Server Tests
-Tests for Komission MCP Server (Resources, Tools, Prompts)
+MCP Server Tests (Legacy Compatibility)
+기존 테스트 파일을 새 MCP 구조에 맞게 업데이트
 """
 import pytest
 
@@ -16,25 +16,31 @@ class TestMCPServer:
         
     @pytest.mark.asyncio
     async def test_resources_registered(self):
-        """Resources 등록 확인 (5개)"""
+        """Resources 등록 확인 (6개)"""
         from app.mcp_server import mcp
         resources = list(mcp._resource_manager._templates.keys())
-        assert len(resources) == 5
-        assert "komission://patterns/{cluster_id}" in resources
-        assert "komission://comments/{outlier_id}" in resources
-        assert "komission://evidence/{pattern_id}" in resources
-        assert "komission://recurrence/{cluster_id}" in resources
-        assert "komission://vdg/{outlier_id}" in resources
+        assert len(resources) == 6  # 기존 5개 + director-pack 1개
+        # URI 형식 확인 (정확한 key 포맷은 FastMCP 버전에 따라 다름)
+        resource_uris = [str(r) for r in resources]
+        assert any('patterns' in r for r in resource_uris)
+        assert any('comments' in r for r in resource_uris)
+        assert any('evidence' in r for r in resource_uris)
+        assert any('recurrence' in r for r in resource_uris)
+        assert any('vdg' in r for r in resource_uris)
+        assert any('director-pack' in r for r in resource_uris)
 
     @pytest.mark.asyncio
     async def test_tools_registered(self):
-        """Tools 등록 확인 (3개)"""
+        """Tools 등록 확인 (6개)"""
         from app.mcp_server import mcp
         tools = list(mcp._tool_manager._tools.keys())
-        assert len(tools) == 3
+        assert len(tools) == 6  # 기존 3개 + 스마트 분석 3개
         assert "search_patterns" in tools
         assert "generate_source_pack" in tools
         assert "reanalyze_vdg" in tools
+        assert "smart_pattern_analysis" in tools
+        assert "ai_batch_analysis" in tools
+        assert "get_pattern_performance" in tools
 
     @pytest.mark.asyncio
     async def test_prompts_registered(self):
@@ -45,4 +51,3 @@ class TestMCPServer:
         assert "explain_recommendation" in prompts
         assert "shooting_guide" in prompts
         assert "risk_summary" in prompts
-

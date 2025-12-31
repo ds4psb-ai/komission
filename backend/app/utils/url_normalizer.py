@@ -107,6 +107,8 @@ def normalize_video_url(url: str, platform: Optional[str] = None) -> str:
     url = url.strip()
     video_id, detected_platform = extract_video_id(url)
     platform = platform or detected_platform
+    if platform:
+        platform = normalize_platform_name(platform)
     
     if not platform:
         # 플랫폼 감지 불가 - 쿼리만 정리
@@ -121,6 +123,9 @@ def normalize_video_url(url: str, platform: Optional[str] = None) -> str:
         return f"https://www.youtube.com/watch?v={video_id}"
     
     elif platform == "tiktok":
+        # Short codes (e.g., vm.tiktok.com, tiktok.com/t/...) are not numeric IDs.
+        if not video_id.isdigit():
+            return _strip_tracking_params(url)
         # TikTok은 @username이 필요하므로 원본에서 추출 시도
         username_match = re.search(r"tiktok\.com/@([^/]+)/", url)
         if username_match:
@@ -152,6 +157,8 @@ def _strip_tracking_params(url: str) -> str:
     """
     try:
         parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            return url
         params = parse_qs(parsed.query)
         
         # 유지할 파라미터만 필터링

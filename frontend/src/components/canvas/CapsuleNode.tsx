@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Handle, Position } from "@xyflow/react";
 import { Database, Lock, Sparkles, Wand2 } from "lucide-react";
@@ -44,11 +44,24 @@ export const CapsuleNode = memo(({ data }: { data: CapsuleNodeData }) => {
     const router = useRouter();
     const capsule = (data.capsule ?? data) as CapsuleDefinition;
     const [localStatus, setLocalStatus] = useState<CapsuleStatus>(capsule.status ?? data.status ?? "idle");
+    const runTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (runTimeoutRef.current) {
+                clearTimeout(runTimeoutRef.current);
+                runTimeoutRef.current = null;
+            }
+        };
+    }, []);
 
     const handleRun = () => {
         setLocalStatus('running');
         // Simulate Server Process (Opal + NotebookLM)
-        setTimeout(() => {
+        if (runTimeoutRef.current) {
+            clearTimeout(runTimeoutRef.current);
+        }
+        runTimeoutRef.current = setTimeout(() => {
             setLocalStatus('done');
             if (data.onComplete) {
                 data.onComplete({
@@ -65,6 +78,7 @@ export const CapsuleNode = memo(({ data }: { data: CapsuleNodeData }) => {
                     do_not: ["Don't use dull knife", "Don't look at camera directly"]
                 });
             }
+            runTimeoutRef.current = null;
         }, 2500);
     };
 

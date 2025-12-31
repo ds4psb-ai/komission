@@ -58,7 +58,7 @@ const navGroups: NavGroupData[] = [
         label: "콘텐츠",
         icon: Sparkles,
         items: [
-            { href: "/trending", label: "트렌딩", icon: TrendingUp },
+            { href: "/", label: "홈", icon: TrendingUp },
             { href: "/for-you", label: "추천", icon: Sparkles },
         ]
     },
@@ -188,6 +188,15 @@ function NavGroup({ group, isExpanded, activeFlyoutId, onActivate }: NavGroupPro
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipRect, setTooltipRect] = useState<DOMRect | null>(null);
     const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (tooltipTimeoutRef.current) {
+                clearTimeout(tooltipTimeoutRef.current);
+                tooltipTimeoutRef.current = null;
+            }
+        };
+    }, []);
 
     const isActive = group.items.some(
         item => pathname === item.href || pathname.startsWith(item.href + "/")

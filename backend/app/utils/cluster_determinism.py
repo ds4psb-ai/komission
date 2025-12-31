@@ -22,10 +22,10 @@ Usage:
 """
 import hashlib
 import json
-from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 
+from app.utils.time import utcnow
 
 # ====================
 # CLUSTER ID GENERATION
@@ -60,7 +60,7 @@ def generate_cluster_id(
     
     # Get week if not provided
     if not week:
-        now = datetime.utcnow()
+        now = utcnow()
         week = f"{now.year}{now.isocalendar()[1]:02d}"
     
     # Generate deterministic hash from parent

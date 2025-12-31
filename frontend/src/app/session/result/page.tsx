@@ -8,7 +8,7 @@
  * - 세션 컨텍스트 기반 추천 표시
  * - MCP Tool 연동: Source Pack 생성
  */
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from '@/contexts/SessionContext';
 import { useConsent } from '@/contexts/ConsentContext';
@@ -53,26 +53,38 @@ function SessionResultContent() {
     const [isEvidenceExpanded, setIsEvidenceExpanded] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
 
     // Pattern ID from URL
     const patternId = searchParams.get('pattern');
 
     useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
         const loadPattern = async () => {
             // 1. If we have a pattern in context and no ID in URL (or same ID), use context
             if (state.selected_pattern && (!patternId || state.selected_pattern.pattern_id === patternId)) {
-                setIsLoading(false);
+                if (isMountedRef.current) {
+                    setIsLoading(false);
+                }
                 return;
             }
 
             // 2. If we have an ID in URL, fetch it
             if (patternId) {
-                setIsLoading(true);
+                if (isMountedRef.current) {
+                    setIsLoading(true);
+                }
                 try {
                     const res = await fetch(`/api/v1/for-you/${patternId}`);
                     if (!res.ok) throw new Error('패턴을 찾을 수 없습니다');
 
                     const data = await res.json();
+                    if (!isMountedRef.current) return;
 
                     // Map API response to SessionPattern
                     const mappedPattern = {
@@ -84,7 +96,7 @@ function SessionResultContent() {
                             timing: data.evidence.growth_rate || '정보 없음',
                             audio: data.platform === 'tiktok' ? '틱톡 트렌딩 사운드' : '플랫폼 기본 사운드',
                         },
-                        fit_score: (data.outlier_score || 0) / 1000,
+                        fit_score: (data.outlier_score ?? 0) / 1000,
                         evidence_strength: data.evidence.best_comments.length,
                         tier: data.tier,
                         recurrence: data.recurrence ? {
@@ -100,14 +112,19 @@ function SessionResultContent() {
                     setSelectedPattern(mappedPattern);
                 } catch (err) {
                     console.error('Failed to load pattern:', err);
+                    if (!isMountedRef.current) return;
                     setFetchError('패턴을 불러올 수 없습니다.');
                 } finally {
-                    setIsLoading(false);
+                    if (isMountedRef.current) {
+                        setIsLoading(false);
+                    }
                 }
             } else {
                 // 3. No context, no URL -> Redirect or Show Mock
                 // For demo purposes, we'll stop loading but show nothing (or handle redirect)
-                setIsLoading(false);
+                if (isMountedRef.current) {
+                    setIsLoading(false);
+                }
             }
         };
 
@@ -294,4 +311,3 @@ export default function SessionResultPage() {
         </Suspense>
     );
 }
-

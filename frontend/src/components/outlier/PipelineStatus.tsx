@@ -2,15 +2,15 @@
 
 /**
  * PipelineStatus - Outlier pipeline stage badge
- * 
- * Flow: pending → promoted → analyzing → completed
+ *
+ * Flow: pending → promoted → comments → analyzing → completed
  */
 
-type PipelineStage = 'pending' | 'promoted' | 'analyzing' | 'completed';
+type PipelineStage = 'pending' | 'promoted' | 'comments' | 'analyzing' | 'completed';
 
 interface PipelineStatusProps {
     status: PipelineStage;
-    analysisStatus?: 'pending' | 'approved' | 'analyzing' | 'completed' | 'skipped';
+    analysisStatus?: 'pending' | 'approved' | 'analyzing' | 'completed' | 'skipped' | 'comments_pending_review' | 'comments_failed' | 'comments_ready';
     showLabel?: boolean;
     size?: 'sm' | 'md';
     className?: string;
@@ -35,6 +35,12 @@ const STAGE_CONFIG: Record<PipelineStage, {
         bgClass: 'bg-blue-500/20',
         textClass: 'text-blue-300',
     },
+    comments: {
+        label: '댓글 대기',
+        emoji: '💬',
+        bgClass: 'bg-amber-500/20',
+        textClass: 'text-amber-300',
+    },
     analyzing: {
         label: '분석중',
         emoji: '🔬',
@@ -53,7 +59,11 @@ const STAGE_CONFIG: Record<PipelineStage, {
 // Helper to compute pipeline stage from outlier item
 export function getPipelineStage(status: string, analysisStatus?: string): PipelineStage {
     if (analysisStatus === 'completed') return 'completed';
+    if (analysisStatus === 'comments_pending_review' || analysisStatus === 'comments_failed' || analysisStatus === 'comments_ready') {
+        return 'comments';
+    }
     if (analysisStatus === 'approved' || analysisStatus === 'analyzing') return 'analyzing';
+    if (analysisStatus === 'skipped') return 'promoted';
     if (status === 'promoted') return 'promoted';
     return 'pending';
 }

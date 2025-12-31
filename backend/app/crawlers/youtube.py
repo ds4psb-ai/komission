@@ -8,7 +8,7 @@ Fetches trending YouTube Shorts and calculates outlier scores based on:
 import os
 import re
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import List, Optional, Dict, Any
 
 import httpx
@@ -410,8 +410,7 @@ class YouTubeCrawler(BaseCrawler):
         Search for Shorts by keyword (alternative to trending).
         Uses search.list which costs 100 units per call.
         """
-        from datetime import datetime
-        published_after = (datetime.utcnow() - timedelta(days=published_after_days)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        published_after = (utcnow() - timedelta(days=published_after_days)).strftime('%Y-%m-%dT%H:%M:%SZ')
         
         response = self.client.get(
             f"{self.BASE_URL}/search",

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { api, GenealogyResponse } from '@/lib/api';
 
 interface GenealogyWidgetProps {
@@ -10,16 +10,20 @@ interface GenealogyWidgetProps {
 export function GenealogyWidget({ nodeId, layer = 'fork', depth = 3 }: GenealogyWidgetProps) {
     const [data, setData] = useState<GenealogyResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const res = await api.getRemixNodeGenealogy(nodeId, depth);
+                if (!isMountedRef.current) return;
                 setData(res);
             } catch (err) {
                 console.error("Failed to fetch genealogy:", err);
             } finally {
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setLoading(false);
+                }
             }
         };
 
@@ -27,6 +31,12 @@ export function GenealogyWidget({ nodeId, layer = 'fork', depth = 3 }: Genealogy
             fetchData();
         }
     }, [nodeId, depth]);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     if (loading) return <div className="text-white/50 text-sm animate-pulse">Loading genealogy...</div>;
     if (!data || data.edges.length === 0) return null;

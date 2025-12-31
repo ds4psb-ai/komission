@@ -13,9 +13,9 @@ Creator Usage Tracking API
 - 재방문율 (40%+ 목표)
 """
 from datetime import datetime, timedelta
-from typing import Optional, List
+from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import User, CreatorBehaviorEvent, BehaviorEventType
 from app.routers.auth import get_current_user_optional
+from app.utils.time import utcnow
 
 router = APIRouter(prefix="/usage", tags=["usage"])
 
@@ -88,7 +89,7 @@ async def log_usage_event(
             event_type=event.event_type,
             creator_id="anonymous",
             node_id=event.node_id,
-            created_at=datetime.utcnow()
+            created_at=utcnow()
         )
     
     # 이벤트 타입 검증
@@ -134,7 +135,7 @@ async def get_usage_metrics(
     - remix_to_production_rate: 변주 클릭 → 제작 시작 전환율
     - production_completion_rate: 제작 시작 → 완료율
     """
-    since = datetime.utcnow() - timedelta(days=days)
+    since = utcnow() - timedelta(days=days)
     
     # 이벤트 타입별 집계
     stats = {}

@@ -8,7 +8,7 @@
  * - 이미지 다운로드 지원
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { PatternLibraryItem } from '@/lib/api';
 import { Download, Printer, Share2, CheckCircle2, AlertTriangle, Lightbulb, Repeat, Sparkles } from 'lucide-react';
 import html2canvas from 'html2canvas';
@@ -21,6 +21,13 @@ interface ViralGuideCardProps {
 export function ViralGuideCard({ pattern, onClose }: ViralGuideCardProps) {
     const cardRef = useRef<HTMLDivElement>(null);
     const [downloading, setDownloading] = useState(false);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const handleDownload = async () => {
         if (!cardRef.current) return;
@@ -40,7 +47,9 @@ export function ViralGuideCard({ pattern, onClose }: ViralGuideCardProps) {
             console.error('Download failed:', e);
             alert('다운로드 실패. 다시 시도해주세요.');
         } finally {
-            setDownloading(false);
+            if (isMountedRef.current) {
+                setDownloading(false);
+            }
         }
     };
 
@@ -63,8 +72,17 @@ export function ViralGuideCard({ pattern, onClose }: ViralGuideCardProps) {
             }
         } else {
             // Fallback: copy link
-            await navigator.clipboard.writeText(window.location.href);
-            alert('링크가 복사되었습니다!');
+            try {
+                if (!navigator.clipboard?.writeText) {
+                    alert('클립보드를 사용할 수 없습니다. 주소를 직접 복사해주세요.');
+                    return;
+                }
+                await navigator.clipboard.writeText(window.location.href);
+                alert('링크가 복사되었습니다!');
+            } catch (e) {
+                console.error('Clipboard write failed:', e);
+                alert('링크 복사에 실패했습니다.');
+            }
         }
     };
 

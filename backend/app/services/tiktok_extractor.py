@@ -6,7 +6,7 @@ Features:
 - Single Playwright session for both metadata and comments
 - Cookie-based authentication
 - All extraction strategies
-- Production-ready hardening
+- Production-ready hardening (tenacity retry, structured logging)
 
 Output matches YouTube API format for pipeline compatibility.
 """
@@ -15,9 +15,30 @@ import re
 import json
 import time
 import asyncio
+import logging
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
+
+# Retry 로직
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+# 로거 설정
+logger = logging.getLogger(__name__)
+
+
+# 커스텀 예외
+class MetadataExtractionError(Exception):
+    """메타데이터 추출 실패"""
+    pass
+
+class TikTokBotDetectedError(MetadataExtractionError):
+    """TikTok 봇 감지됨"""
+    pass
+
+class VideoNotFoundError(MetadataExtractionError):
+    """영상을 찾을 수 없음"""
+    pass
 
 
 @dataclass

@@ -71,9 +71,11 @@ export function OutlierDetailModal({
                     {/* Header: Tier + Outlier Score + Status */}
                     <div className="flex items-center gap-3 mb-4 flex-wrap">
                         <TierBadge tier={item.outlier_tier} size="md" />
-                        <span className="text-pink-400 font-mono text-sm">
-                            {item.outlier_score?.toFixed(1)}x 아웃라이어
-                        </span>
+                        {typeof item.outlier_score === 'number' && (
+                            <span className="text-pink-400 font-mono text-sm">
+                                {item.outlier_score.toFixed(1)}x 아웃라이어
+                            </span>
+                        )}
                         <PipelineStatus
                             status={item.status as 'pending' | 'promoted'}
                             analysisStatus={item.analysis_status}
@@ -137,23 +139,23 @@ export function OutlierDetailModal({
                                 <button
                                     onClick={() => onPromote(item.id, false)}
                                     disabled={actionLoading === item.id}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-xl font-bold transition-colors disabled:opacity-50"
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 rounded-xl font-bold transition-colors disabled:opacity-50"
                                 >
                                     {actionLoading === item.id ? (
                                         <RefreshCw className="w-4 h-4 animate-spin" />
                                     ) : (
                                         <ArrowUpRight className="w-4 h-4" />
                                     )}
-                                    승격
+                                    리믹스 승격
                                 </button>
                                 <button
                                     onClick={() => onPromote(item.id, true)}
                                     disabled={actionLoading === item.id}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 rounded-xl font-bold transition-colors disabled:opacity-50"
-                                    title="체험단 캠페인 후보로 등록"
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-xl font-bold transition-colors disabled:opacity-50"
+                                    title="오거닉 바이럴 후보로 등록"
                                 >
                                     <Gift className="w-4 h-4" />
-                                    체험단 선정
+                                    오거닉 바이럴
                                 </button>
                             </div>
                         )}

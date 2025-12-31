@@ -9,7 +9,7 @@
  * - Job status monitoring
  * - Quota usage display
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
     ArrowLeft, RefreshCw, Play, CheckCircle, AlertCircle, Clock,
@@ -60,6 +60,7 @@ const PLATFORMS = [
 function formatTimeAgo(dateStr: string | null): string {
     if (!dateStr) return '없음';
     const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return '없음';
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -75,6 +76,16 @@ export default function CrawlerDashboard() {
     const [runningJobs, setRunningJobs] = useState<Record<string, JobStatus>>({});
     const [triggeringStrategy, setTriggeringStrategy] = useState<string | null>(null);
     const [triggeringPlatform, setTriggeringPlatform] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
+    const pollTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+            pollTimeoutsRef.current.forEach(clearTimeout);
+            pollTimeoutsRef.current = [];
+        };
+    }, []);
 
     // Fetch crawler status
     useEffect(() => {
@@ -86,19 +97,25 @@ export default function CrawlerDashboard() {
     async function fetchStatus() {
         try {
             const res = await fetch("/api/v1/crawlers/status");
+            if (!isMountedRef.current) return;
             if (res.ok) {
                 const data = await res.json();
+                if (!isMountedRef.current) return;
                 setStatus(data);
             }
         } catch (e) {
             console.error("Failed to fetch status:", e);
         } finally {
-            setIsLoading(false);
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
         }
     }
 
     async function runStrategyCrawl(strategy: string) {
-        setTriggeringStrategy(strategy);
+        if (isMountedRef.current) {
+            setTriggeringStrategy(strategy);
+        }
         try {
             const res = await fetch("/api/v1/crawlers/run/strategy", {
                 method: "POST",
@@ -106,6 +123,7 @@ export default function CrawlerDashboard() {
                 body: JSON.stringify({ strategy, limit: 50 }),
             });
             const data = await res.json();
+            if (!isMountedRef.current) return;
             if (data.job_id) {
                 setRunningJobs(prev => ({
                     ...prev,
@@ -116,12 +134,16 @@ export default function CrawlerDashboard() {
         } catch (e) {
             console.error("Failed to trigger crawl:", e);
         } finally {
-            setTriggeringStrategy(null);
+            if (isMountedRef.current) {
+                setTriggeringStrategy(null);
+            }
         }
     }
 
     async function runPlatformCrawl(platform: string) {
-        setTriggeringPlatform(platform);
+        if (isMountedRef.current) {
+            setTriggeringPlatform(platform);
+        }
         try {
             const res = await fetch("/api/v1/crawlers/run", {
                 method: "POST",
@@ -129,6 +151,7 @@ export default function CrawlerDashboard() {
                 body: JSON.stringify({ platforms: [platform], limit: 50 }),
             });
             const data = await res.json();
+            if (!isMountedRef.current) return;
             if (data.job_id) {
                 setRunningJobs(prev => ({
                     ...prev,
@@ -139,19 +162,24 @@ export default function CrawlerDashboard() {
         } catch (e) {
             console.error("Failed to trigger crawl:", e);
         } finally {
-            setTriggeringPlatform(null);
+            if (isMountedRef.current) {
+                setTriggeringPlatform(null);
+            }
         }
     }
 
     async function pollJobStatus(jobId: string) {
         const poll = async () => {
+            if (!isMountedRef.current) return;
             try {
                 const res = await fetch(`/api/v1/crawlers/jobs/${jobId}`);
                 if (res.ok) {
                     const data = await res.json();
+                    if (!isMountedRef.current) return;
                     setRunningJobs(prev => ({ ...prev, [jobId]: data }));
                     if (data.status === "running") {
-                        setTimeout(poll, 3000);
+                        const timeoutId = setTimeout(poll, 3000);
+                        pollTimeoutsRef.current.push(timeoutId);
                     } else {
                         fetchStatus(); // Refresh status on complete
                     }

@@ -7,7 +7,7 @@
  * to promote CreatorSubmission to OutlierItem for tracking.
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
 import { CheckCircle, ExternalLink, Loader2, User, Calendar, Tag } from 'lucide-react';
 
@@ -29,18 +29,29 @@ export function SubmissionReviewCard({ submission, onPromoted }: SubmissionRevie
     const [promoting, setPromoting] = useState(false);
     const [promoted, setPromoted] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const handlePromote = async () => {
-        setPromoting(true);
-        setError(null);
+        if (isMountedRef.current) {
+            setPromoting(true);
+            setError(null);
+        }
 
         try {
+            const token = api.getToken();
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            };
             const response = await fetch(`/api/v1/creator/submissions/${submission.id}/promote`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${api.getToken()}`,
-                },
+                headers,
             });
 
             if (!response.ok) {
@@ -48,12 +59,18 @@ export function SubmissionReviewCard({ submission, onPromoted }: SubmissionRevie
                 throw new Error(data.detail || 'Failed to promote');
             }
 
-            setPromoted(true);
-            onPromoted?.();
+            if (isMountedRef.current) {
+                setPromoted(true);
+                onPromoted?.();
+            }
         } catch (e: any) {
-            setError(e.message);
+            if (isMountedRef.current) {
+                setError(e.message);
+            }
         } finally {
-            setPromoting(false);
+            if (isMountedRef.current) {
+                setPromoting(false);
+            }
         }
     };
 

@@ -37,7 +37,7 @@ export function OutlierMetrics({
                 <span className="px-2 py-0.5 bg-black/60 rounded-full text-white flex items-center gap-1">
                     <Eye className="w-3 h-3" /> {formatNumber(viewCount)}
                 </span>
-                {outlierScore && (
+                {typeof outlierScore === 'number' && (
                     <span className="px-2 py-0.5 bg-pink-500/60 rounded-full text-white font-mono">
                         {outlierScore.toFixed(0)}x
                     </span>
@@ -56,7 +56,7 @@ export function OutlierMetrics({
                 </div>
                 <div className="p-3 bg-white/5 rounded-xl text-center">
                     <Heart className="w-5 h-5 mx-auto text-pink-400 mb-1" />
-                    <div className="text-lg font-black text-white">{likeCount ? formatNumber(likeCount) : '-'}</div>
+                    <div className="text-lg font-black text-white">{typeof likeCount === 'number' ? formatNumber(likeCount) : '-'}</div>
                     <div className="text-[10px] text-white/40">좋아요</div>
                 </div>
                 <div className="p-3 bg-white/5 rounded-xl text-center">
@@ -75,19 +75,19 @@ export function OutlierMetrics({
                 <Eye className="w-4 h-4 text-cyan-400" />
                 {formatNumber(viewCount)}
             </span>
-            {likeCount !== undefined && (
+            {typeof likeCount === 'number' && (
                 <span className="flex items-center gap-1">
                     <Heart className="w-4 h-4 text-pink-400" />
                     {formatNumber(likeCount)}
                 </span>
             )}
-            {shareCount !== undefined && (
+            {typeof shareCount === 'number' && (
                 <span className="flex items-center gap-1">
                     <Share2 className="w-4 h-4 text-emerald-400" />
                     {formatNumber(shareCount)}
                 </span>
             )}
-            {outlierScore && (
+            {typeof outlierScore === 'number' && (
                 <span className="text-pink-400 font-mono font-bold">
                     {outlierScore.toFixed(1)}x
                 </span>

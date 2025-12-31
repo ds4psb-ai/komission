@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ApiClient, CalibrationPair } from '@/lib/api';
 
@@ -13,6 +13,8 @@ export default function TasteCalibrationPage() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [completed, setCompleted] = useState(false);
+    const isMountedRef = useRef(true);
+    const timeoutRefs = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
     const loadPairs = useCallback(async () => {
         try {
@@ -23,10 +25,14 @@ export default function TasteCalibrationPage() {
             }
 
             const response = await api.getCalibrationPairs();
+            if (!isMountedRef.current) return;
             setPairs(response.pairs);
             setLoading(false);
         } catch (error) {
             console.error('Failed to load pairs:', error);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
             alert('데이터를 불러오는데 실패했습니다.');
         }
     }, [router]);
@@ -35,6 +41,14 @@ export default function TasteCalibrationPage() {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         loadPairs();
     }, [loadPairs]);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+            timeoutRefs.current.forEach(clearTimeout);
+            timeoutRefs.current = [];
+        };
+    }, []);
 
     const handleChoice = async (selection: 'A' | 'B') => {
         if (submitting) return;
@@ -46,23 +60,30 @@ export default function TasteCalibrationPage() {
         try {
             // API 전송 (비동기 처리하지만 UX는 바로 넘어감)
             await api.submitCalibrationChoice(currentPair.pair_id, selectedOption.id, selection);
+            if (!isMountedRef.current) return;
 
             if (currentIndex < pairs.length - 1) {
                 // 다음 문항으로
-                setTimeout(() => {
+                const timeoutId = setTimeout(() => {
+                    if (!isMountedRef.current) return;
                     setCurrentIndex(prev => prev + 1);
                     setSubmitting(false);
                 }, 300); // 약간의 딜레이로 애니메이션 효과
+                timeoutRefs.current.push(timeoutId);
             } else {
                 // 완료
                 setCompleted(true);
-                setTimeout(() => {
+                const timeoutId = setTimeout(() => {
+                    if (!isMountedRef.current) return;
                     router.push('/remix'); // Remix 메인으로 이동
                 }, 1500);
+                timeoutRefs.current.push(timeoutId);
             }
         } catch (error) {
             console.error('Failed to submit choice:', error);
-            setSubmitting(false);
+            if (isMountedRef.current) {
+                setSubmitting(false);
+            }
             alert('오류가 발생했습니다. 다시 시도해주세요.');
         }
     };
@@ -86,6 +107,21 @@ export default function TasteCalibrationPage() {
     }
 
     const currentPair = pairs[currentIndex];
+    if (!currentPair) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6 text-center">
+                <div className="text-5xl mb-4">🧭</div>
+                <h1 className="text-xl font-bold mb-2">표시할 질문이 없습니다</h1>
+                <p className="text-white/50 mb-6">잠시 후 다시 시도해주세요.</p>
+                <button
+                    onClick={() => router.push('/remix')}
+                    className="px-6 py-3 bg-violet-500 rounded-xl font-bold"
+                >
+                    돌아가기
+                </button>
+            </div>
+        );
+    }
     const progress = ((currentIndex + 1) / pairs.length) * 100;
 
     return (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -26,15 +26,23 @@ export default function WizardPage() {
     const [isVerifying, setIsVerifying] = useState(false);
     const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string; points?: number } | null>(null);
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const isMountedRef = useRef(true);
 
     // Load available mission
     useEffect(() => {
         loadMission();
     }, []);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     async function loadMission() {
         try {
             const locations = await api.listO2OLocations();
+            if (!isMountedRef.current) return;
             if (locations.length > 0) {
                 const loc = locations[0];
                 setMission({
@@ -50,7 +58,9 @@ export default function WizardPage() {
         } catch (e) {
             console.error(e);
         } finally {
-            setIsLoading(false);
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
         }
     }
 
@@ -78,25 +88,33 @@ export default function WizardPage() {
 
         navigator.geolocation.getCurrentPosition(
             async (position) => {
+                if (!isMountedRef.current) return;
                 const { latitude, longitude } = position.coords;
                 setUserLocation({ lat: latitude, lng: longitude });
 
                 try {
                     const result = await api.verifyLocation(mission.locationId, latitude, longitude);
+                    if (!isMountedRef.current) return;
                     setVerifyResult({
                         success: result.status === 'verified',
                         message: result.message,
                         points: result.points_awarded,
                     });
                 } catch (e) {
-                    setVerifyResult({ success: false, message: '인증 실패. 다시 시도해주세요.' });
+                    if (isMountedRef.current) {
+                        setVerifyResult({ success: false, message: '인증 실패. 다시 시도해주세요.' });
+                    }
                 } finally {
-                    setIsVerifying(false);
+                    if (isMountedRef.current) {
+                        setIsVerifying(false);
+                    }
                 }
             },
             (error) => {
-                setVerifyResult({ success: false, message: '위치 정보를 가져올 수 없습니다. GPS를 확인하세요.' });
-                setIsVerifying(false);
+                if (isMountedRef.current) {
+                    setVerifyResult({ success: false, message: '위치 정보를 가져올 수 없습니다. GPS를 확인하세요.' });
+                    setIsVerifying(false);
+                }
             },
             { enableHighAccuracy: true, timeout: 10000 }
         );

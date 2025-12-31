@@ -6,14 +6,17 @@ Health Check & Monitoring Utilities (PEGL v1.0)
 - 에러 알림
 - 성능 메트릭
 """
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 import asyncio
 import logging
 
+from sqlalchemy import text
+
 from app.services.cache import cache
 from app.services.graph_db import graph_db
 from app.database import AsyncSessionLocal
+from app.utils.time import iso_now
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +29,7 @@ class HealthChecker:
         """PostgreSQL 연결 확인"""
         try:
             async with AsyncSessionLocal() as session:
-                result = await session.execute("SELECT 1")
+                result = await session.execute(text("SELECT 1"))
                 return {"status": "healthy", "latency_ms": 0}
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
@@ -72,14 +75,14 @@ class HealthChecker:
         )
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": iso_now(),
             "services": {
                 "database": results[0] if not isinstance(results[0], Exception) else {"status": "error"},
                 "redis": results[1] if not isinstance(results[1], Exception) else {"status": "error"},
                 "neo4j": results[2] if not isinstance(results[2], Exception) else {"status": "error"},
             },
             "overall": "healthy" if all(
-                r.get("status") == "healthy" for r in results if isinstance(r, dict)
+                isinstance(r, dict) and r.get("status") == "healthy" for r in results
             ) else "degraded"
         }
 

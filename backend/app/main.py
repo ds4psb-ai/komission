@@ -54,7 +54,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️ Neo4j connection failed: {e}")
 
-    yield
+    # Initialize MCP lifespan (for StreamableHTTPSessionManager)
+    from app.mcp.http_server import app as mcp_app
+    async with mcp_app.lifespan(mcp_app):
+        print("✅ MCP Server initialized (HTTP Transport ready)")
+        yield
 
     # Shutdown
     print("👋 Shutting down...")
@@ -133,6 +137,11 @@ app.include_router(agent_router, tags=["Agent"])
 from app.routers.coaching import router as coaching_router
 app.include_router(coaching_router, tags=["Coaching"])
 
+# Mount MCP HTTP Server (Streamable HTTP Transport)
+# Enables AI LLM Sampling tools at /mcp endpoint
+from app.mcp.http_server import app as mcp_http_app
+app.mount("/mcp", mcp_http_app)
+
 
 @app.get("/health")
 async def health_check():
@@ -146,6 +155,7 @@ async def health_check():
         "services": {
             "redis": redis_status,
             "neo4j": neo4j_status,
+            "mcp": "mounted at /mcp",
         }
     }
 

@@ -1,0 +1,9 @@
+{
+  "video_url": "https://example.com/video/123",
+  "platform": "tiktok",
+  "category": "meme",
+  "title": "Sample Outlier Item",
+  "view_count": 120000,
+  "like_count": 4500,
+  "share_count": 300
+}

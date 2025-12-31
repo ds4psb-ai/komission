@@ -26,17 +26,24 @@ const defaultFrames: StoryboardFrame[] = [
 export function StoryboardPreview({ nodeId, isOpen, onClose, frames = defaultFrames }: StoryboardPreviewProps) {
     const [activeFrame, setActiveFrame] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
+    const safeFrames = frames.length > 0 ? frames : defaultFrames;
+
+    useEffect(() => {
+        if (activeFrame >= safeFrames.length) {
+            setActiveFrame(0);
+        }
+    }, [activeFrame, safeFrames.length]);
 
     // Auto-play simulation
     useEffect(() => {
-        if (!isPlaying) return;
+        if (!isPlaying || safeFrames.length === 0) return;
 
         const interval = setInterval(() => {
-            setActiveFrame(prev => (prev + 1) % frames.length);
+            setActiveFrame(prev => (prev + 1) % safeFrames.length);
         }, 1500);
 
         return () => clearInterval(interval);
-    }, [isPlaying, frames.length]);
+    }, [isPlaying, safeFrames.length]);
 
     // ESC to close
     useEffect(() => {
@@ -77,22 +84,22 @@ export function StoryboardPreview({ nodeId, isOpen, onClose, frames = defaultFra
 
                         {/* Frame Content */}
                         <div className="text-center z-10">
-                            <div className="text-6xl mb-4">{frames[activeFrame].overlay}</div>
-                            <div className="text-xl font-bold text-white mb-2">{frames[activeFrame].description}</div>
-                            <div className="text-white/50 text-sm">타임스탬프: {frames[activeFrame].timestamp}</div>
+                            <div className="text-6xl mb-4">{safeFrames[activeFrame].overlay}</div>
+                            <div className="text-xl font-bold text-white mb-2">{safeFrames[activeFrame].description}</div>
+                            <div className="text-white/50 text-sm">타임스탬프: {safeFrames[activeFrame].timestamp}</div>
                         </div>
 
                         {/* Overlay Text Simulation */}
                         <div className="absolute bottom-4 left-4 right-4 p-3 bg-black/60 backdrop-blur rounded-lg">
                             <div className="text-xs text-white/70 font-mono">
-                                프레임 {activeFrame + 1}/{frames.length} • {frames[activeFrame].timestamp}
+                                프레임 {activeFrame + 1}/{safeFrames.length} • {safeFrames[activeFrame].timestamp}
                             </div>
                         </div>
                     </div>
 
                     {/* Timeline / Frame Selector */}
                     <div className="flex gap-3 justify-center mb-6">
-                        {frames.map((frame, i) => (
+                        {safeFrames.map((frame, i) => (
                             <button
                                 key={i}
                                 onClick={() => { setActiveFrame(i); setIsPlaying(false); }}
@@ -126,8 +133,8 @@ export function StoryboardPreview({ nodeId, isOpen, onClose, frames = defaultFra
                             {isPlaying ? '⏸ 일시정지' : '▶ 재생'}
                         </button>
                         <button
-                            onClick={() => setActiveFrame(prev => Math.min(frames.length - 1, prev + 1))}
-                            disabled={activeFrame === frames.length - 1}
+                            onClick={() => setActiveFrame(prev => Math.min(safeFrames.length - 1, prev + 1))}
+                            disabled={activeFrame === safeFrames.length - 1}
                             className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm disabled:opacity-30 transition-all"
                         >
                             다음 →

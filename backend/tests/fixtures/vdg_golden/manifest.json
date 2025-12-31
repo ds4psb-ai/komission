@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "description": "Golden set fixtures for VDG pipeline validation",
+  "items": [
+    {
+      "id": "sample_001",
+      "enabled": false,
+      "reason": "placeholder sample",
+      "outlier_item_path": "items/sample_item.json",
+      "comments_path": "comments/sample_comments.json",
+      "vdg_path": "vdg/sample_vdg.json",
+      "checks": {
+        "required_vdg_keys": [
+          "platform",
+          "duration_ms",
+          "hook_genome",
+          "viral_kicks"
+        ],
+        "min_comment_count": 1,
+        "feature_ranges": {
+          "hook_strength": [
+            0.0,
+            1.0
+          ],
+          "duration_sec": [
+            0.0,
+            300.0
+          ]
+        }
+      }
+    }
+  ]
+}

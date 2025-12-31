@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { api, EvidenceGuide } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { BookOpen, Target, TrendingUp, ArrowRight, Play } from 'lucide-react';
@@ -49,20 +49,32 @@ const MOCK_GUIDES: EvidenceGuide[] = [
 export default function EvidenceGuidesPage() {
     const [guides, setGuides] = useState<EvidenceGuide[]>([]);
     const [loading, setLoading] = useState(true);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         loadGuides();
     }, []);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     const loadGuides = async () => {
         try {
             const data = await api.getEvidenceGuides();
+            if (!isMountedRef.current) return;
             setGuides(data.guides?.length > 0 ? data.guides : MOCK_GUIDES);
         } catch (e) {
             console.warn("Guides API failed, using mock:", e);
-            setGuides(MOCK_GUIDES);
+            if (isMountedRef.current) {
+                setGuides(MOCK_GUIDES);
+            }
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 

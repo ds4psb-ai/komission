@@ -8,6 +8,7 @@ from app.repositories.base import BaseRepository
 from app.models import RemixNode, NodeLayer, NodePermission, NodeGovernance
 from app.routers.remix import RemixNodeCreate
 from app.services.graph_db import graph_db
+from app.utils.time import utcnow
 
 class RemixNodeRepository(BaseRepository[RemixNode]):
     """
@@ -34,8 +35,7 @@ class RemixNodeRepository(BaseRepository[RemixNode]):
 
     async def create(self, node_in: RemixNodeCreate, owner_id: str) -> RemixNode:
         """Create a new remix node and sync to Neo4j"""
-        from datetime import datetime
-        date_str = datetime.now().strftime("%Y%m%d")
+        date_str = utcnow().strftime("%Y%m%d")
         
         count_query = select(func.count()).where(RemixNode.node_id.like(f"remix_{date_str}%"))
         count_res = await self.session.execute(count_query)
@@ -89,4 +89,3 @@ class RemixNodeRepository(BaseRepository[RemixNode]):
             await self.session.commit()
             return True
         return False
-

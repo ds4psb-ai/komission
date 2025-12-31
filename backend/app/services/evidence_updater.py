@@ -14,9 +14,9 @@ A→B Migration:
 """
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime
 import hashlib
 
+from app.utils.time import iso_now
 from app.schemas.director_pack import (
     DirectorPack,
     DNAInvariant,
@@ -201,7 +201,7 @@ class EvidenceUpdater:
                 })
         
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": iso_now(),
             "total_rules": len(new_pack.dna_invariants),
             "changes": changes,
             "summary": f"{len(changes)} rules updated based on evidence"
@@ -266,7 +266,7 @@ class SignalTracker:
                 element=element,
                 value=value,
                 sentiment=sentiment,
-                first_seen_at=datetime.utcnow().isoformat()
+                first_seen_at=iso_now()
             )
         
         return self._signals[signal_key]
@@ -329,7 +329,7 @@ class SignalTracker:
     def _create_candidate(self, signal: SignalPerformance) -> InvariantCandidate:
         """Create an InvariantCandidate from a SignalPerformance."""
         candidate_id = hashlib.sha256(
-            f"{signal.signal_key}|{datetime.utcnow().isoformat()}".encode()
+            f"{signal.signal_key}|{iso_now()}".encode()
         ).hexdigest()[:12]
         
         return InvariantCandidate(
@@ -350,7 +350,7 @@ class SignalTracker:
             proposed_domain="composition" if signal.element in ["background", "outfit_color"] else "performance",
             proposed_priority="medium" if signal.sentiment == "positive" else "high",
             status="pending",
-            created_at=datetime.utcnow().isoformat()
+            created_at=iso_now()
         )
     
     def get_all_signals(self) -> Dict[str, SignalPerformance]:
@@ -372,4 +372,3 @@ def get_signal_tracker() -> SignalTracker:
     if _signal_tracker is None:
         _signal_tracker = SignalTracker()
     return _signal_tracker
-

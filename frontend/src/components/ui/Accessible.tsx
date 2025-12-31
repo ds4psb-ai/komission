@@ -215,10 +215,13 @@ export function useAnnouncement() {
         element.className = 'sr-only';
         element.textContent = message;
 
+        if (!document.body) return;
         document.body.appendChild(element);
 
         setTimeout(() => {
-            document.body.removeChild(element);
+            if (element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
         }, 1000);
     };
 

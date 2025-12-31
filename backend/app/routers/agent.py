@@ -32,6 +32,7 @@ from app.services.proof_patterns import (
     TOP_3_PROOF_PATTERNS, get_pattern_by_id, create_proof_pack,
     get_metric_evaluator
 )
+from app.utils.time import utcnow
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
@@ -160,7 +161,7 @@ class ChatContext:
     """대화 컨텍스트 관리"""
     session_id: str
     user_id: str
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=utcnow)
     last_intent: Optional[Intent] = None
     topic_stack: List[str] = field(default_factory=list)
     mentioned_patterns: List[str] = field(default_factory=list)
@@ -544,4 +545,3 @@ def _generate_actions_by_intent(classified: ClassifiedIntent) -> List[dict]:
     }
     
     return intent_actions.get(classified.intent, [])
-

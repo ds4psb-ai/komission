@@ -1,0 +1,140 @@
+{
+    "$schema": "https://registry.modelcontextprotocol.io/schemas/server.json",
+    "name": "komission",
+    "display_name": "Komission Pattern Recommender",
+    "description": "숏폼 바이럴 패턴 추천 시스템. TikTok, Instagram, YouTube 데이터 분석 및 AI 기반 콘텐츠 인사이트 제공.",
+    "version": "1.0.0",
+    "author": {
+        "name": "Komission Team",
+        "email": "contact@komission.io",
+        "url": "https://komission.io"
+    },
+    "repository": "https://github.com/komission/mcp-server",
+    "homepage": "https://komission.io",
+    "license": "MIT",
+    "transports": [
+        "stdio",
+        "http"
+    ],
+    "capabilities": {
+        "resources": true,
+        "tools": true,
+        "prompts": true,
+        "sampling": true,
+        "elicitation": true,
+        "notifications": false
+    },
+    "resources": [
+        {
+            "uri": "komission://patterns/{cluster_id}",
+            "description": "패턴 클러스터 정보 (아웃라이어 목록, 통계)"
+        },
+        {
+            "uri": "komission://recurrence/{cluster_id}",
+            "description": "패턴 반복 통계"
+        },
+        {
+            "uri": "komission://comments/{outlier_id}",
+            "description": "아웃라이어 댓글 데이터"
+        },
+        {
+            "uri": "komission://vdg/{outlier_id}",
+            "description": "VDG (Video DNA Genome) 분석 결과"
+        },
+        {
+            "uri": "komission://evidence/{pattern_id}",
+            "description": "패턴 증거 데이터"
+        },
+        {
+            "uri": "komission://director-pack/{outlier_id}",
+            "description": "디렉터 팩 (촬영 가이드)"
+        }
+    ],
+    "tools": [
+        {
+            "name": "search_patterns",
+            "description": "바이럴 패턴 검색 (키워드, 카테고리, 플랫폼)",
+            "tags": [
+                "search",
+                "read-only",
+                "auto-approve"
+            ],
+            "safety": "read-only"
+        },
+        {
+            "name": "generate_source_pack",
+            "description": "NotebookLM 소스팩 생성",
+            "tags": [
+                "generation",
+                "write",
+                "elicitation-required"
+            ],
+            "safety": "requires-consent"
+        },
+        {
+            "name": "reanalyze_vdg",
+            "description": "VDG 재분석 요청 (비용 발생)",
+            "tags": [
+                "analysis",
+                "write",
+                "billable",
+                "elicitation-required"
+            ],
+            "safety": "billable"
+        },
+        {
+            "name": "smart_pattern_analysis",
+            "description": "AI 기반 스마트 패턴 분석 (LLM Sampling)",
+            "tags": [
+                "ai-analysis",
+                "llm-sampling",
+                "read-only"
+            ],
+            "safety": "read-only"
+        },
+        {
+            "name": "ai_batch_analysis",
+            "description": "여러 패턴 AI 배치 분석",
+            "tags": [
+                "ai-analysis",
+                "llm-sampling",
+                "batch",
+                "read-only"
+            ],
+            "safety": "read-only"
+        }
+    ],
+    "prompts": [
+        {
+            "name": "explain_recommendation",
+            "description": "추천 이유 설명"
+        },
+        {
+            "name": "shooting_guide",
+            "description": "촬영 가이드 생성"
+        },
+        {
+            "name": "risk_summary",
+            "description": "리스크 요약"
+        }
+    ],
+    "requirements": {
+        "python": ">=3.10",
+        "fastmcp": ">=2.14.1"
+    },
+    "config": {
+        "database_required": true,
+        "env_vars": [
+            {
+                "name": "DATABASE_URL",
+                "description": "PostgreSQL 연결 URL",
+                "required": true
+            },
+            {
+                "name": "GOOGLE_API_KEY",
+                "description": "Gemini API 키 (VDG 분석용)",
+                "required": false
+            }
+        ]
+    }
+}

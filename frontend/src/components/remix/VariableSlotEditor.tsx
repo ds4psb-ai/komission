@@ -76,7 +76,10 @@ export function VariableSlotEditor({ slots, onChange }: VariableSlotEditorProps)
                             <Input
                                 type="number"
                                 value={(slot.value as number) || 0}
-                                onChange={(e) => handleChange(slot.slotId, parseFloat(e.target.value))}
+                                onChange={(e) => {
+                                    const raw = e.target.value;
+                                    handleChange(slot.slotId, raw === "" ? 0 : Number(raw));
+                                }}
                             />
                         )}
 

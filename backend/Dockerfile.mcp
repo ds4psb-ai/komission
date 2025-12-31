@@ -1,0 +1,29 @@
+# Komission MCP Server - Dockerfile
+# Streamable HTTP Transport를 위한 컨테이너
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# 의존성 설치
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 소스 코드 복사
+COPY app/ ./app/
+
+# 환경 변수
+ENV PYTHONPATH=/app
+ENV MCP_HTTP_HOST=0.0.0.0
+ENV MCP_HTTP_PORT=8080
+ENV MCP_DEBUG=false
+
+# 포트 노출
+EXPOSE 8080
+
+# 헬스체크
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import http.client; conn = http.client.HTTPConnection('localhost', 8080); conn.request('GET', '/health'); resp = conn.getresponse(); exit(0 if resp.status == 200 else 1)" || exit 1
+
+# MCP HTTP 서버 실행
+CMD ["python", "-m", "app.mcp.http_server"]

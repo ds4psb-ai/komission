@@ -31,7 +31,7 @@ Capsule 실행 → O2O 연결 → 성과 측정
 
 | 구분 | 기술 |
 | --- | --- |
-| **Backend** | Python 3.13, FastAPI, SQLAlchemy |
+| **Backend** | Python 3.12+, FastAPI, SQLAlchemy |
 | **Frontend** | Next.js 16, React 19, Tailwind CSS |
 | **DB** | PostgreSQL, Redis, Neo4j |
 | **AI** | Gemini 2.0 Pro |

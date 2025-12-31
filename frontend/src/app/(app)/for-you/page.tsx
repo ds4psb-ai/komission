@@ -8,7 +8,7 @@
  * - 카테고리/플랫폼 필터
  * - Session 흐름 연계
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, Filter, Sparkles, ChevronRight, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -90,6 +90,7 @@ export default function ForYouPage() {
     const [recommendations, setRecommendations] = useState<ApiRecommendation[]>([]);
     const [topPattern, setTopPattern] = useState<ApiRecommendation | null>(null);
     const [isEvidenceExpanded, setIsEvidenceExpanded] = useState(false);
+    const isMountedRef = useRef(true);
 
     // Filters
     const [showFilters, setShowFilters] = useState(false);
@@ -98,6 +99,7 @@ export default function ForYouPage() {
 
     // Fetch recommendations from API
     const fetchRecommendations = useCallback(async () => {
+        if (!isMountedRef.current) return;
         setIsLoading(true);
         setError(null);
 
@@ -114,19 +116,29 @@ export default function ForYouPage() {
             }
 
             const data: ForYouApiResponse = await res.json();
+            if (!isMountedRef.current) return;
             setRecommendations(data.recommendations);
             setTopPattern(data.recommendations[0] || null);
         } catch (err) {
             console.error('Failed to fetch recommendations:', err);
+            if (!isMountedRef.current) return;
             setError('추천을 불러오지 못했습니다');
         } finally {
-            setIsLoading(false);
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
         }
     }, [category, platform]);
 
     useEffect(() => {
         fetchRecommendations();
     }, [fetchRecommendations]);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     // Convert API data to component props
     const mapToCardProps = (rec: ApiRecommendation): PatternAnswerCardProps & {
@@ -142,7 +154,7 @@ export default function ForYouPage() {
             timing: rec.evidence.growth_rate || '정보 없음',
             audio: rec.platform === 'tiktok' ? '틱톡 트렌딩 사운드' : '플랫폼 기본 사운드',
         },
-        fit_score: (rec.outlier_score || 100) / 1000,
+        fit_score: (rec.outlier_score ?? 100) / 1000,
         evidence_strength: rec.evidence.best_comments.length,
         tier: rec.tier === 'C' ? 'B' : rec.tier,  // Map C → B for component compatibility
         platform: rec.platform as 'tiktok' | 'youtube' | 'instagram',
@@ -373,7 +385,9 @@ export default function ForYouPage() {
                             <div className="h-8 w-px bg-white/10" />
                             <div className="text-center">
                                 <div className="text-lg font-bold text-purple-400">
-                                    {topPattern.outlier_score?.toFixed(0) || '정보 없음'}
+                                    {typeof topPattern.outlier_score === 'number'
+                                        ? topPattern.outlier_score.toFixed(0)
+                                        : '정보 없음'}
                                 </div>
                                 <div className="text-xs text-white/40">점수</div>
                             </div>

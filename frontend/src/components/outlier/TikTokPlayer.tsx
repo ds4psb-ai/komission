@@ -12,19 +12,47 @@
 
 import { useState, useRef } from 'react';
 
-// Extract TikTok video ID from various URL formats
+// Extract video ID from various URL formats (TikTok and YouTube)
 export function extractTikTokVideoId(url: string): string | null {
+    return extractVideoId(url);
+}
+
+// Multi-platform video ID extraction
+export function extractVideoId(url: string): string | null {
     if (!url) return null;
-    const patterns = [
+
+    // TikTok patterns
+    const tiktokPatterns = [
         /video\/(\d+)/,
         /\/v\/(\d+)/,
         /tiktok\.com\/.*?(\d{15,})/
     ];
-    for (const pattern of patterns) {
+    for (const pattern of tiktokPatterns) {
         const match = url.match(pattern);
         if (match) return match[1];
     }
+
+    // YouTube patterns (shorts, watch, youtu.be)
+    const youtubePatterns = [
+        /shorts\/([^?/]+)/,           // youtube.com/shorts/VIDEO_ID
+        /[?&]v=([^?&]+)/,             // youtube.com/watch?v=VIDEO_ID
+        /youtu\.be\/([^?/]+)/,        // youtu.be/VIDEO_ID
+        /embed\/([^?/]+)/,            // youtube.com/embed/VIDEO_ID
+    ];
+    for (const pattern of youtubePatterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+
     return null;
+}
+
+// Detect platform from URL
+export function detectPlatform(url: string): 'tiktok' | 'youtube' | 'unknown' {
+    if (!url) return 'unknown';
+    if (url.includes('tiktok.com')) return 'tiktok';
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+    return 'unknown';
 }
 
 // Proxy thumbnail URL through weserv.nl
@@ -60,30 +88,49 @@ export function TikTokPlayer({
     showControls = true,
     className = '',
 }: TikTokPlayerProps) {
-    const videoId = extractTikTokVideoId(videoUrl);
+    const videoId = extractVideoId(videoUrl);
+    const platform = detectPlatform(videoUrl);
     const [isMuted, setIsMuted] = useState(true);
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
-    // Virlo-style v1 player URL - ALWAYS starts muted for autoplay
-    const embedUrl = videoId
-        ? `https://www.tiktok.com/player/v1/${videoId}?autoplay=${autoplay ? 1 : 0}&loop=${loop ? 1 : 0}&mute=1&controls=${showControls ? 1 : 0}&progress_bar=${showControls ? 1 : 0}&play_button=${showControls ? 1 : 0}&volume_control=${showControls ? 1 : 0}&fullscreen_button=${showControls ? 1 : 0}`
-        : null;
+    // Platform-specific embed URL
+    let embedUrl: string | null = null;
+    if (videoId) {
+        if (platform === 'youtube') {
+            // YouTube Shorts embed - with enablejsapi for postMessage control
+            embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${autoplay ? 1 : 0}&loop=${loop ? 1 : 0}&mute=${autoplay ? 1 : 0}&controls=${showControls ? 1 : 0}&playsinline=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`;
+        } else {
+            // TikTok embed (default)
+            embedUrl = `https://www.tiktok.com/player/v1/${videoId}?autoplay=${autoplay ? 1 : 0}&loop=${loop ? 1 : 0}&mute=1&controls=${showControls ? 1 : 0}&progress_bar=${showControls ? 1 : 0}&play_button=${showControls ? 1 : 0}&volume_control=${showControls ? 1 : 0}&fullscreen_button=${showControls ? 1 : 0}`;
+        }
+    }
 
     // Proxied thumbnail
     const proxiedThumb = thumbnailUrl ? getProxiedThumbnailUrl(thumbnailUrl) : null;
 
-    // Virlo's exact postMessage implementation
+    // Platform-specific unmute implementation
     const handleToggleMute = (e: React.MouseEvent) => {
         e.stopPropagation();
         const iframe = iframeRef.current;
         if (!iframe?.contentWindow) return;
 
-        // Send postMessage to TikTok player - 'unMute' has capital M
-        iframe.contentWindow.postMessage({
-            type: isMuted ? 'unMute' : 'mute',
-            'x-tiktok-player': true,
-            value: undefined
-        }, '*');
+        if (platform === 'youtube') {
+            // YouTube IFrame API postMessage
+            // unMute: {"event":"command","func":"unMute","args":[]}
+            // mute: {"event":"command","func":"mute","args":[]}
+            iframe.contentWindow.postMessage(JSON.stringify({
+                event: 'command',
+                func: isMuted ? 'unMute' : 'mute',
+                args: []
+            }), '*');
+        } else {
+            // TikTok postMessage - 'unMute' has capital M
+            iframe.contentWindow.postMessage({
+                type: isMuted ? 'unMute' : 'mute',
+                'x-tiktok-player': true,
+                value: undefined
+            }, '*');
+        }
 
         setIsMuted(!isMuted);
     };
@@ -164,12 +211,19 @@ export function TikTokHoverPreview({
     isHovering,
     className = '',
 }: TikTokHoverPreviewProps) {
-    const videoId = extractTikTokVideoId(videoUrl);
+    const videoId = extractVideoId(videoUrl);
+    const platform = detectPlatform(videoUrl);
     const proxiedThumb = thumbnailUrl ? getProxiedThumbnailUrl(thumbnailUrl) : null;
 
-    const previewUrl = videoId
-        ? `https://www.tiktok.com/player/v1/${videoId}?autoplay=1&loop=1&mute=1&controls=0&progress_bar=0&play_button=0&volume_control=0&fullscreen_button=0`
-        : null;
+    // Platform-specific preview URL
+    let previewUrl: string | null = null;
+    if (videoId) {
+        if (platform === 'youtube') {
+            previewUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1`;
+        } else {
+            previewUrl = `https://www.tiktok.com/player/v1/${videoId}?autoplay=1&loop=1&mute=1&controls=0&progress_bar=0&play_button=0&volume_control=0&fullscreen_button=0`;
+        }
+    }
 
     return (
         <div className={`relative aspect-[9/16] bg-gradient-to-br from-pink-500/20 to-cyan-500/20 overflow-hidden ${className}`}>

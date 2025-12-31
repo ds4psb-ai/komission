@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 
 // Unified Outlier type - works for all outliers (DB + Crawled)
 export interface OutlierItem {
@@ -11,6 +11,7 @@ export interface OutlierItem {
     thumbnail_url?: string;
     view_count?: number;
     tier?: string;
+    outlier_tier?: string;
     source?: string;
     category?: string;
     created_at?: string;
@@ -31,10 +32,19 @@ export function OutlierSelector({ onSelect, onClose }: OutlierSelectorProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
     const [selectedTier, setSelectedTier] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const loadItems = useCallback(async () => {
-        setLoadingState('loading');
-        setErrorMessage('');
+        if (isMountedRef.current) {
+            setLoadingState('loading');
+            setErrorMessage('');
+        }
         try {
             // Use unified outliers API
             const response = await fetch('/api/v1/outliers/?limit=100');
@@ -43,6 +53,7 @@ export function OutlierSelector({ onSelect, onClose }: OutlierSelectorProps) {
             const data = await response.json();
             const outliers = data.items || data || [];
 
+            if (!isMountedRef.current) return;
             if (!outliers || outliers.length === 0) {
                 setLoadingState('empty');
                 setItems([]);
@@ -52,6 +63,7 @@ export function OutlierSelector({ onSelect, onClose }: OutlierSelectorProps) {
             }
         } catch (e) {
             console.error('Failed to load outliers:', e);
+            if (!isMountedRef.current) return;
             setLoadingState('error');
             setErrorMessage(e instanceof Error ? e.message : '로딩에 실패했습니다');
         }
@@ -73,10 +85,13 @@ export function OutlierSelector({ onSelect, onClose }: OutlierSelectorProps) {
     }, [onClose]);
 
     // Filter items
+    const normalizedSearch = searchTerm.trim().toLowerCase();
     const filteredItems = items.filter(item => {
-        const matchesSearch = item.title?.toLowerCase().includes(searchTerm.toLowerCase());
+        const itemTier = item.tier ?? item.outlier_tier;
+        const matchesSearch = !normalizedSearch
+            || (item.title ?? '').toLowerCase().includes(normalizedSearch);
         const matchesPlatform = !selectedPlatform || item.platform === selectedPlatform;
-        const matchesTier = !selectedTier || item.tier === selectedTier;
+        const matchesTier = !selectedTier || itemTier === selectedTier;
         return matchesSearch && matchesPlatform && matchesTier;
     });
 
@@ -106,7 +121,7 @@ export function OutlierSelector({ onSelect, onClose }: OutlierSelectorProps) {
     };
 
     const formatViews = (count?: number) => {
-        if (!count) return '—';
+        if (typeof count !== 'number' || Number.isNaN(count)) return '—';
         if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
         if (count >= 1000) return `${(count / 1000).toFixed(0)}K`;
         return count.toString();
@@ -238,32 +253,34 @@ export function OutlierSelector({ onSelect, onClose }: OutlierSelectorProps) {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                                    {filteredItems.map(item => (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => onSelect(item)}
-                                            className="group relative aspect-[9/16] bg-black border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-violet-500/50 transition-all hover:shadow-[0_0_20px_rgba(139,92,246,0.15)] text-left"
-                                        >
+                                    {filteredItems.map(item => {
+                                        const itemTier = item.tier ?? item.outlier_tier;
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                onClick={() => onSelect(item)}
+                                                className="group relative aspect-[9/16] bg-black border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-violet-500/50 transition-all hover:shadow-[0_0_20px_rgba(139,92,246,0.15)] text-left"
+                                            >
                                             {/* Thumbnail */}
                                             {item.thumbnail_url ? (
                                                 <img
                                                     src={item.thumbnail_url}
-                                                    alt={item.title}
+                                                    alt={item.title || 'Outlier thumbnail'}
                                                     className="absolute inset-0 w-full h-full object-cover"
                                                 />
                                             ) : (
-                                                <div className={`absolute inset-0 bg-gradient-to-br ${getTierColor(item.tier)}`} />
+                                                <div className={`absolute inset-0 bg-gradient-to-br ${getTierColor(itemTier)}`} />
                                             )}
 
                                             {/* Tier Badge */}
-                                            {item.tier && (
+                                            {itemTier && (
                                                 <div className={`absolute top-2 left-2 z-10 w-7 h-7 rounded-lg flex items-center justify-center font-black text-sm
-                                                    ${item.tier === 'S' ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-black shadow-[0_0_12px_rgba(251,191,36,0.6)]' :
-                                                        item.tier === 'A' ? 'bg-gradient-to-br from-violet-400 to-purple-500 text-white shadow-[0_0_12px_rgba(139,92,246,0.6)]' :
-                                                            item.tier === 'B' ? 'bg-gradient-to-br from-blue-400 to-cyan-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.6)]' :
+                                                    ${itemTier === 'S' ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-black shadow-[0_0_12px_rgba(251,191,36,0.6)]' :
+                                                        itemTier === 'A' ? 'bg-gradient-to-br from-violet-400 to-purple-500 text-white shadow-[0_0_12px_rgba(139,92,246,0.6)]' :
+                                                            itemTier === 'B' ? 'bg-gradient-to-br from-blue-400 to-cyan-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.6)]' :
                                                                 'bg-white/20 text-white/60'}`}
                                                 >
-                                                    {item.tier}
+                                                    {itemTier}
                                                 </div>
                                             )}
 
@@ -283,7 +300,7 @@ export function OutlierSelector({ onSelect, onClose }: OutlierSelectorProps) {
                                             {/* Content */}
                                             <div className="absolute bottom-0 left-0 right-0 p-3">
                                                 <div className="text-xs font-bold text-white line-clamp-2 group-hover:text-violet-300 transition-colors">
-                                                    {item.title}
+                                                    {item.title || 'Untitled'}
                                                 </div>
                                                 {item.category && (
                                                     <div className="text-[10px] text-white/40 mt-1">
@@ -302,7 +319,8 @@ export function OutlierSelector({ onSelect, onClose }: OutlierSelectorProps) {
                                                 </div>
                                             </div>
                                         </button>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </>

@@ -1,7 +1,7 @@
-import { memo, useState, useEffect, useCallback } from 'react';
+import { memo, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Handle, Position } from '@xyflow/react';
-import { api, VDGSummaryResponse } from '@/lib/api';
+import { api } from '@/lib/api';
 import { ChevronDown } from 'lucide-react';
 
 import { NodeWrapper } from './NodeWrapper';
@@ -52,6 +52,22 @@ export const EvidenceNode = memo(({ data }: { data: EvidenceNodeData }) => {
     const [period, setPeriod] = useState<'4w' | '12w' | '1y'>('4w');
     const [evidence, setEvidence] = useState(data.evidence);
     const [detailsExpanded, setDetailsExpanded] = useState(false);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!data.evidence) {
+            setEvidence(undefined);
+            return;
+        }
+        setEvidence(data.evidence);
+        setPeriod(data.evidence.period || '4w');
+    }, [data.evidence]);
 
     // Transform depth1 to flat stats
     useEffect(() => {
@@ -78,15 +94,19 @@ export const EvidenceNode = memo(({ data }: { data: EvidenceNodeData }) => {
     }, [evidence]);
 
     // Fetch from API when nodeId is available
-    const fetchEvidence = useCallback(async () => {
+    const fetchEvidence = useCallback(async (nextPeriod?: '4w' | '12w' | '1y') => {
         if (!data.nodeId) return;
 
-        setLoading(true);
-        setError(null);
+        const activePeriod = nextPeriod ?? period;
+        if (isMountedRef.current) {
+            setLoading(true);
+            setError(null);
+        }
         try {
-            const result = await api.getVDGSummary(data.nodeId, period);
+            const result = await api.getVDGSummary(data.nodeId, activePeriod);
+            if (!isMountedRef.current) return;
             setEvidence({
-                period: result.period,
+                period: result.period || activePeriod,
                 depth1: result.depth1,
                 topMutation: result.top_mutation ? {
                     type: result.top_mutation.type,
@@ -99,16 +119,19 @@ export const EvidenceNode = memo(({ data }: { data: EvidenceNodeData }) => {
             });
         } catch (e) {
             console.warn('API failed, using mock data:', e);
+            if (!isMountedRef.current) return;
             // Fallback for demo/dev
             setEvidence({
-                period: '4w',
+                period: activePeriod,
                 depth1: {}, // depth1 is used for detailed stats table which might be empty
                 topMutation: { type: 'visual', pattern: 'Jump Cut 0.5s', avgDelta: '+12%', confidence: 0.85 },
                 sampleCount: 1240,
                 risks: ["⚠️ Retention drop after 3s", "⚠️ Audio copyright flag"]
             });
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     }, [data.nodeId, period]);
 
@@ -153,7 +176,7 @@ export const EvidenceNode = memo(({ data }: { data: EvidenceNodeData }) => {
                                 key={p}
                                 onClick={() => {
                                     setPeriod(p);
-                                    if (data.nodeId) fetchEvidence();
+                                    if (data.nodeId) fetchEvidence(p);
                                 }}
                                 className={`px-2 py-0.5 text-[9px] rounded transition-all ${period === p
                                     ? 'bg-blue-500 text-white font-bold'

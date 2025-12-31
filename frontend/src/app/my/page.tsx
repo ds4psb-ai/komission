@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
@@ -78,6 +78,7 @@ export default function MyPage() {
 
     // User Stats
     const [stats, setStats] = useState<UserStats | null>(null);
+    const isMountedRef = useRef(true);
 
     // 🔴 Real-time WebSocket Metrics (Expert Recommendation)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -99,6 +100,12 @@ export default function MyPage() {
         }
     }, [authLoading, isAuthenticated, router]);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     // Load genealogy when selected node changes
     useEffect(() => {
         if (selectedNode) {
@@ -113,17 +120,21 @@ export default function MyPage() {
     async function loadMyNodes() {
         try {
             const data = await api.listRemixNodes({ limit: 20 });
+            if (!isMountedRef.current) return;
             setNodes(data);
         } catch (e) {
             console.error(e);
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     }
 
     async function loadStats() {
         try {
             const data = await api.getMyStats();
+            if (!isMountedRef.current) return;
             setStats(data);
         } catch (e) {
             console.error('Stats load error:', e);
@@ -131,27 +142,34 @@ export default function MyPage() {
     }
 
     async function loadGenealogy(nodeId: string) {
-        setGenealogyLoading(true);
+        if (isMountedRef.current) {
+            setGenealogyLoading(true);
+        }
         try {
             const data = await api.getRemixNodeGenealogy(nodeId);
             const tree = transformGenealogyToTree(data);
+            if (!isMountedRef.current) return;
             setGenealogyTree(tree);
         } catch (e) {
             console.error("Genealogy load failed:", e);
             // Fallback: Show just the selected node
             const fallbackNode = nodes.find(n => n.node_id === nodeId);
             if (fallbackNode) {
-                setGenealogyTree({
-                    id: fallbackNode.node_id,
-                    title: fallbackNode.title,
-                    views: fallbackNode.view_count,
-                    forks: 0,
-                    depth: 0,
-                    children: []
-                });
+                if (isMountedRef.current) {
+                    setGenealogyTree({
+                        id: fallbackNode.node_id,
+                        title: fallbackNode.title,
+                        views: fallbackNode.view_count,
+                        forks: 0,
+                        depth: 0,
+                        children: []
+                    });
+                }
             }
         } finally {
-            setGenealogyLoading(false);
+            if (isMountedRef.current) {
+                setGenealogyLoading(false);
+            }
         }
     }
 
@@ -190,11 +208,14 @@ export default function MyPage() {
     async function loadRoyaltyData() {
         try {
             const summary = await api.getMyRoyalty();
+            if (!isMountedRef.current) return;
             setRoyaltySummary(summary);
         } catch (e) {
             console.error('Royalty data load error:', e);
         } finally {
-            setRoyaltyLoading(false);
+            if (isMountedRef.current) {
+                setRoyaltyLoading(false);
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Filter, Loader2, AlertCircle, Inbox } from 'lucide-react';
 import { CrawlerOutlierCard, CrawlerOutlierItem } from '@/components/CrawlerOutlierCard';
 
@@ -144,24 +144,37 @@ export function CrawlerOutlierSelector({
     const [items, setItems] = useState<CrawlerOutlierItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
 
     // Filters
     const [platform, setPlatform] = useState('all');
     const [tier, setTier] = useState('all');
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     // Load data (mock for now)
     const loadData = useCallback(async () => {
-        setLoading(true);
-        setError(null);
+        if (isMountedRef.current) {
+            setLoading(true);
+            setError(null);
+        }
         try {
             // TODO: Replace with actual API call
             // const response = await fetch('/api/v1/outliers?platform=...&tier=...');
             await new Promise((r) => setTimeout(r, 300)); // Simulate network
+            if (!isMountedRef.current) return;
             setItems(MOCK_OUTLIERS);
         } catch (err) {
+            if (!isMountedRef.current) return;
             setError('Failed to load outliers');
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     }, []);
 

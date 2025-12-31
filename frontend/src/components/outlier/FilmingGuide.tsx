@@ -26,7 +26,7 @@ interface VDGData {
 
 interface FilmingGuideProps {
     vdgAnalysis?: VDGData | null;
-    analysisStatus?: 'pending' | 'promoted' | 'approved' | 'analyzing' | 'completed' | 'skipped';
+    analysisStatus?: 'pending' | 'promoted' | 'approved' | 'analyzing' | 'completed' | 'skipped' | 'comments_pending_review' | 'comments_failed' | 'comments_ready';
     compact?: boolean;
     className?: string;
 }

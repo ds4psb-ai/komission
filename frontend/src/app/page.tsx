@@ -10,7 +10,7 @@
  * - UnifiedOutlierCard with 9:16 vertical layout
  * - Real outlier API with demo fallback
  */
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { api, OutlierItem } from "@/lib/api";
 import { useAuthGate, AUTH_ACTIONS } from "@/lib/useAuthGate";
@@ -23,12 +23,8 @@ import {
 } from "lucide-react";
 
 // Platform filter
-const PLATFORMS = [
-  { id: 'all', label: '전체', icon: '🌐' },
-  { id: 'tiktok', label: 'TikTok', icon: '🎵' },
-  { id: 'youtube', label: 'Shorts', icon: '▶️' },
-  { id: 'instagram', label: 'Reels', icon: '📷' },
-];
+// Platform/Category filters
+// Note: Platform filter UI is hardcoded in the render method to use SVGs
 
 // Categories
 const CATEGORIES = [
@@ -93,6 +89,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMountedRef = useRef(true);
 
   // Filters
   const [platform, setPlatform] = useState('all');
@@ -106,14 +103,23 @@ export default function Home() {
     fetchOutliers();
   }, [platform, tier]);
 
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   async function fetchOutliers() {
-    setIsLoading(true);
+    if (isMountedRef.current) {
+      setIsLoading(true);
+    }
     try {
       const params: Record<string, string> = { limit: '50', status: 'promoted' };
       if (platform !== 'all') params.platform = platform;
       if (tier !== 'all') params.tier = tier;
 
       const response = await api.listOutliers(params);
+      if (!isMountedRef.current) return;
       if (response.items && response.items.length > 0) {
         setItems(response.items.map(mapToCardItem));
       } else {
@@ -121,9 +127,12 @@ export default function Home() {
       }
     } catch {
       console.log('Using demo data');
+      if (!isMountedRef.current) return;
       setItems(DEMO_ITEMS);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }
 
@@ -237,20 +246,48 @@ export default function Home() {
       <section className="px-4 sm:px-6 py-3 max-w-7xl mx-auto border-b border-white/5">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           {/* Platform Filter */}
-          <div className="flex items-center gap-1 p-1 bg-white/5 rounded-xl">
-            {PLATFORMS.map(p => (
-              <button
-                key={p.id}
-                onClick={() => setPlatform(p.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${platform === p.id
-                  ? 'bg-white text-black'
-                  : 'text-white/50 hover:text-white hover:bg-white/10'
-                  }`}
-              >
-                <span>{p.icon}</span>
-                <span className="hidden sm:inline">{p.label}</span>
-              </button>
-            ))}
+          <div className="flex bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
+            <button
+              onClick={() => setPlatform('all')}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${platform === 'all' ? 'bg-white text-black shadow-lg' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+            >
+              전체
+            </button>
+            <button
+              onClick={() => setPlatform('tiktok')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${platform === 'tiktok' ? 'bg-black text-white shadow-lg border border-white/20' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+            >
+              <div className="w-3.5 h-3.5">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
+                </svg>
+              </div>
+              <span className="hidden sm:inline">TikTok</span>
+            </button>
+            <button
+              onClick={() => setPlatform('youtube')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${platform === 'youtube' ? 'bg-[#FF0000] text-white shadow-lg' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+            >
+              <div className="w-3.5 h-3.5">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                </svg>
+              </div>
+              <span className="hidden sm:inline">Shorts</span>
+            </button>
+            <button
+              onClick={() => setPlatform('instagram')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${platform === 'instagram' ? 'bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white shadow-lg' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+            >
+              <div className="w-3.5 h-3.5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+              </div>
+              <span className="hidden sm:inline">Reels</span>
+            </button>
           </div>
 
           {/* Category Filter */}
@@ -293,7 +330,7 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm text-white/50">
-            {platform !== 'all' && <span className="text-white mr-1">{PLATFORMS.find(p => p.id === platform)?.label}</span>}
+            {platform !== 'all' && <span className="text-white mr-1">{platform === 'tiktok' ? 'TikTok' : platform === 'youtube' ? 'Shorts' : platform === 'instagram' ? 'Reels' : ''}</span>}
             {category !== 'all' && <span className="text-violet-300 mr-1">{CATEGORIES.find(c => c.id === category)?.label}</span>}
             {tier !== 'all' && <span className="text-amber-300 mr-1">{tier}-Tier</span>}
             <span>{filteredItems.length}개</span>

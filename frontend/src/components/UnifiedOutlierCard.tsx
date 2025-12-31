@@ -13,7 +13,8 @@
  */
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Heart, TrendingUp, Zap, Star, Award, Diamond, BarChart, ArrowUpRight, Sparkles, Gift } from 'lucide-react';
+import { Heart, TrendingUp, Star, Gift, ArrowUpRight } from 'lucide-react';
+import { PlatformBadge, OutlierScoreBadge } from '@/components/outlier';
 
 export interface OutlierCardItem {
     id: string;
@@ -42,50 +43,7 @@ interface UnifiedOutlierCardProps {
     onPromote?: (item: OutlierCardItem, campaignEligible?: boolean) => void;
 }
 
-const TIER_CONFIG = {
-    S: {
-        label: 'S',
-        icon: Award,
-        bgClass: 'bg-gradient-to-br from-amber-500/30 to-yellow-600/20',
-        borderClass: 'border-amber-500/60',
-        textClass: 'text-amber-300',
-        badgeClass: 'bg-amber-500/30 text-amber-300',
-        glowClass: 'shadow-[0_0_25px_rgba(251,191,36,0.4)]',
-    },
-    A: {
-        label: 'A',
-        icon: Star,
-        bgClass: 'bg-gradient-to-br from-purple-500/30 to-violet-600/20',
-        borderClass: 'border-purple-500/50',
-        textClass: 'text-purple-300',
-        badgeClass: 'bg-purple-500/30 text-purple-300',
-        glowClass: 'shadow-[0_0_20px_rgba(139,92,246,0.3)]',
-    },
-    B: {
-        label: 'B',
-        icon: Diamond,
-        bgClass: 'bg-gradient-to-br from-blue-500/20 to-cyan-600/10',
-        borderClass: 'border-blue-500/40',
-        textClass: 'text-blue-300',
-        badgeClass: 'bg-blue-500/20 text-blue-300',
-        glowClass: '',
-    },
-    C: {
-        label: 'C',
-        icon: BarChart,
-        bgClass: 'bg-zinc-900/50',
-        borderClass: 'border-zinc-600/30',
-        textClass: 'text-zinc-400',
-        badgeClass: 'bg-zinc-700/50 text-zinc-400',
-        glowClass: '',
-    },
-};
-
-const PLATFORM_CONFIG = {
-    tiktok: { label: 'TikTok', icon: '🎵', color: 'from-pink-500 to-cyan-500' },
-    youtube: { label: 'Shorts', icon: '▶️', color: 'from-red-500 to-orange-500' },
-    instagram: { label: 'Reels', icon: '📷', color: 'from-purple-500 to-pink-500' },
-};
+// TIER_CONFIG and PLATFORM_CONFIG removed - handled by PlatformBadge and OutlierScoreBadge
 
 function formatNumber(num: number): string {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
@@ -96,6 +54,7 @@ function formatNumber(num: number): string {
 function formatRelativeTime(dateString?: string): string {
     if (!dateString) return '';
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '';
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -108,29 +67,27 @@ function formatRelativeTime(dateString?: string): string {
 
 export function UnifiedOutlierCard({ item, onPromote }: UnifiedOutlierCardProps) {
     const router = useRouter();
-    const tierConfig = item.outlier_tier ? TIER_CONFIG[item.outlier_tier] : null;
-    const platformConfig = PLATFORM_CONFIG[item.platform];
-    const TierIcon = tierConfig?.icon || BarChart;
-
-    const multiplier = item.creator_avg_views && item.creator_avg_views > 0
-        ? Math.round(item.view_count / item.creator_avg_views)
-        : 0;
 
     const isPromoted = item.status === 'promoted';
     const hasVDG = !!item.vdg_analysis;
 
     const handleClick = () => {
-        router.push(`/video/${item.id}`);
+        // Use hard navigation to avoid Next.js client-side routing state issues
+        window.location.href = `/video/${item.id}`;
     };
+
+    // Determine border color based on tier (optional, or keep generic)
+    const tier = item.outlier_tier || 'C';
+    let borderColor = 'border-white/10';
+    if (tier === 'S') borderColor = 'border-pink-500/30';
+    if (tier === 'A') borderColor = 'border-orange-500/30';
 
     return (
         <div
             onClick={handleClick}
             className={`
                 group relative cursor-pointer overflow-hidden rounded-2xl border transition-all duration-300
-                ${tierConfig?.bgClass || 'bg-zinc-900/50'}
-                ${tierConfig?.borderClass || 'border-white/10'}
-                ${tierConfig?.glowClass || ''}
+                bg-zinc-900/50 ${borderColor}
                 hover:scale-[1.02] hover:border-white/30
             `}
         >
@@ -143,40 +100,35 @@ export function UnifiedOutlierCard({ item, onPromote }: UnifiedOutlierCardProps)
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                 ) : (
-                    <div className={`w-full h-full bg-gradient-to-br ${platformConfig.color} opacity-30 flex items-center justify-center`}>
-                        <span className="text-4xl opacity-50">{platformConfig.icon}</span>
+                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                        <span className="text-4xl opacity-20">🎬</span>
                     </div>
                 )}
 
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
-                {/* Top Left: Platform Badge */}
-                <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 bg-black/60 backdrop-blur rounded-lg">
-                    <span className="text-xs">{platformConfig.icon}</span>
-                    <span className="text-[10px] font-bold text-white/80">{platformConfig.label}</span>
+                {/* Top Right: Outlier Score (Virlo-style) */}
+                <div className="absolute top-3 right-3 z-[4]">
+                    <OutlierScoreBadge
+                        score={item.outlier_score}
+                        tier={item.outlier_tier}
+                        size="md"
+                    />
                 </div>
 
-                {/* Top Right: Tier Badge */}
-                {tierConfig && (
-                    <div className={`absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-lg ${tierConfig.badgeClass} backdrop-blur-sm`}>
-                        <TierIcon className="w-3 h-3" />
-                        <span className="text-xs font-black">{tierConfig.label}</span>
-                        {multiplier > 1 && (
-                            <span className="flex items-center text-[10px] font-mono">
-                                <Zap className="w-2.5 h-2.5" />{multiplier}x
-                            </span>
-                        )}
+                {/* Top Left: View Check */}
+                <div className="absolute top-3 left-3 z-[4]">
+                    <div className="flex items-center gap-1 px-2 py-1 bg-black/70 rounded-full text-[11px] text-white backdrop-blur-sm">
+                        <span>👁️</span>
+                        <span>{formatNumber(item.view_count)}</span>
                     </div>
-                )}
+                </div>
 
-                {/* VDG Analysis Badge - Show when VDG completed */}
-                {hasVDG && (
-                    <div className="absolute top-12 right-3 px-2 py-0.5 bg-gradient-to-r from-violet-500/30 to-pink-500/30 backdrop-blur rounded text-[9px] font-bold text-violet-300 flex items-center gap-1 border border-violet-500/30">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        VDG
-                    </div>
-                )}
+                {/* Bottom Left: Platform Badge */}
+                <div className="absolute bottom-[4.5rem] left-3 z-[4]">
+                    <PlatformBadge platform={item.platform} size="md" />
+                </div>
 
                 {/* Promoted Badge */}
                 {isPromoted && (
@@ -192,19 +144,15 @@ export function UnifiedOutlierCard({ item, onPromote }: UnifiedOutlierCardProps)
                         {item.title || 'Untitled'}
                     </h3>
 
-                    {/* Stats Row */}
+                    {/* Stats Row (view count removed - shown in top-left badge) */}
                     <div className="flex items-center gap-3 text-[10px] text-white/70">
-                        <span className="flex items-center gap-1">
-                            <Eye className="w-3 h-3" />
-                            {formatNumber(item.view_count)}
-                        </span>
-                        {item.like_count && (
+                        {typeof item.like_count === 'number' && (
                             <span className="flex items-center gap-1">
                                 <Heart className="w-3 h-3" />
                                 {formatNumber(item.like_count)}
                             </span>
                         )}
-                        {item.engagement_rate && (
+                        {typeof item.engagement_rate === 'number' && (
                             <span className="flex items-center gap-1 text-emerald-400">
                                 <TrendingUp className="w-3 h-3" />
                                 {(item.engagement_rate * 100).toFixed(1)}%
@@ -234,19 +182,19 @@ export function UnifiedOutlierCard({ item, onPromote }: UnifiedOutlierCardProps)
                         onClick={(e) => { e.stopPropagation(); onPromote(item, false); }}
                         className={`
                             flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition-all
-                            ${tierConfig ? `${tierConfig.textClass} hover:bg-white/10` : 'text-violet-300 hover:bg-violet-500/10'}
+                            text-violet-300 hover:bg-violet-500/10
                         `}
                     >
                         <Star className="w-3.5 h-3.5" />
-                        Promote
+                        리믹스 승격
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onPromote(item, true); }}
-                        className="flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 text-pink-400 hover:bg-pink-500/10 transition-all"
-                        title="체험단 캠페인 후보로 등록"
+                        className="flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                        title="오거닉 바이럴 후보로 등록"
                     >
                         <Gift className="w-3.5 h-3.5" />
-                        체험단 선정
+                        오거닉 바이럴
                     </button>
                 </div>
             )}

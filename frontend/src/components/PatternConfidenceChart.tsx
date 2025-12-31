@@ -1,24 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { api, PatternRankingResponse } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 export function PatternConfidenceChart() {
     const [rankingData, setRankingData] = useState<PatternRankingResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         const fetchRanking = async () => {
             try {
                 const res = await api.getPatternConfidenceRanking(3); // Min samples = 3
+                if (!isMountedRef.current) return;
                 setRankingData(res);
             } catch (err) {
                 console.error("Failed to fetch pattern ranking:", err);
             } finally {
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setLoading(false);
+                }
             }
         };
 
         fetchRanking();
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     if (loading) return <div className="glass-panel p-6 rounded-2xl animate-pulse h-64"></div>;

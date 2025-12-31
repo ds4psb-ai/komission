@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { api, MutationStrategyResponse } from '@/lib/api';
 
 interface MutationStrategyCardProps {
@@ -8,16 +8,20 @@ interface MutationStrategyCardProps {
 export function MutationStrategyCard({ nodeId }: MutationStrategyCardProps) {
     const [strategies, setStrategies] = useState<MutationStrategyResponse[] | null>(null);
     const [loading, setLoading] = useState(true);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         const fetchStrategy = async () => {
             try {
                 const res = await api.getMutationStrategy(nodeId);
+                if (!isMountedRef.current) return;
                 setStrategies(res);
             } catch (err) {
                 console.error("Failed to fetch mutation strategy:", err);
             } finally {
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setLoading(false);
+                }
             }
         };
 
@@ -25,6 +29,12 @@ export function MutationStrategyCard({ nodeId }: MutationStrategyCardProps) {
             fetchStrategy();
         }
     }, [nodeId]);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     if (loading) return <div className="glass-panel p-6 rounded-2xl animate-pulse h-48"></div>;
     if (!strategies || strategies.length === 0) return null;

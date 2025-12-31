@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api, O2OLocation } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import { Badge } from "@/components/ui/Badge";
@@ -11,6 +11,7 @@ export default function O2OPage() {
     const [selectedLoc, setSelectedLoc] = useState<O2OLocation | null>(null);
     const [verifying, setVerifying] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
 
     const getTypeMeta = (type?: string) => {
         const normalized = type?.toLowerCase() || "";
@@ -29,19 +30,31 @@ export default function O2OPage() {
         fetchLocations();
     }, []);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     async function fetchLocations() {
         try {
-            setError(null);
+            if (isMountedRef.current) {
+                setError(null);
+            }
             const data = await api.listO2OLocations();
+            if (!isMountedRef.current) return;
             setLocations(data);
             if (data.length > 0) setSelectedLoc(data[0]);
         } catch (err) {
             console.warn('O2O 캠페인 로드 실패', err);
+            if (!isMountedRef.current) return;
             setLocations([]);
             setSelectedLoc(null);
             setError(err instanceof Error ? err.message : "O2O 캠페인 로드 실패");
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     }
 
@@ -49,11 +62,15 @@ export default function O2OPage() {
         if (!selectedLoc) return;
         if (!confirm(`${selectedLoc.place_name} 위치 인증을 시도하시겠습니까?`)) return;
 
-        setVerifying(true);
+        if (isMountedRef.current) {
+            setVerifying(true);
+        }
 
         if (!navigator.geolocation) {
             alert("브라우저가 위치 정보를 지원하지 않습니다.");
-            setVerifying(false);
+            if (isMountedRef.current) {
+                setVerifying(false);
+            }
             return;
         }
 
@@ -66,12 +83,16 @@ export default function O2OPage() {
                 } catch (err) {
                     alert(err instanceof Error ? err.message : "인증 실패");
                 } finally {
-                    setVerifying(false);
+                    if (isMountedRef.current) {
+                        setVerifying(false);
+                    }
                 }
             },
             (error) => {
                 alert("위치 정보를 가져올 수 없습니다: " + error.message);
-                setVerifying(false);
+                if (isMountedRef.current) {
+                    setVerifying(false);
+                }
             },
             { enableHighAccuracy: true, timeout: 10000 }
         );

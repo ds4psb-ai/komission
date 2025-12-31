@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { api, EvidenceBoard } from '@/lib/api';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -52,20 +52,32 @@ const MOCK_BOARDS: EvidenceBoard[] = [
 export default function EvidenceBoardsPage() {
     const [boards, setBoards] = useState<EvidenceBoard[]>([]);
     const [loading, setLoading] = useState(true);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         loadBoards();
     }, []);
 
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     const loadBoards = async () => {
         try {
             const data = await api.listBoards();
+            if (!isMountedRef.current) return;
             setBoards(data.length > 0 ? data : MOCK_BOARDS);
         } catch (e) {
             console.warn("API failed, using mock data:", e);
-            setBoards(MOCK_BOARDS);
+            if (isMountedRef.current) {
+                setBoards(MOCK_BOARDS);
+            }
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 

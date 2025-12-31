@@ -584,6 +584,7 @@ export class ApiClient {
         category?: string;
         platform?: string;
         tier?: string;
+        status?: string;
         freshness?: string;
         sortBy?: string;
         limit?: number;
@@ -592,6 +593,7 @@ export class ApiClient {
         if (options?.category) params.set('category', options.category);
         if (options?.platform) params.set('platform', options.platform);
         if (options?.tier) params.set('tier', options.tier);
+        if (options?.status) params.set('status', options.status);
         if (options?.freshness) params.set('freshness', options.freshness);
         if (options?.sortBy) params.set('sort_by', options.sortBy);
         if (options?.limit) params.set('limit', options.limit.toString());
@@ -609,6 +611,19 @@ export class ApiClient {
     async approveVDGAnalysis(itemId: string): Promise<ApproveVDGResponse> {
         return this.request<ApproveVDGResponse>(`/api/v1/outliers/items/${itemId}/approve`, {
             method: 'POST',
+        });
+    }
+
+    async createOutlierManual(data: {
+        video_url: string;
+        platform: string;
+        category: string;
+        title?: string;
+        thumbnail_url?: string;
+    }): Promise<OutlierItem> {
+        return this.request<OutlierItem>('/api/v1/outliers/items/manual', {
+            method: 'POST',
+            body: JSON.stringify(data),
         });
     }
 
@@ -1407,7 +1422,7 @@ export interface OutlierItem {
     crawled_at: string | null;
     status: 'pending' | 'selected' | 'rejected' | 'promoted';
     // VDG Analysis Gate
-    analysis_status: 'pending' | 'approved' | 'analyzing' | 'completed' | 'skipped';
+    analysis_status: 'pending' | 'approved' | 'analyzing' | 'completed' | 'skipped' | 'comments_pending_review' | 'comments_failed' | 'comments_ready';
     promoted_to_node_id: string | null;
     best_comments_count: number;
     // VDG Analysis Data (from raw_payload)

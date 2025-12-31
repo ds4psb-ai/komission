@@ -1,5 +1,6 @@
 import math
-from datetime import datetime
+
+from app.utils.time import utcnow
 
 class O2OVerificationService:
     def __init__(self):
@@ -38,7 +39,7 @@ class O2OVerificationService:
             return {
                 "verified": True,
                 "distance": distance,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": utcnow().isoformat(),
                 "method": "gps_match"
             }
         else:

@@ -5,8 +5,6 @@
  * Buffers events and sends in batches for efficiency.
  */
 
-import { api } from './api';
-
 type EventType =
     | 'page_view'
     | 'template_click'
@@ -121,12 +119,15 @@ class EventTracker {
         this.buffer = [];
 
         try {
+            const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            };
+
             await fetch('/api/v1/events/track', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-                },
+                headers,
                 body: JSON.stringify({
                     events,
                     session_id: this.sessionId,

@@ -119,9 +119,19 @@ Content Filter Test: 12/12 PASSED
 
 ---
 
-## 6. MCP 통합 전략 (신규)
+## 6. MCP 통합 전략 (2025-12-31 업데이트)
 
-> MCP 2025-11-25 스펙 기준
+> MCP 2025-11-25 스펙 + FastMCP 2.14+ 기준
+
+### 6.0 FastMCP 2.14+ 신기능 활용 현황
+
+| 기능 | 활용 방안 | 상태 |
+|------|----------|------|
+| **Background Tasks** | `task=True` 데코레이터로 VDG 재분석 진행률 보고 | ✅ 적용 |
+| **Progress 의존성** | `Progress` 의존성 주입으로 단계별 진행률 추적 | ✅ 적용 |
+| **Elicitation** | 대량 생성/강제 재분석 시 사용자 확인 요청 | ✅ 적용 |
+| **Server Composition** | VDG MCP + Coaching MCP 분리 고려 | 🥉 향후 |
+| **Structured Output** | Pydantic 모델 반환 (`SearchResponse`, `SourcePackResponse`) | ✅ 적용 |
 
 ### 6.1 Resources (읽기 전용)
 
@@ -132,6 +142,7 @@ Content Filter Test: 12/12 PASSED
 | `komission://evidence/{pattern_id}` | Evidence 요약 (댓글+신호+지표 종합) |
 | `komission://recurrence/{cluster_id}` | 재등장 lineage (배치 처리 결과) |
 | `komission://vdg/{outlier_id}` | VDG 분석 결과 |
+| `komission://director-pack/{outlier_id}` | Director Pack (VDG v4 기반, on-demand 생성) |
 
 > ⚠️ `recurrence`는 배치 파이프라인에서 사전 계산된 결과를 노출. 실시간 매칭 아님.
 
@@ -144,6 +155,7 @@ Content Filter Test: 12/12 PASSED
 | `reanalyze_vdg` | VDG 재분석 | 명시적 | 비용 발생 |
 
 > ⚠️ `detect_recurrence`는 배치 파이프라인 전용. 사용자 Tool 아님 → Resource로 결과만 노출.
+> ✅ `search_patterns`/`generate_source_pack`는 `output_format="json"` 지원.
 
 ### 6.3 Prompts (템플릿)
 
@@ -152,6 +164,15 @@ Content Filter Test: 12/12 PASSED
 | `explain_recommendation` | 추천 이유 설명 |
 | `shooting_guide` | 촬영 가이드 요약 |
 | `risk_summary` | 리스크 정리 |
+
+### 6.4 보안 강화 로드맵 (2025)
+
+| 항목 | 현재 | 목표 |
+|------|------|------|
+| 인증 | 없음 (로컬 전용) | OAuth 2.1 (원격 배포 시) |
+| 권한 | 도구별 동의 | RBAC (role 기반) |
+| 입력 검증 | 기본 | Pydantic strict validation |
+| Transport | stdio | Streamable HTTP (원격 시) |
 
 ---
 
@@ -173,7 +194,6 @@ Content Filter Test: 12/12 PASSED
 // 사용자 설정 가능
 autoApprove: {
   search_patterns: true,      // 자동
-  detect_recurrence: true,    // 자동
   generate_source_pack: false, // 승인 필요
   reanalyze_vdg: false,       // 승인 필요
 }
@@ -222,7 +242,7 @@ autoApprove: {
 | For You 백엔드 API | ✅ |
 | VDG 댓글 통합 파이프라인 | ✅ |
 | Cookie/Secret Manager 설정 | ✅ |
-| MCP Resources 서버 | 🔄 진행중 |
+| MCP Resources 서버 | ✅ |
 
 ### Week 4 (예정)
 | 태스크 | 우선순위 |
