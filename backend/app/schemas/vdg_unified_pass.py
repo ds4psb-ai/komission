@@ -1,0 +1,232 @@
+# backend/app/schemas/vdg_unified_pass.py
+"""
+VDG Unified Pass Schema (LLM 1회 호출 출력 계약)
+
+설계 원칙:
+- Pass 1 (LLM): 의미/인과/측정설계(Plan)만 생성
+- Pass 2 (CV): 수치/좌표/결정론 측정만 수행
+
+정합성 규칙:
+- ID 생성 금지 (ap_id, evidence_id는 코드에서 생성)
+- Metric Registry 밖 metric_id 금지
+- Plan은 Seed로만 받음 (정규화는 코드에서)
+"""
+from __future__ import annotations
+
+from typing import Dict, List, Optional, Literal
+from pydantic import BaseModel, Field, ConfigDict, model_validator
+
+
+# -------------------------
+# Shared small types
+# -------------------------
+
+class TimeWindowMs(BaseModel):
+    """밀리초 단위 시간 윈도우"""
+    model_config = ConfigDict(extra="forbid")
+
+    start_ms: int = Field(..., ge=0, description="inclusive")
+    end_ms: int = Field(..., ge=0, description="exclusive")
+
+    @model_validator(mode="after")
+    def _validate_order(self):
+        if self.end_ms <= self.start_ms:
+            raise ValueError("end_ms must be > start_ms")
+        return self
+
+
+# -------------------------
+# Hook / Story
+# -------------------------
+
+MicrobeatRole = Literal[
+    "start", "setup", "hook", "punch", "reveal", "demo", "payoff", "cta", "loop"
+]
+
+
+class MicrobeatLLM(BaseModel):
+    """마이크로비트 (훅 내부 리듬 단위)"""
+    model_config = ConfigDict(extra="forbid")
+
+    t_ms: int = Field(..., ge=0, description="timestamp in ms")
+    role: MicrobeatRole
+    description: str = Field(..., min_length=1, max_length=200)
+    evidence: Optional[str] = Field(None, max_length=200, description="짧은 근거 (대사/텍스트/행동 등)")
+
+
+class HookGenomeLLM(BaseModel):
+    """훅 유전체 (바이럴 DNA 핵심)"""
+    model_config = ConfigDict(extra="forbid")
+
+    strength: float = Field(..., ge=0.0, le=1.0)
+    hook_start_ms: int = Field(..., ge=0)
+    hook_end_ms: int = Field(..., ge=0)
+    microbeats: List[MicrobeatLLM] = Field(default_factory=list, max_length=12)
+
+    spoken_hook: Optional[str] = Field(None, max_length=140)
+    on_screen_text: Optional[str] = Field(None, max_length=140)
+
+    @model_validator(mode="after")
+    def _validate_hook_range(self):
+        if self.hook_end_ms < self.hook_start_ms:
+            raise ValueError("hook_end_ms must be >= hook_start_ms")
+        return self
+
+
+class SceneLLM(BaseModel):
+    """씬 정보"""
+    model_config = ConfigDict(extra="forbid")
+
+    idx: int = Field(..., ge=0)
+    window: TimeWindowMs
+    label: str = Field(..., min_length=1, max_length=60, description="예: setup/demo/reveal/payoff")
+    summary: str = Field(..., min_length=1, max_length=240)
+
+
+# -------------------------
+# Mise-en-scène / Intent
+# -------------------------
+
+MiseType = Literal[
+    "composition", "lighting", "color", "wardrobe", "prop", "setting",
+    "camera", "editing", "audio", "text"
+]
+
+
+class MiseEnSceneSignalLLM(BaseModel):
+    """미장센 신호"""
+    model_config = ConfigDict(extra="forbid")
+
+    type: MiseType
+    description: str = Field(..., min_length=1, max_length=240)
+    why_it_matters: str = Field(..., min_length=1, max_length=240)
+    anchor_ms: Optional[int] = Field(None, ge=0, description="대표 타임스탬프(없으면 None)")
+
+
+class IntentLayerLLM(BaseModel):
+    """크리에이터 의도 레이어"""
+    model_config = ConfigDict(extra="forbid")
+
+    creator_intent: str = Field(..., min_length=1, max_length=240)
+    audience_trigger: List[str] = Field(default_factory=list, max_length=8, description="감정/욕구 트리거")
+    novelty: str = Field(..., min_length=1, max_length=200)
+    clarity: str = Field(..., min_length=1, max_length=200)
+
+
+# -------------------------
+# Entity hints for CV
+# -------------------------
+
+EntityType = Literal["person", "face", "hand", "product", "text", "environment", "other"]
+
+
+class EntityHintLLM(BaseModel):
+    """CV에게 전달할 엔티티 힌트"""
+    model_config = ConfigDict(extra="forbid")
+
+    entity_type: EntityType
+    description: str = Field(..., min_length=1, max_length=200)
+    appears_windows: List[TimeWindowMs] = Field(default_factory=list, max_length=6)
+    cv_priority: Literal["primary", "secondary", "optional"] = "secondary"
+
+
+# -------------------------
+# Causal reasoning (why viral)
+# -------------------------
+
+class CausalReasoningLLM(BaseModel):
+    """인과 추론 (왜 바이럴인가)"""
+    model_config = ConfigDict(extra="forbid")
+
+    why_viral_one_liner: str = Field(..., min_length=1, max_length=240)
+    causal_chain: List[str] = Field(default_factory=list, max_length=8, description="원인→결과 체인")
+    replication_recipe: List[str] = Field(default_factory=list, max_length=8, description="따라하기 레시피(크리에이터 언어)")
+    risks_or_unknowns: List[str] = Field(default_factory=list, max_length=6, description="불확실성/가정")
+
+
+# -------------------------
+# Analysis plan seeds (for CV)
+# -------------------------
+
+Aggregation = Literal["mean", "median", "max", "min", "first", "last", "p95"]
+ROI = Literal["full_frame", "face", "main_subject", "product", "text_overlay"]
+
+
+class MeasurementSpecLLM(BaseModel):
+    """CV 측정 명세"""
+    model_config = ConfigDict(extra="forbid")
+
+    metric_id: str = Field(..., min_length=1, max_length=80, description="MUST be from METRIC_DEFINITIONS keys")
+    aggregation: Aggregation = "mean"
+    roi: ROI = "full_frame"
+    notes: Optional[str] = Field(None, max_length=120)
+
+
+PlanPriority = Literal["critical", "high", "medium", "low"]
+
+
+class AnalysisPointSeedLLM(BaseModel):
+    """
+    CV 측정 지점 제안
+    
+    중요: ID(ap_id) 생성 금지, 수치 생성 금지
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    t_center_ms: int = Field(..., ge=0)
+    t_window_ms: int = Field(..., ge=200, le=6000, description="CV 측정 윈도우 폭 (200~6000ms 권장)")
+    priority: PlanPriority
+    reason: str = Field(..., min_length=1, max_length=200)
+
+    # CV에게 "무엇을 숫자로 뽑아야 하는지"
+    measurements: List[MeasurementSpecLLM] = Field(default_factory=list, max_length=8)
+
+    # CV에게 "무엇을 대상으로 봐야 하는지"
+    target_entity_keys: List[str] = Field(default_factory=list, max_length=4, description="entity_hints keys")
+
+    evidence_note: Optional[str] = Field(None, max_length=200, description="왜 이 타임스탬프가 중요한지 짧게")
+
+    @model_validator(mode="after")
+    def _validate_measurements(self):
+        if len(self.measurements) == 0:
+            raise ValueError("analysis point must include at least 1 measurement")
+        return self
+
+
+class AnalysisPlanSeedLLM(BaseModel):
+    """CV 측정 계획 Seed"""
+    model_config = ConfigDict(extra="forbid")
+
+    points: List[AnalysisPointSeedLLM] = Field(default_factory=list, max_length=12)
+
+
+# -------------------------
+# Top-level LLM output
+# -------------------------
+
+class UnifiedPassLLMOutput(BaseModel):
+    """
+    LLM의 1회 호출 결과 (의미+인과+Plan Seed)
+    
+    중요:
+    - IDs (ap_id/evidence_id)는 포함하지 않음 (코드에서 생성)
+    - 수치 측정값 포함 금지 (CV Pass가 담당)
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = Field(..., description="e.g. 'unified_pass_llm.v1'")
+    language: str = Field("ko", description="output language for text fields")
+    duration_ms: int = Field(..., ge=0)
+
+    # Meaning
+    hook_genome: HookGenomeLLM
+    scenes: List[SceneLLM] = Field(default_factory=list, max_length=12)
+    intent_layer: IntentLayerLLM
+    mise_en_scene_signals: List[MiseEnSceneSignalLLM] = Field(default_factory=list, max_length=16)
+
+    # CV guidance
+    entity_hints: Dict[str, EntityHintLLM] = Field(default_factory=dict)
+    analysis_plan: AnalysisPlanSeedLLM
+
+    # Why viral
+    causal_reasoning: CausalReasoningLLM
