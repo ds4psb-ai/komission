@@ -71,6 +71,7 @@ class UnifiedPass:
     
     설계 원칙:
     - Hook clip (0~4s): 10fps (정밀 microbeat 분석)
+    - Zoom Windows: 5fps (scene cuts + audio peaks)
     - Full video: 1fps (전체 인과관계)
     - Structured output: response_schema 사용
     """
@@ -84,6 +85,11 @@ class UnifiedPass:
         full_video_fps: float = 1.0,
         max_output_tokens: int = 8192,
         temperature: float = 0.2,
+        # Zoom Windows 설정
+        enable_zoom_windows: bool = True,
+        zoom_window_fps: float = 5.0,
+        zoom_window_duration: float = 2.0,  # 각 zoom window ±1초
+        max_zoom_windows: int = 4,
     ):
         self.model_id = model_id or os.getenv("VDG_PRO_MODEL", DEFAULT_MODEL_PRO)
         self.media_resolution = media_resolution or os.getenv("VDG_MEDIA_RESOLUTION", "low")
@@ -92,6 +98,11 @@ class UnifiedPass:
         self.full_video_fps = full_video_fps
         self.max_output_tokens = max_output_tokens
         self.temperature = temperature
+        # Zoom Windows
+        self.enable_zoom_windows = enable_zoom_windows
+        self.zoom_window_fps = zoom_window_fps
+        self.zoom_window_duration = zoom_window_duration
+        self.max_zoom_windows = max_zoom_windows
 
     def run(
         self,
@@ -125,9 +136,14 @@ class UnifiedPass:
         video_file = self._upload_video(client, video_path)
         logger.info(f"📹 Video uploaded: {video_file.name}")
 
-        # 2. Two video parts in ONE request:
+        # 2. Video parts in ONE request (추가 호출 없이 심층 해석):
         #    - Hook clip: 0~hook_clip_seconds with higher fps for precise microbeats
+        #    - Zoom Windows: scene cuts + audio peaks with medium fps
         #    - Full video: low fps for global causality
+        
+        video_parts = []
+        
+        # Hook part (항상 포함)
         hook_part = types.Part.from_uri(
             file_uri=video_file.uri,
             mime_type=video_file.mime_type,
@@ -137,6 +153,30 @@ class UnifiedPass:
                 fps=self.hook_clip_fps,
             ),
         )
+        video_parts.append(hook_part)
+        
+        # Zoom Windows (scene cuts + audio peaks)
+        zoom_windows = []
+        if self.enable_zoom_windows:
+            zoom_windows = self._detect_zoom_windows(
+                video_path,
+                duration_ms,
+                max_windows=self.max_zoom_windows
+            )
+            for i, (start_sec, end_sec) in enumerate(zoom_windows):
+                zoom_part = types.Part.from_uri(
+                    file_uri=video_file.uri,
+                    mime_type=video_file.mime_type,
+                    video_metadata=types.VideoMetadata(
+                        start_offset=f"{start_sec:.1f}s",
+                        end_offset=f"{end_sec:.1f}s",
+                        fps=self.zoom_window_fps,
+                    ),
+                )
+                video_parts.append(zoom_part)
+            logger.info(f"🔍 Added {len(zoom_windows)} zoom windows")
+        
+        # Full video part
         full_part = types.Part.from_uri(
             file_uri=video_file.uri,
             mime_type=video_file.mime_type,
@@ -144,6 +184,7 @@ class UnifiedPass:
                 fps=self.full_video_fps,
             ),
         )
+        video_parts.append(full_part)
 
         # 3. 프롬프트 빌드 (Metric Registry SSoT에서 allow-list 주입)
         prompt = build_unified_prompt(
@@ -154,14 +195,21 @@ class UnifiedPass:
             top_comments=top_comments,
             metric_definitions=METRIC_DEFINITIONS,
         )
+        
+        # Zoom Windows 정보를 프롬프트에 추가
+        if zoom_windows:
+            zoom_info = "\n\nZOOM WINDOWS (high-FPS clips for precise analysis):\n"
+            for i, (start_sec, end_sec) in enumerate(zoom_windows):
+                zoom_info += f"- Z{i+1}: {start_sec:.1f}s ~ {end_sec:.1f}s\n"
+            zoom_info += "Use these to localize viral_kicks precisely within these windows.\n"
+            prompt += zoom_info
 
         contents = [
             types.Content(
                 role="user",
                 parts=[
                     types.Part(text=prompt),
-                    hook_part,
-                    full_part,
+                    *video_parts,
                 ],
             )
         ]
@@ -279,6 +327,84 @@ class UnifiedPass:
 
         return out
 
+    def _detect_zoom_windows(
+        self,
+        video_path: str,
+        duration_ms: int,
+        max_windows: int = 4,
+    ) -> List[Tuple[float, float]]:
+        """
+        결정론적 Zoom Windows 감지
+        
+        ffmpeg scene detection으로 scene cuts 위치 탐지
+        각 cut 주변 ±1초 구간을 zoom window로 설정
+        
+        Returns:
+            List of (start_sec, end_sec) tuples
+        """
+        import subprocess
+        
+        duration_sec = duration_ms / 1000.0
+        half_window = self.zoom_window_duration / 2.0
+        
+        zoom_points = []
+        
+        # 1. ffmpeg scene detection (scene cuts)
+        try:
+            result = subprocess.run(
+                [
+                    "ffprobe", "-v", "error",
+                    "-select_streams", "v:0",
+                    "-show_entries", "frame=pts_time",
+                    "-of", "csv=p=0",
+                    "-f", "lavfi",
+                    f"movie={video_path},select=gt(scene\\,0.3)"
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            
+            if result.returncode == 0 and result.stdout.strip():
+                for line in result.stdout.strip().split("\n"):
+                    try:
+                        t = float(line.strip())
+                        if t > self.hook_clip_seconds and t < duration_sec - 1:
+                            zoom_points.append(("scene_cut", t))
+                    except ValueError:
+                        continue
+        except Exception as e:
+            logger.warning(f"Scene detection failed: {e}")
+        
+        # 2. 중간 지점 (전환이 많은 곳)
+        if len(zoom_points) < max_windows:
+            mid_points = [
+                duration_sec * 0.25,
+                duration_sec * 0.5,
+                duration_sec * 0.75,
+            ]
+            for t in mid_points:
+                if t > self.hook_clip_seconds and t < duration_sec - 1:
+                    # 이미 추가된 scene cut과 겹치지 않으면 추가
+                    is_duplicate = any(
+                        abs(existing_t - t) < self.zoom_window_duration
+                        for _, existing_t in zoom_points
+                    )
+                    if not is_duplicate:
+                        zoom_points.append(("fallback", t))
+        
+        # 3. 시간순 정렬 후 상위 max_windows개 선택
+        zoom_points.sort(key=lambda x: x[1])
+        selected = zoom_points[:max_windows]
+        
+        # 4. (start, end) 튜플로 변환
+        windows = []
+        for _, t in selected:
+            start = max(0, t - half_window)
+            end = min(duration_sec, t + half_window)
+            windows.append((start, end))
+        
+        return windows
 
 # ============================================
 # ffprobe duration helper
