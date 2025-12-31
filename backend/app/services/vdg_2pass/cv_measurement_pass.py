@@ -38,13 +38,18 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ============================================
 
-CV_PASS_VERSION = "cv_measurement_v1.0"
+CV_PASS_VERSION = "cv_measurement_v2.0"
 
-# 지원 메트릭 (MVP: 3개)
+# 지원 메트릭 (MVP: 3개 + 확장: 3개)
 SUPPORTED_CV_METRICS = {
+    # MVP (v1.0)
     "cmp.center_offset_xy.v1",
     "lit.brightness_ratio.v1",
     "cmp.blur_score.v1",
+    # 확장 (v2.0)
+    "edit.scene_change.v1",       # 씬 전환 감지
+    "cmp.face_bbox.v1",           # 얼굴 바운딩 박스 (구도)
+    "txt.text_density.v1",        # 텍스트 밀도 (자막 타이밍)
 }
 
 
@@ -319,6 +324,169 @@ class MetricCalculators:
         
         return round(normalized, 4), round(confidence, 4)
 
+    @staticmethod
+    def scene_change(
+        frames: List[np.ndarray],
+        roi: str = "full_frame",
+        threshold: float = 30.0,
+    ) -> Tuple[Dict[str, Any], float]:
+        """
+        씬 전환 감지 (프레임 간 차이)
+        
+        Returns:
+            ({"has_change": bool, "change_scores": [float], "max_score": float}, confidence)
+        """
+        if len(frames) < 2:
+            return {"has_change": False, "change_scores": [], "max_score": 0.0}, 0.0
+        
+        change_scores = []
+        
+        for i in range(1, len(frames)):
+            prev_gray = cv2.cvtColor(frames[i-1], cv2.COLOR_BGR2GRAY)
+            curr_gray = cv2.cvtColor(frames[i], cv2.COLOR_BGR2GRAY)
+            
+            # 프레임 간 절대 차이
+            diff = cv2.absdiff(prev_gray, curr_gray)
+            score = float(np.mean(diff))
+            change_scores.append(round(score, 2))
+        
+        max_score = max(change_scores) if change_scores else 0.0
+        has_change = max_score > threshold
+        
+        confidence = min(1.0, len(frames) / 5.0)
+        
+        return {
+            "has_change": has_change,
+            "change_scores": change_scores[:10],  # 최대 10개
+            "max_score": round(max_score, 2),
+        }, round(confidence, 4)
+
+    @staticmethod
+    def face_bbox(
+        frames: List[np.ndarray],
+        roi: str = "full_frame",
+    ) -> Tuple[Dict[str, Any], float]:
+        """
+        얼굴 바운딩 박스 (구도 분석용)
+        
+        Returns:
+            ({"detected": bool, "bbox_normalized": [x, y, w, h], "area_ratio": float}, confidence)
+            bbox_normalized: 0-1 범위로 정규화된 좌표
+        """
+        if not frames:
+            return {"detected": False, "bbox_normalized": None, "area_ratio": 0.0}, 0.0
+        
+        face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
+        
+        all_bboxes = []
+        
+        for frame in frames:
+            h, w = frame.shape[:2]
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            faces = face_cascade.detectMultiScale(
+                gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
+            )
+            
+            if len(faces) > 0:
+                largest = max(faces, key=lambda f: f[2] * f[3])
+                fx, fy, fw, fh = largest
+                
+                # 정규화 (0-1)
+                bbox_norm = [
+                    round(fx / w, 4),
+                    round(fy / h, 4),
+                    round(fw / w, 4),
+                    round(fh / h, 4),
+                ]
+                area_ratio = (fw * fh) / (w * h)
+                all_bboxes.append((bbox_norm, area_ratio))
+        
+        if not all_bboxes:
+            return {"detected": False, "bbox_normalized": None, "area_ratio": 0.0}, 0.3
+        
+        # 평균 bbox 계산
+        avg_bbox = [
+            round(np.mean([b[0][i] for b in all_bboxes]), 4)
+            for i in range(4)
+        ]
+        avg_area = round(np.mean([b[1] for b in all_bboxes]), 4)
+        
+        detection_rate = len(all_bboxes) / len(frames)
+        
+        return {
+            "detected": True,
+            "bbox_normalized": avg_bbox,
+            "area_ratio": avg_area,
+        }, round(max(0.5, detection_rate), 4)
+
+    @staticmethod
+    def text_density(
+        frames: List[np.ndarray],
+        roi: str = "full_frame",
+    ) -> Tuple[Dict[str, Any], float]:
+        """
+        텍스트 밀도 측정 (자막/텍스트 오버레이 감지)
+        
+        MSER (Maximally Stable Extremal Regions) 기반
+        OCR 없이 텍스트 영역만 감지
+        
+        Returns:
+            ({"has_text": bool, "text_area_ratio": float, "region_count": int}, confidence)
+        """
+        if not frames:
+            return {"has_text": False, "text_area_ratio": 0.0, "region_count": 0}, 0.0
+        
+        all_ratios = []
+        all_counts = []
+        
+        for frame in frames:
+            h, w = frame.shape[:2]
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            # MSER로 텍스트 영역 감지
+            mser = cv2.MSER_create()
+            mser.setMinArea(50)
+            mser.setMaxArea(int(h * w * 0.1))
+            
+            regions, _ = mser.detectRegions(gray)
+            
+            # 텍스트 영역 필터링 (aspect ratio 기반)
+            text_regions = []
+            for region in regions:
+                x, y, rw, rh = cv2.boundingRect(region)
+                aspect = rw / max(rh, 1)
+                
+                # 텍스트는 보통 가로로 긴 형태
+                if 0.1 < aspect < 10 and rw > 10 and rh > 5:
+                    text_regions.append((x, y, rw, rh))
+            
+            # 텍스트 영역 비율 계산
+            if text_regions:
+                # 겹치는 영역 제거 (간단히 합계)
+                total_text_area = sum(rw * rh for _, _, rw, rh in text_regions)
+                # 최대 50%까지 (겹침 고려)
+                ratio = min(0.5, total_text_area / (w * h))
+            else:
+                ratio = 0.0
+            
+            all_ratios.append(ratio)
+            all_counts.append(len(text_regions))
+        
+        avg_ratio = float(np.mean(all_ratios))
+        avg_count = int(np.mean(all_counts))
+        has_text = avg_ratio > 0.01  # 1% 이상이면 텍스트 있음
+        
+        confidence = min(1.0, len(frames) / 5.0)
+        
+        return {
+            "has_text": has_text,
+            "text_area_ratio": round(avg_ratio, 4),
+            "region_count": avg_count,
+        }, round(confidence, 4)
+
 
 # ============================================
 # Main CV Pass Class
@@ -481,6 +649,13 @@ class CVMeasurementPass:
             value, confidence = MetricCalculators.brightness_ratio(frames, spec.roi)
         elif metric_id == "cmp.blur_score.v1":
             value, confidence = MetricCalculators.blur_score(frames, spec.roi)
+        # v2.0 확장 메트릭
+        elif metric_id == "edit.scene_change.v1":
+            value, confidence = MetricCalculators.scene_change(frames, spec.roi)
+        elif metric_id == "cmp.face_bbox.v1":
+            value, confidence = MetricCalculators.face_bbox(frames, spec.roi)
+        elif metric_id == "txt.text_density.v1":
+            value, confidence = MetricCalculators.text_density(frames, spec.roi)
         else:
             return None
         
