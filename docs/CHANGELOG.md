@@ -4,6 +4,50 @@
 
 ---
 
+## 2025-12-31 (VDG Pro 1-Pass + CV Architecture)
+
+### 🎯 VDG Unified Pipeline 구현
+
+**아키텍처 변경**: LLM 2-Pass → Pro 1-Pass + CV 결정론적 측정
+
+```
+Pass 1: Gemini 3.0 Pro (1회)
+├── 10fps hook + 1fps full (VideoMetadata)
+├── Structured output (response_schema)
+└── 출력: 의미/인과/Plan Seed
+
+Pass 2: ffmpeg + OpenCV (결정론적)
+├── 3개 MVP 메트릭
+├── 100% 재현 가능
+└── 출력: 수치/좌표
+```
+
+### 신규 파일 (5개, +2,058 lines)
+
+| 파일 | 역할 | 라인 |
+|------|------|------|
+| `vdg_unified_pass.py` | 스키마 (15 types) | ~180 |
+| `unified_prompt.py` | 프롬프트 | ~100 |
+| `unified_pass.py` | Pass 1 (LLM) | ~270 |
+| `cv_measurement_pass.py` | Pass 2 (CV) | ~510 |
+| `vdg_unified_pipeline.py` | 오케스트레이터 | ~380 |
+
+### 3개 MVP 메트릭 (결정론적)
+
+| metric_id | 출력 | 범위 |
+|-----------|------|------|
+| `cmp.center_offset_xy.v1` | `[offset_x, offset_y]` | -1 ~ 1 |
+| `lit.brightness_ratio.v1` | `float` | 0 ~ 1 |
+| `cmp.blur_score.v1` | `float` | 0 ~ 1 |
+
+### Git Commits
+
+- `bdcec4f` feat: Implement VDG Unified Pass (Pro 1-Pass)
+- `26d68ae` feat: Implement CV Measurement Pass MVP
+- `9bec673` feat: Add VDG Unified Pipeline orchestrator
+
+---
+
 ## 2025-12-31 (Late Night Session)
 
 ### 🚀 google-genai SDK 마이그레이션
