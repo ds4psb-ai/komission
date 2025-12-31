@@ -1,10 +1,10 @@
 """
-Gemini Pipeline - VDG (Video Data Graph) v3.0 (PEGL v1.0)
-Uses Gemini 3.0 Pro to extract the 'Brain' of the viral video.
+Gemini Pipeline - VDG (Video Data Graph) v5.0 (Unified Pass + CV)
+Uses Gemini 3.0 Pro 1-Pass + CV deterministic measurement.
 
-PEGL v1.0: 스키마 검증 적용
-- 출력 스키마 버전 검증
-- 필수 필드 검증
+v5.0: Unified Pipeline
+- Pass 1: Gemini 3.0 Pro (의미/인과/Plan Seed)
+- Pass 2: CV deterministic measurement (수치/좌표)
 """
 import os
 import json
@@ -13,10 +13,7 @@ from typing import Optional, Dict, Any, List
 from google import genai
 from google.genai import types
 from app.config import settings
-from app.services.vdg_2pass.semantic_pass import SemanticPass
-from app.services.vdg_2pass.visual_pass import VisualPass
-from app.services.vdg_2pass.analysis_planner import AnalysisPlanner
-from app.services.vdg_2pass.merger import VDGMerger
+from app.services.vdg_2pass.vdg_unified_pipeline import VDGUnifiedPipeline, analyze_video as unified_analyze
 from app.services.vdg_2pass.director_compiler import DirectorCompiler
 from app.schemas.vdg_v4 import VDGv4
 from app.schemas.vdg import VDG
@@ -24,6 +21,7 @@ from app.services.video_downloader import video_downloader
 from app.validators.schema_validator import validate_vdg_analysis_schema, SchemaValidationError
 
 logger = logging.getLogger(__name__)
+
 
 VDG_PROMPT = """
 당신은 바이럴 영상 전문가 AI (Gemini 3.0 Pro)입니다.
@@ -487,81 +485,73 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
         audience_comments: Optional[List[Dict[str, Any]]] = None
     ) -> VDGv4:
         """
-        VDG v4.0 2-Pass Pipeline Execution
+        VDG v5.0 Unified Pipeline Execution
         
-        Pass 1: Semantic (Gemini 2.0 Flash) -> Meaning/Structure
-        Pass 2: Visual (Gemini 3.0 Pro) -> Precision Metrics
+        Pass 1: Gemini 3.0 Pro 1회 호출 (의미/인과/Plan Seed)
+        Pass 2: CV 결정론적 측정 (수치/좌표)
         """
-        if not self.client:
-             raise Exception("Gemini API key not found")
-
+        import asyncio
+        
         temp_path = None
         try:
             # 1. Download
-            logger.info(f"📥 [v4] Downloading {video_url}...")
+            logger.info(f"📥 [v5] Downloading {video_url}...")
             temp_path, metadata = await video_downloader.download(video_url)
-            
-            with open(temp_path, "rb") as fp:
-                video_bytes = fp.read()
             
             duration_sec = metadata.get("duration", 0.0)
             if duration_sec == 0.0:
-                 # Fallback duration estimation if missing
-                 duration_sec = 60.0 
+                # Fallback: ffprobe로 측정
+                from app.services.vdg_2pass.unified_pass import get_video_duration_ms
+                duration_ms = get_video_duration_ms(temp_path)
+                duration_sec = duration_ms / 1000.0 if duration_ms > 0 else 60.0
 
             platform = "youtube" 
             if "tiktok.com" in video_url: platform = "tiktok"
-            elif "instagram.com" in video_url: platform = "instagram_reels"
-            elif "shorts" in video_url: platform = "youtube_shorts"
+            elif "instagram.com" in video_url: platform = "instagram"
+            elif "shorts" in video_url: platform = "youtube"
 
-            # 2. Pass 1: Semantic
-            logger.info("🧠 [v4] Running Pass 1: Semantic...")
-            semantic_pass = SemanticPass(self.client)
-            semantic_result = await semantic_pass.analyze(
-                video_bytes=video_bytes, 
-                duration_sec=duration_sec,
-                comments=audience_comments or [],
-                platform=platform
+            # 2. Extract comments text
+            top_comments = []
+            if audience_comments:
+                top_comments = [
+                    c.get("text", "")[:200] for c in audience_comments[:20]
+                    if c.get("text")
+                ]
+
+            # 3. Run unified pipeline (sync, but wrapped in executor for async context)
+            logger.info("🚀 [v5] Running VDG Unified Pipeline...")
+            
+            def _run_sync():
+                pipeline = VDGUnifiedPipeline()
+                return pipeline.run(
+                    video_path=temp_path,
+                    platform=platform,
+                    top_comments=top_comments,
+                )
+            
+            # Run sync pipeline in thread pool
+            loop = asyncio.get_event_loop()
+            unified_result = await loop.run_in_executor(None, _run_sync)
+            
+            logger.info(
+                f"✅ [v5] Pipeline complete: "
+                f"pass1={unified_result.pass1_latency_ms}ms, "
+                f"pass2={unified_result.pass2_latency_ms}ms"
             )
             
-            
-            # 3. Bridge: Plan (include comment evidence from mise_en_scene_signals)
-            logger.info("🌉 [v4] Generating Analysis Plan...")
-            plan = AnalysisPlanner.plan(
-                semantic=semantic_result,
-                mise_en_scene_signals=semantic_result.mise_en_scene_signals if hasattr(semantic_result, 'mise_en_scene_signals') else []
-            )
-            
-            # 4. Pass 2: Visual
-            logger.info("👁️ [v4] Running Pass 2: Visual...")
-            visual_pass = VisualPass(self.client)
-            visual_result = await visual_pass.analyze(
-                video_bytes=video_bytes,
-                plan=plan,
-                entity_hints=semantic_result.entity_hints,
-                semantic_summary=semantic_result.summary
-            )
-            
-            # 5. Merge
-            logger.info("🔄 [v4] Merging Results...")
-            merger = VDGMerger()
-            vdg = merger.merge(
-                semantic=semantic_result,
-                visual=visual_result,
-                plan=plan,
+            # 4. Convert UnifiedResult to VDGv4 format
+            vdg = self._convert_unified_to_vdg_v4(
+                unified_result=unified_result,
                 content_id=node_id,
-                video_url=video_url
+                video_url=video_url,
+                platform=platform,
+                duration_sec=duration_sec,
             )
-            
-            # 6. Compile (Director Pack Candidates)
-            # For now, we populate candidates using the Compiler logic
-            # This logic should ideally be inside Compiler, but for MVP we skip full candidates unless defined
-            # VDGv4 object is ready.
             
             return vdg
 
         except Exception as e:
-            logger.error(f"❌ VDG v4 Pipeline Failed: {e}")
+            logger.error(f"❌ VDG v5 Pipeline Failed: {e}")
             raise e
         finally:
             if temp_path and os.path.exists(temp_path):
@@ -569,6 +559,145 @@ Consider these reactions when analyzing the hook effectiveness, emotional impact
                     os.remove(temp_path)
                 except:
                     pass
+
+    def _convert_unified_to_vdg_v4(
+        self,
+        unified_result,
+        content_id: str,
+        video_url: str,
+        platform: str,
+        duration_sec: float,
+    ) -> VDGv4:
+        """UnifiedResult를 VDGv4 포맷으로 변환"""
+        from app.schemas.vdg_v4 import (
+            VDGv4, HookGenomeV4, SceneV4, NarrativeUnitV4,
+            IntentLayerV4, CausalReasoningV4, ViralKick,
+            MiseEnSceneSignal, FocusWindow, Provenance4
+        )
+        
+        llm = unified_result.llm_output
+        cv = unified_result.cv_result
+        
+        # Hook genome 변환
+        hook = HookGenomeV4(
+            hook_start_ms=llm.hook_genome.hook_start_ms,
+            hook_end_ms=llm.hook_genome.hook_end_ms,
+            strength=llm.hook_genome.strength,
+            spoken_hook=llm.hook_genome.spoken_hook,
+            on_screen_text=llm.hook_genome.on_screen_text,
+            microbeats=[
+                {"t_ms": m.t_ms, "role": m.role, "description": m.description}
+                for m in llm.hook_genome.microbeats
+            ],
+        )
+        
+        # Scenes 변환
+        scenes = []
+        for s in llm.scenes:
+            scene = SceneV4(
+                scene_id=f"S{s.idx:02d}",
+                time_start_ms=s.window.start_ms,
+                time_end_ms=s.window.end_ms,
+                label=s.label,
+                summary=s.summary,
+            )
+            scenes.append(scene)
+        
+        # Viral kicks 변환
+        viral_kicks = []
+        for k in llm.viral_kicks:
+            kick = ViralKick(
+                kick_index=k.kick_index,
+                t_start_ms=k.window.start_ms,
+                t_end_ms=k.window.end_ms,
+                title=k.title,
+                mechanism=k.mechanism,
+                creator_instruction=k.creator_instruction,
+                evidence_comment_ranks=k.evidence_comment_ranks,
+                evidence_cues=k.evidence_cues,
+            )
+            viral_kicks.append(kick)
+        
+        # Intent layer 변환
+        intent = IntentLayerV4(
+            creator_intent=llm.intent_layer.creator_intent,
+            audience_trigger=llm.intent_layer.audience_trigger,
+            novelty=llm.intent_layer.novelty,
+            clarity=llm.intent_layer.clarity,
+        )
+        
+        # Causal reasoning 변환
+        causal = CausalReasoningV4(
+            why_viral_one_liner=llm.causal_reasoning.why_viral_one_liner,
+            causal_chain=llm.causal_reasoning.causal_chain,
+            replication_recipe=llm.causal_reasoning.replication_recipe,
+            risks_or_unknowns=llm.causal_reasoning.risks_or_unknowns,
+        )
+        
+        # Mise-en-scene signals 변환
+        mise_signals = [
+            MiseEnSceneSignal(
+                type=m.type,
+                description=m.description,
+                why_it_matters=m.why_it_matters,
+                anchor_ms=m.anchor_ms,
+            )
+            for m in llm.mise_en_scene_signals
+        ]
+        
+        # CV measurements를 focus windows로 변환
+        focus_windows = []
+        for i, ap in enumerate(unified_result.analysis_points):
+            metrics_dict = {}
+            for metric_id, metric_result in ap.metrics.items():
+                metrics_dict[metric_id] = {
+                    "value": metric_result.value,
+                    "confidence": metric_result.confidence,
+                }
+            
+            fw = FocusWindow(
+                window_id=f"W{i:02d}",
+                t_start_ms=ap.t_center_ms - ap.t_window_ms // 2,
+                t_end_ms=ap.t_center_ms + ap.t_window_ms // 2,
+                metrics=metrics_dict,
+            )
+            focus_windows.append(fw)
+        
+        # Comment evidence 변환
+        comment_evidence = [
+            {
+                "comment_rank": c.comment_rank,
+                "quote": c.quote,
+                "signal_type": c.signal_type,
+                "why_it_matters": c.why_it_matters,
+            }
+            for c in llm.comment_evidence_top5
+        ]
+        
+        # Provenance
+        provenance = Provenance4(
+            pipeline_version="v5.0_unified",
+            pass1_model=unified_result.pass1_provenance.model_id,
+            pass2_version=unified_result.pass2_provenance.version if cv else None,
+            prompt_version=unified_result.pass1_provenance.prompt_version,
+        )
+        
+        return VDGv4(
+            schema_version="vdg_v5.0",
+            content_id=content_id,
+            video_url=video_url,
+            platform=platform,
+            duration_ms=int(duration_sec * 1000),
+            hook_genome=hook,
+            scenes=scenes,
+            viral_kicks=viral_kicks,
+            intent_layer=intent,
+            causal_reasoning=causal,
+            mise_en_scene_signals=mise_signals,
+            focus_windows=focus_windows,
+            comment_evidence=comment_evidence,
+            provenance=provenance,
+        )
 
 
     def _sanitize_vdg_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
