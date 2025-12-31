@@ -32,6 +32,7 @@ from app.routers.for_you import router as for_you_router  # For You API (MCP Rea
 from app.routers.coaching import router as coaching_router  # Audio Coach API
 from app.routers.clusters import router as clusters_router  # P2 Cluster Management
 from app.routers.distill import router as distill_router  # P3 DistillRun Automation
+from app.routers.curation import router as curation_router  # Curation Learning (Admin)
 
 api_router.include_router(remix_router, prefix="/remix", tags=["Remix"])
 api_router.include_router(auth_router, prefix="/auth", tags=["Auth"])
@@ -58,4 +59,5 @@ api_router.include_router(for_you_router, tags=["For You"])  # MCP Ready
 api_router.include_router(coaching_router, tags=["Coaching"])  # Audio Coach API
 api_router.include_router(clusters_router, tags=["Clusters"])  # P2 Cluster Management
 api_router.include_router(distill_router, tags=["Distill"])  # P3 DistillRun Automation
+api_router.include_router(curation_router, tags=["Curation"])  # Curation Learning (Admin)
 
