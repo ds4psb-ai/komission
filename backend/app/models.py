@@ -641,7 +641,109 @@ class OutlierItem(Base):
     approver: Mapped[Optional["User"]] = relationship("User", foreign_keys=[approved_by])
 
 
+# =====================================
+# Curation Learning System
+# =====================================
+
+class CurationDecisionType(str, enum.Enum):
+    """큐레이션 결정 유형"""
+    NORMAL = "normal"      # 일반 승격
+    CAMPAIGN = "campaign"  # 체험단 승격
+    REJECTED = "rejected"  # 거부
+
+
+class CurationRuleType(str, enum.Enum):
+    """큐레이션 규칙 유형"""
+    AUTO_NORMAL = "auto_normal"      # 자동 일반 승격
+    AUTO_CAMPAIGN = "auto_campaign"  # 자동 체험단 승격
+    AUTO_REJECT = "auto_reject"      # 자동 거부
+    RECOMMEND = "recommend"          # 추천 (수동 확인 필요)
+
+
+class CurationDecision(Base):
+    """
+    큐레이션 결정 기록 (학습용)
+    
+    승격 시 VDG 분석 결과와 함께 저장
+    추후 규칙 학습에 사용
+    """
+    __tablename__ = "curation_decisions"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    outlier_item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("outlier_items.id"), index=True)
+    remix_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("remix_nodes.id"), nullable=True)
+    curator_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
+    
+    # 결정 정보
+    decision_type: Mapped[str] = mapped_column(SQLEnum(CurationDecisionType), index=True)
+    decision_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    
+    # VDG 분석 스냅샷 (결정 시점의 분석 결과)
+    vdg_snapshot: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    # {hook_genome, viral_kicks, causal_reasoning, ...}
+    
+    # 추출된 규칙 피처
+    extracted_features: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    # {hook_strength, viral_kick_count, platform, duration_sec, ...}
+    
+    # 큐레이터 메모 (선택)
+    curator_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # 규칙 매칭 정보 (추천 규칙이 있었는지)
+    matched_rule_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("curation_rules.id"), nullable=True)
+    rule_followed: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)  # 규칙 추천을 따랐는지
+    
+    # Relationships
+    outlier_item: Mapped["OutlierItem"] = relationship("OutlierItem", backref="curation_decisions")
+    remix_node: Mapped[Optional["RemixNode"]] = relationship("RemixNode", backref="curation_decisions")
+    curator: Mapped["User"] = relationship("User", backref="curation_decisions")
+    matched_rule: Mapped[Optional["CurationRule"]] = relationship("CurationRule", backref="matched_decisions")
+
+
+class CurationRule(Base):
+    """
+    학습된 큐레이션 규칙
+    
+    결정 데이터에서 패턴을 추출하여 생성
+    신규 아이템에 자동 추천 제공
+    """
+    __tablename__ = "curation_rules"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    rule_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    rule_type: Mapped[str] = mapped_column(SQLEnum(CurationRuleType), index=True)
+    
+    # 조건 (JSON Logic 형식)
+    conditions: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    # {"hook_strength": {">=": 0.8}, "platform": "tiktok", "viral_kick_count": {">=": 3}}
+    
+    # 규칙 출처
+    source: Mapped[str] = mapped_column(String(50), default="learned")  # learned | manual
+    sample_size: Mapped[int] = mapped_column(Integer, default=0)  # 학습에 사용된 샘플 수
+    
+    # 규칙 통계 (정확도 추적)
+    match_count: Mapped[int] = mapped_column(Integer, default=0)  # 매칭된 횟수
+    follow_count: Mapped[int] = mapped_column(Integer, default=0)  # 추천을 따른 횟수
+    accuracy: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # follow_count / match_count
+    
+    # 규칙 우선순위 (높을수록 우선)
+    priority: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # 활성화 여부
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    
+    # 메타
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    
+    # Relationships
+    creator: Mapped[Optional["User"]] = relationship("User", backref="created_curation_rules")
+
+
 class MetricDaily(Base):
+
     """
     일별 성과 추적 (14일+)
     노드별 일일 메트릭 히스토리

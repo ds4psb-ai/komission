@@ -1145,6 +1145,24 @@ async def promote_to_parent(
     if request and request.campaign_eligible:
         item.campaign_eligible = True
     
+    # 큐레이션 결정 기록 (학습용)
+    from app.services.curation_service import record_curation_decision
+    from app.models import CurationDecisionType
+    
+    decision_type = (
+        CurationDecisionType.CAMPAIGN if (request and request.campaign_eligible)
+        else CurationDecisionType.NORMAL
+    )
+    
+    await record_curation_decision(
+        db,
+        outlier_item_id=item.id,
+        remix_node_id=node.id,
+        curator_id=current_user.id,
+        decision_type=decision_type,
+        curator_notes=getattr(request, 'notes', None) if request else None,
+    )
+    
     # VDG 분석은 Admin 승인 후에만 실행됨 (analysis_status = pending)
     await db.commit()
     await db.refresh(node)
@@ -1159,6 +1177,7 @@ async def promote_to_parent(
         "node_id": node.node_id,
         "remix_id": str(node.id),
         "analysis_status": "pending",  # Admin 승인 대기
+        "decision_type": decision_type.value,  # 큐레이션 결정 유형
         "message": "VDG 분석을 시작하려면 Admin 승인이 필요합니다. POST /outliers/items/{item_id}/approve",
     }
 
