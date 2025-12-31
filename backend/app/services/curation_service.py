@@ -8,8 +8,10 @@ VDG 분석 결과에서 피처를 추출하고
 from __future__ import annotations
 
 import logging
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
+from statistics import median
+from typing import Dict, Any, Optional, List, Tuple
 from uuid import UUID
 
 from sqlalchemy import select
@@ -26,6 +28,24 @@ from app.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+_NUMERIC_FEATURES = (
+    "hook_strength",
+    "hook_duration_ms",
+    "microbeat_count",
+    "viral_kick_count",
+    "scene_count",
+    "causal_chain_length",
+    "replication_recipe_count",
+    "mise_signal_count",
+    "duration_sec",
+    "outlier_score",
+    "view_count",
+    "like_count",
+    "share_count",
+)
+_LIST_FEATURES = ("comment_signal_types", "mise_signal_types")
+_CATEGORICAL_FEATURES = ("top_viral_kick_mechanism", "category")
 
 
 # =====================================
@@ -175,6 +195,44 @@ async def record_curation_decision(
     return decision
 
 
+async def update_curation_decision_with_vdg(
+    db: AsyncSession,
+    *,
+    outlier_item_id: UUID,
+    vdg_analysis: Dict[str, Any],
+    remix_node_id: Optional[UUID] = None,
+) -> Optional[CurationDecision]:
+    """
+    Attach VDG snapshot/features to the most recent decision for an item.
+    """
+    if not vdg_analysis:
+        return None
+
+    query = select(CurationDecision).where(
+        CurationDecision.outlier_item_id == outlier_item_id
+    )
+    if remix_node_id:
+        query = query.where(CurationDecision.remix_node_id == remix_node_id)
+
+    result = await db.execute(
+        query.order_by(CurationDecision.decision_at.desc())
+    )
+    decision = result.scalars().first()
+
+    if not decision:
+        logger.warning(
+            "No curation decision found to update for outlier_item_id=%s",
+            outlier_item_id,
+        )
+        return None
+
+    decision.vdg_snapshot = vdg_analysis
+    decision.extracted_features = extract_features_from_vdg(vdg_analysis)
+    await db.flush()
+
+    return decision
+
+
 async def _update_rule_stats(
     db: AsyncSession,
     rule_id: UUID,
@@ -261,6 +319,236 @@ def _matches_conditions(features: Dict[str, Any], conditions: Dict[str, Any]) ->
                 return False
     
     return True
+
+
+# =====================================
+# Rule Learning
+# =====================================
+
+_DECISION_TO_RULE_TYPE = {
+    CurationDecisionType.NORMAL: CurationRuleType.AUTO_NORMAL,
+    CurationDecisionType.CAMPAIGN: CurationRuleType.AUTO_CAMPAIGN,
+    CurationDecisionType.REJECTED: CurationRuleType.AUTO_REJECT,
+}
+
+
+def _normalize_decision_type(value: Any) -> Optional[CurationDecisionType]:
+    if isinstance(value, CurationDecisionType):
+        return value
+    if isinstance(value, str):
+        try:
+            return CurationDecisionType(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _is_numeric(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _coerce_threshold(values: List[Any], threshold: float) -> Any:
+    if values and all(isinstance(v, int) and not isinstance(v, bool) for v in values):
+        return int(round(threshold))
+    return round(float(threshold), 4)
+
+
+def _most_common(values: List[str]) -> Tuple[Optional[str], float]:
+    if not values:
+        return None, 0.0
+    counter = Counter(values)
+    top_value, count = counter.most_common(1)[0]
+    return top_value, count / len(values)
+
+
+def _most_common_from_lists(values_list: List[List[str]]) -> Tuple[Optional[str], float]:
+    flattened: List[str] = []
+    for values in values_list:
+        if isinstance(values, list):
+            flattened.extend([v for v in values if isinstance(v, str) and v])
+    return _most_common(flattened)
+
+
+def _build_rule_conditions(
+    features_list: List[Dict[str, Any]],
+    decision_type: CurationDecisionType,
+    platform: str,
+    *,
+    min_support_ratio: float,
+    max_numeric_conditions: int,
+) -> Dict[str, Any]:
+    conditions: Dict[str, Any] = {"platform": platform}
+    min_feature_samples = max(3, int(len(features_list) * min_support_ratio))
+    op = "<=" if decision_type == CurationDecisionType.REJECTED else ">="
+
+    numeric_added = 0
+    for feature in _NUMERIC_FEATURES:
+        values = [f.get(feature) for f in features_list if _is_numeric(f.get(feature))]
+        if len(values) < min_feature_samples:
+            continue
+        threshold = _coerce_threshold(values, median(values))
+        conditions[feature] = {op: threshold}
+        numeric_added += 1
+        if numeric_added >= max_numeric_conditions:
+            break
+
+    max_total_conditions = max_numeric_conditions + 2
+    if len(conditions) < max_total_conditions:
+        for feature in _LIST_FEATURES:
+            values_list = [
+                f.get(feature) for f in features_list if isinstance(f.get(feature), list)
+            ]
+            common_value, ratio = _most_common_from_lists(values_list)
+            if common_value and ratio >= min_support_ratio:
+                conditions[feature] = {"contains": common_value}
+                break
+
+    if len(conditions) < max_total_conditions:
+        for feature in _CATEGORICAL_FEATURES:
+            values = [
+                f.get(feature)
+                for f in features_list
+                if isinstance(f.get(feature), str) and f.get(feature)
+            ]
+            common_value, ratio = _most_common(values)
+            if common_value and ratio >= min_support_ratio:
+                conditions[feature] = common_value
+                break
+
+    return conditions
+
+
+async def learn_curation_rules_from_decisions(
+    db: AsyncSession,
+    *,
+    min_samples: int = 10,
+    min_support_ratio: float = 0.6,
+    max_numeric_conditions: int = 2,
+    platform: Optional[str] = None,
+    decision_type: Optional[CurationDecisionType] = None,
+    dry_run: bool = False,
+) -> Dict[str, Any]:
+    """
+    Generate or update learned curation rules from decision history.
+    """
+    if min_samples < 1:
+        raise ValueError("min_samples must be >= 1")
+    if min_support_ratio <= 0 or min_support_ratio > 1:
+        raise ValueError("min_support_ratio must be within (0, 1]")
+    if max_numeric_conditions < 0:
+        raise ValueError("max_numeric_conditions must be >= 0")
+
+    result = await db.execute(
+        select(CurationDecision).where(CurationDecision.extracted_features.isnot(None))
+    )
+    decisions = result.scalars().all()
+
+    groups: Dict[Tuple[CurationDecisionType, str], List[Dict[str, Any]]] = defaultdict(list)
+    for decision in decisions:
+        normalized_type = _normalize_decision_type(decision.decision_type)
+        if not normalized_type:
+            continue
+        if decision_type and normalized_type != decision_type:
+            continue
+        features = decision.extracted_features
+        if not isinstance(features, dict):
+            continue
+        platform_value = features.get("platform") or "unknown"
+        if isinstance(platform_value, str):
+            platform_value = platform_value.strip() or "unknown"
+        if platform and platform_value != platform:
+            continue
+        groups[(normalized_type, str(platform_value))].append(features)
+
+    created = 0
+    updated = 0
+    skipped = 0
+    ignored = 0
+    rules: List[Dict[str, Any]] = []
+
+    for (normalized_type, platform_value), features_list in groups.items():
+        if len(features_list) < min_samples:
+            ignored += 1
+            continue
+
+        conditions = _build_rule_conditions(
+            features_list,
+            normalized_type,
+            platform_value,
+            min_support_ratio=min_support_ratio,
+            max_numeric_conditions=max_numeric_conditions,
+        )
+        if len(conditions) <= 1:
+            ignored += 1
+            continue
+
+        rule_type = _DECISION_TO_RULE_TYPE.get(normalized_type)
+        if not rule_type:
+            ignored += 1
+            continue
+
+        rule_name = f"learned_{normalized_type.value}_{platform_value}"
+        existing = await db.execute(
+            select(CurationRule).where(
+                CurationRule.rule_name == rule_name,
+                CurationRule.rule_type == rule_type,
+                CurationRule.source == "learned",
+            )
+        )
+        rule = existing.scalar_one_or_none()
+
+        action = "skipped"
+        if rule:
+            if rule.conditions != conditions or rule.sample_size != len(features_list):
+                if not dry_run:
+                    rule.conditions = conditions
+                    rule.sample_size = len(features_list)
+                    rule.priority = len(features_list)
+                    rule.updated_at = datetime.now(timezone.utc)
+                updated += 1
+                action = "updated"
+            else:
+                skipped += 1
+        else:
+            if not dry_run:
+                db.add(
+                    CurationRule(
+                        rule_name=rule_name,
+                        rule_type=rule_type,
+                        conditions=conditions,
+                        source="learned",
+                        sample_size=len(features_list),
+                        priority=len(features_list),
+                        description=f"Learned from {len(features_list)} decisions",
+                    )
+                )
+            created += 1
+            action = "created"
+
+        rules.append(
+            {
+                "rule_name": rule_name,
+                "rule_type": rule_type.value,
+                "decision_type": normalized_type.value,
+                "platform": platform_value,
+                "sample_size": len(features_list),
+                "action": action,
+            }
+        )
+
+    if not dry_run:
+        await db.commit()
+
+    return {
+        "total_decisions": len(decisions),
+        "total_groups": len(groups),
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "ignored": ignored,
+        "dry_run": dry_run,
+        "rules": rules,
+    }
 
 
 # =====================================

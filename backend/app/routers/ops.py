@@ -25,6 +25,7 @@ from app.models import (
     EvidenceEvent, EvidenceEventStatus, DecisionObject,
     VDGEdge, VDGEdgeStatus,
     PatternCluster, NotebookSourcePack,
+    CurationDecisionType,
 )
 from app.utils.time import utcnow
 
@@ -73,6 +74,15 @@ class SessionHUD(BaseModel):
     failed_items: int
     next_cta: Optional[str]
     last_run: Optional[RunSummary]
+
+
+class CurationRuleLearnRequest(BaseModel):
+    min_samples: int = 10
+    min_support_ratio: float = 0.6
+    max_numeric_conditions: int = 2
+    platform: Optional[str] = None
+    decision_type: Optional[str] = None
+    dry_run: bool = False
 
 
 # --- Endpoints ---
@@ -446,3 +456,38 @@ async def confirm_edge(
         "edge_id": str(edge_id),
         "new_status": edge.status.value
     }
+
+
+@router.post("/curation/rules/learn")
+async def learn_curation_rules(
+    payload: CurationRuleLearnRequest,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    큐레이션 결정 데이터에서 규칙을 생성/갱신 (Admin only)
+    """
+    decision_type = None
+    if payload.decision_type:
+        try:
+            decision_type = CurationDecisionType(payload.decision_type)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid decision_type (use: normal, campaign, rejected)",
+            )
+
+    from app.services.curation_service import learn_curation_rules_from_decisions
+
+    try:
+        return await learn_curation_rules_from_decisions(
+            db,
+            min_samples=payload.min_samples,
+            min_support_ratio=payload.min_support_ratio,
+            max_numeric_conditions=payload.max_numeric_conditions,
+            platform=payload.platform,
+            decision_type=decision_type,
+            dry_run=payload.dry_run,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))

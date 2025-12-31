@@ -200,8 +200,8 @@ class TikTokOutlierCrawler:
                                 :share_count,
                                 :outlier_score,
                                 :outlier_tier,
-                                'pending',
-                                'pending',
+                                'PENDING',
+                                'PENDING',
                                 NOW()
                             )
                             ON CONFLICT (external_id) DO UPDATE SET
@@ -436,6 +436,15 @@ async def update_all_outliers_with_real_data():
         # 먼저 기존 placeholder 데이터 삭제
         await conn.execute(text("DELETE FROM outlier_items WHERE video_url LIKE '%placeholder%' OR video_url NOT LIKE '%/video/%'"))
         
+        # Get or create source
+        source_res = await conn.execute(text("SELECT id FROM outlier_sources WHERE name = 'tiktok_crawler'"))
+        source_id = source_res.scalar()
+        
+        if not source_id:
+            # Create source if not exists
+            source_res = await conn.execute(text("INSERT INTO outlier_sources (id, name, base_url, auth_type, crawl_interval_hours, is_active, created_at) VALUES (gen_random_uuid(), 'tiktok_crawler', 'https://www.tiktok.com', 'none', 24, true, NOW()) RETURNING id"))
+            source_id = source_res.scalar()
+
         updated = 0
         for video in VERIFIED_TIKTOK_VIDEOS:
             try:
@@ -444,11 +453,12 @@ async def update_all_outliers_with_real_data():
                 await conn.execute(
                     text("""
                         INSERT INTO outlier_items (
-                            id, external_id, video_url, platform, category, title,
+                            id, source_id, external_id, video_url, platform, category, title,
                             thumbnail_url, view_count, like_count, share_count,
-                            outlier_score, outlier_tier, status, analysis_status, crawled_at
+                            outlier_score, outlier_tier, status, analysis_status, crawled_at, updated_at
                         ) VALUES (
                             gen_random_uuid(),
+                            :source_id,
                             :external_id,
                             :video_url,
                             'tiktok',
@@ -460,8 +470,9 @@ async def update_all_outliers_with_real_data():
                             :share_count,
                             :outlier_score,
                             :tier,
+                            'PENDING',
                             'pending',
-                            'pending',
+                            NOW(),
                             NOW()
                         )
                         ON CONFLICT (external_id) DO UPDATE SET
@@ -484,7 +495,9 @@ async def update_all_outliers_with_real_data():
                         'like_count': video['like_count'],
                         'share_count': video['share_count'],
                         'outlier_score': video['outlier_score'],
+                        'outlier_score': video['outlier_score'],
                         'tier': tier,
+                        'source_id': source_id
                     }
                 )
                 updated += 1

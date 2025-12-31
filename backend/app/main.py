@@ -133,6 +133,10 @@ app.include_router(agent_router, tags=["Agent"])
 from app.routers.coaching import router as coaching_router
 app.include_router(coaching_router, tags=["Coaching"])
 
+# Register Curation routes (Rule Learning)
+from app.routers.curation import router as curation_router
+app.include_router(curation_router, prefix="/api/v1", tags=["Curation"])
+
 
 @app.get("/health")
 async def health_check():

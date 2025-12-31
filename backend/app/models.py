@@ -558,10 +558,10 @@ class OutlierSource(Base):
 
 
 class OutlierItemStatus(str, enum.Enum):
-    PENDING = "pending"        # 수집됨, 미검토
-    SELECTED = "selected"      # Parent 후보로 선정
-    REJECTED = "rejected"      # 제외됨
-    PROMOTED = "promoted"      # RemixNode(Parent)로 승격됨
+    PENDING = "PENDING"        # 수집됨, 미검토
+    SELECTED = "SELECTED"      # Parent 후보로 선정
+    REJECTED = "REJECTED"      # 제외됨
+    PROMOTED = "PROMOTED"      # RemixNode(Parent)로 승격됨
 
 
 class OutlierItem(Base):
@@ -675,7 +675,7 @@ class CurationDecision(Base):
     curator_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
     
     # 결정 정보
-    decision_type: Mapped[str] = mapped_column(SQLEnum(CurationDecisionType), index=True)
+    decision_type: Mapped[str] = mapped_column(SQLEnum(CurationDecisionType, values_callable=lambda obj: [e.value for e in obj]), index=True)
     decision_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     
     # VDG 분석 스냅샷 (결정 시점의 분석 결과)
@@ -711,7 +711,7 @@ class CurationRule(Base):
     
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     rule_name: Mapped[str] = mapped_column(String(200), nullable=False)
-    rule_type: Mapped[str] = mapped_column(SQLEnum(CurationRuleType), index=True)
+    rule_type: Mapped[str] = mapped_column(SQLEnum(CurationRuleType, values_callable=lambda obj: [e.value for e in obj]), index=True)
     
     # 조건 (JSON Logic 형식)
     conditions: Mapped[dict] = mapped_column(JSONB, nullable=False)

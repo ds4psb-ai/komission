@@ -4,6 +4,7 @@ Phase 4: VDG + EvidenceSnapshot + Outlier Ingestion
 """
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, List, Any
+from uuid import UUID
 from datetime import datetime
 from enum import Enum
 
@@ -113,6 +114,18 @@ class OutlierPromoteRequest(BaseModel):
     - campaign_eligible: 체험단 적합 여부 (O2O 연동)
     """
     campaign_eligible: bool = False
+    matched_rule_id: Optional[UUID] = None
+    rule_followed: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class OutlierRejectRequest(BaseModel):
+    """
+    거부 요청 바디
+    """
+    matched_rule_id: Optional[UUID] = None
+    rule_followed: Optional[bool] = None
+    notes: Optional[str] = None
 
 
 class OutlierCandidatesResponse(BaseModel):

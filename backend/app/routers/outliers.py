@@ -35,6 +35,7 @@ from app.schemas.evidence import (
     OutlierItemResponse,
     OutlierCandidatesResponse,
     OutlierPromoteRequest,
+    OutlierRejectRequest,
 )
 
 router = APIRouter(prefix="/outliers", tags=["Outliers"])
@@ -1153,6 +1154,19 @@ async def promote_to_parent(
         CurationDecisionType.CAMPAIGN if (request and request.campaign_eligible)
         else CurationDecisionType.NORMAL
     )
+
+    matched_rule_id = getattr(request, "matched_rule_id", None) if request else None
+    rule_followed = getattr(request, "rule_followed", None) if request else None
+    if matched_rule_id and rule_followed is None:
+        raise HTTPException(
+            status_code=400,
+            detail="rule_followed is required when matched_rule_id is set",
+        )
+    if rule_followed is not None and not matched_rule_id:
+        raise HTTPException(
+            status_code=400,
+            detail="matched_rule_id is required when rule_followed is set",
+        )
     
     await record_curation_decision(
         db,
@@ -1160,7 +1174,9 @@ async def promote_to_parent(
         remix_node_id=node.id,
         curator_id=current_user.id,
         decision_type=decision_type,
-        curator_notes=getattr(request, 'notes', None) if request else None,
+        curator_notes=getattr(request, "notes", None) if request else None,
+        matched_rule_id=matched_rule_id,
+        rule_followed=rule_followed,
     )
     
     # VDG 분석은 Admin 승인 후에만 실행됨 (analysis_status = pending)
@@ -1179,6 +1195,68 @@ async def promote_to_parent(
         "analysis_status": "pending",  # Admin 승인 대기
         "decision_type": decision_type.value,  # 큐레이션 결정 유형
         "message": "VDG 분석을 시작하려면 Admin 승인이 필요합니다. POST /outliers/items/{item_id}/approve",
+    }
+
+
+@router.post("/items/{item_id}/reject")
+async def reject_outlier_item(
+    item_id: str,
+    request: OutlierRejectRequest = None,
+    current_user: User = Depends(require_curator),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    아웃라이어 아이템 거부 및 결정 기록
+    """
+    result = await db.execute(
+        select(OutlierItem).where(OutlierItem.id == UUID(item_id))
+    )
+    item = result.scalar_one_or_none()
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Outlier item not found")
+
+    if item.status == OutlierItemStatus.PROMOTED:
+        raise HTTPException(status_code=400, detail="Already promoted")
+
+    if item.status == OutlierItemStatus.REJECTED:
+        raise HTTPException(status_code=400, detail="Already rejected")
+
+    matched_rule_id = getattr(request, "matched_rule_id", None) if request else None
+    rule_followed = getattr(request, "rule_followed", None) if request else None
+    if matched_rule_id and rule_followed is None:
+        raise HTTPException(
+            status_code=400,
+            detail="rule_followed is required when matched_rule_id is set",
+        )
+    if rule_followed is not None and not matched_rule_id:
+        raise HTTPException(
+            status_code=400,
+            detail="matched_rule_id is required when rule_followed is set",
+        )
+
+    item.status = OutlierItemStatus.REJECTED
+
+    from app.services.curation_service import record_curation_decision
+    from app.models import CurationDecisionType
+
+    await record_curation_decision(
+        db,
+        outlier_item_id=item.id,
+        remix_node_id=None,
+        curator_id=current_user.id,
+        decision_type=CurationDecisionType.REJECTED,
+        curator_notes=getattr(request, "notes", None) if request else None,
+        matched_rule_id=matched_rule_id,
+        rule_followed=rule_followed,
+    )
+
+    await db.commit()
+
+    return {
+        "rejected": True,
+        "item_id": item_id,
+        "decision_type": CurationDecisionType.REJECTED.value,
     }
 
 
@@ -1536,6 +1614,7 @@ async def _run_vdg_analysis_with_comments(
                 node_id,
                 audience_comments=best_comments  # Pass comments to pipeline
             )
+            vdg_snapshot = result.model_dump()
             
             # 4. Save analysis result to RemixNode
             node_result = await db.execute(
@@ -1544,13 +1623,25 @@ async def _run_vdg_analysis_with_comments(
             node = node_result.scalar_one_or_none()
             
             if node:
-                node.gemini_analysis = result.model_dump()
-                await db.commit()
+                node.gemini_analysis = vdg_snapshot
+
+            # 4.0 Attach VDG snapshot/features to curation decision
+            from app.services.curation_service import update_curation_decision_with_vdg
+
+            if item:
+                await update_curation_decision_with_vdg(
+                    db,
+                    outlier_item_id=item.id,
+                    remix_node_id=node.id if node else None,
+                    vdg_analysis=vdg_snapshot,
+                )
+
+            await db.commit()
             
             # 4.1 Save VDG quality score to OutlierItem
             try:
                 from app.validators.vdg_quality_validator import validate_vdg_quality
-                quality_result = validate_vdg_quality(result.model_dump())
+                quality_result = validate_vdg_quality(vdg_snapshot)
                 if item:
                     item.vdg_quality_score = quality_result.score
                     item.vdg_quality_valid = quality_result.is_valid
