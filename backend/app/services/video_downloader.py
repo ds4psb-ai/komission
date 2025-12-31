@@ -99,9 +99,10 @@ class VideoDownloader:
         if platform == 'tiktok':
             ydl_opts.update({
                 'format': 'best',
-                # TikTok 봇 차단 우회: 브라우저 쿠키 필수
-                'cookiesfrombrowser': ('chrome',) if not cookies_from_browser else None,
             })
+            # TikTok 봇 차단 우회: 브라우저 쿠키 필수
+            if not ydl_opts.get('cookiesfrombrowser'):
+                ydl_opts['cookiesfrombrowser'] = ('chrome',)
         elif platform == 'instagram':
             ydl_opts.update({
                 'format': 'best',

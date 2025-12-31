@@ -35,16 +35,21 @@ class ClaudeKoreanPlanner:
         # Construct Prompt
         # Construct Prompt
         # Support for V3 Reconstructible Schema
-        if "global_context" in gemini_result:
-            ctx = gemini_result["global_context"]
+        global_context = gemini_result.get("global_context")
+        if isinstance(global_context, dict):
+            ctx = global_context
             title = ctx.get("title", "Untitled")
             mood = ctx.get("mood", "Viral")
             key_action = ctx.get("key_action_description", "")
             humor_point = ctx.get("viral_hook_summary", "")
         else:
             # Legacy Schema
-            meme_dna = gemini_result.get("meme_dna", {})
-            metadata = gemini_result.get("metadata", {})
+            meme_dna = gemini_result.get("meme_dna")
+            if not isinstance(meme_dna, dict):
+                meme_dna = {}
+            metadata = gemini_result.get("metadata")
+            if not isinstance(metadata, dict):
+                metadata = {}
             title = metadata.get("title")
             mood = metadata.get("mood")
             key_action = meme_dna.get("key_action")

@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 class TimeWindowMs(BaseModel):
     """밀리초 단위 시간 윈도우"""
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     start_ms: int = Field(..., ge=0, description="inclusive")
     end_ms: int = Field(..., ge=0, description="exclusive")
@@ -46,7 +46,7 @@ MicrobeatRole = Literal[
 
 class MicrobeatLLM(BaseModel):
     """마이크로비트 (훅 내부 리듬 단위)"""
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     t_ms: int = Field(..., ge=0, description="timestamp in ms")
     role: MicrobeatRole
@@ -56,7 +56,7 @@ class MicrobeatLLM(BaseModel):
 
 class HookGenomeLLM(BaseModel):
     """훅 유전체 (바이럴 DNA 핵심)"""
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     strength: float = Field(..., ge=0.0, le=1.0)
     hook_start_ms: int = Field(..., ge=0)
@@ -75,7 +75,7 @@ class HookGenomeLLM(BaseModel):
 
 class SceneLLM(BaseModel):
     """씬 정보"""
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     idx: int = Field(..., ge=0)
     window: TimeWindowMs
@@ -95,7 +95,7 @@ MiseType = Literal[
 
 class MiseEnSceneSignalLLM(BaseModel):
     """미장센 신호"""
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     type: MiseType
     description: str = Field(..., min_length=1, max_length=240)
@@ -105,7 +105,7 @@ class MiseEnSceneSignalLLM(BaseModel):
 
 class IntentLayerLLM(BaseModel):
     """크리에이터 의도 레이어"""
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     creator_intent: str = Field(..., min_length=1, max_length=240)
     audience_trigger: List[str] = Field(default_factory=list, max_length=8, description="감정/욕구 트리거")
@@ -122,8 +122,9 @@ EntityType = Literal["person", "face", "hand", "product", "text", "environment",
 
 class EntityHintLLM(BaseModel):
     """CV에게 전달할 엔티티 힌트"""
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
+    key: str = Field(..., min_length=1, max_length=40, description="entity hint key (e.g. 'main_subject')")
     entity_type: EntityType
     description: str = Field(..., min_length=1, max_length=200)
     appears_windows: List[TimeWindowMs] = Field(default_factory=list, max_length=6)
@@ -136,7 +137,7 @@ class EntityHintLLM(BaseModel):
 
 class CausalReasoningLLM(BaseModel):
     """인과 추론 (왜 바이럴인가)"""
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     why_viral_one_liner: str = Field(..., min_length=1, max_length=240)
     causal_chain: List[str] = Field(default_factory=list, max_length=8, description="원인→결과 체인")
@@ -160,7 +161,7 @@ class CommentEvidenceLLM(BaseModel):
     
     중요: LLM은 새 ID를 생성하지 않고, 입력된 comment_rank만 참조
     """
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     comment_rank: int = Field(..., ge=1, le=20, description="top_comments의 순위 (1-20)")
     quote: str = Field(..., min_length=1, max_length=160, description="댓글 핵심 구절")
@@ -175,7 +176,7 @@ class ViralKickLLM(BaseModel):
     
     댓글 증거 + 영상 증거 cue를 반드시 포함해야 함
     """
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     kick_index: int = Field(..., ge=1, le=8)
     window: TimeWindowMs
@@ -210,7 +211,7 @@ ROI = Literal["full_frame", "face", "main_subject", "product", "text_overlay"]
 
 class MeasurementSpecLLM(BaseModel):
     """CV 측정 명세"""
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     metric_id: str = Field(..., min_length=1, max_length=80, description="MUST be from METRIC_DEFINITIONS keys")
     aggregation: Aggregation = "mean"
@@ -227,7 +228,7 @@ class AnalysisPointSeedLLM(BaseModel):
     
     중요: ID(ap_id) 생성 금지, 수치 생성 금지
     """
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     t_center_ms: int = Field(..., ge=0)
     t_window_ms: int = Field(..., ge=200, le=6000, description="CV 측정 윈도우 폭 (200~6000ms 권장)")
@@ -251,7 +252,7 @@ class AnalysisPointSeedLLM(BaseModel):
 
 class AnalysisPlanSeedLLM(BaseModel):
     """CV 측정 계획 Seed"""
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     points: List[AnalysisPointSeedLLM] = Field(default_factory=list, max_length=12)
 
@@ -272,7 +273,7 @@ class UnifiedPassLLMOutput(BaseModel):
     - comment_evidence_top5: 반드시 5개 댓글 증거
     - viral_kicks: 3~5개 바이럴 킥 구간 (댓글+영상 증거 필수)
     """
-    model_config = ConfigDict(extra="forbid")
+    # model_config removed for Gemini compatibility
 
     schema_version: str = Field(..., description="e.g. 'unified_pass_llm.v2'")
     language: str = Field("ko", description="output language for text fields")
@@ -295,7 +296,7 @@ class UnifiedPassLLMOutput(BaseModel):
     )
 
     # CV guidance
-    entity_hints: Dict[str, EntityHintLLM] = Field(default_factory=dict)
+    entity_hints: List[EntityHintLLM] = Field(default_factory=list, max_length=10)
     analysis_plan: AnalysisPlanSeedLLM
 
     # Why viral

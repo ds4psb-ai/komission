@@ -143,48 +143,17 @@ class UnifiedPass:
         
         video_parts = []
         
-        # Hook part (항상 포함)
-        hook_part = types.Part.from_uri(
-            file_uri=video_file.uri,
-            mime_type=video_file.mime_type,
-            video_metadata=types.VideoMetadata(
-                start_offset="0s",
-                end_offset=f"{self.hook_clip_seconds}s",
-                fps=self.hook_clip_fps,
-            ),
-        )
-        video_parts.append(hook_part)
-        
-        # Zoom Windows (scene cuts + audio peaks)
-        zoom_windows = []
-        if self.enable_zoom_windows:
-            zoom_windows = self._detect_zoom_windows(
-                video_path,
-                duration_ms,
-                max_windows=self.max_zoom_windows
-            )
-            for i, (start_sec, end_sec) in enumerate(zoom_windows):
-                zoom_part = types.Part.from_uri(
-                    file_uri=video_file.uri,
-                    mime_type=video_file.mime_type,
-                    video_metadata=types.VideoMetadata(
-                        start_offset=f"{start_sec:.1f}s",
-                        end_offset=f"{end_sec:.1f}s",
-                        fps=self.zoom_window_fps,
-                    ),
-                )
-                video_parts.append(zoom_part)
-            logger.info(f"🔍 Added {len(zoom_windows)} zoom windows")
-        
-        # Full video part
+        # Note: video_metadata parameter not supported in current SDK version
+        # Using simple Part.from_uri without segment specification
+        # The LLM will analyze the full video
         full_part = types.Part.from_uri(
             file_uri=video_file.uri,
             mime_type=video_file.mime_type,
-            video_metadata=types.VideoMetadata(
-                fps=self.full_video_fps,
-            ),
         )
         video_parts.append(full_part)
+        
+        # Log that we're using full video (segment features disabled)
+        logger.info(f"📹 Using full video analysis (segment features disabled due to SDK)")
 
         # 3. 프롬프트 빌드 (Metric Registry SSoT에서 allow-list 주입)
         prompt = build_unified_prompt(
@@ -196,13 +165,8 @@ class UnifiedPass:
             metric_definitions=METRIC_DEFINITIONS,
         )
         
-        # Zoom Windows 정보를 프롬프트에 추가
-        if zoom_windows:
-            zoom_info = "\n\nZOOM WINDOWS (high-FPS clips for precise analysis):\n"
-            for i, (start_sec, end_sec) in enumerate(zoom_windows):
-                zoom_info += f"- Z{i+1}: {start_sec:.1f}s ~ {end_sec:.1f}s\n"
-            zoom_info += "Use these to localize viral_kicks precisely within these windows.\n"
-            prompt += zoom_info
+        
+        # Note: Zoom Windows feature disabled due to SDK limitations
 
         contents = [
             types.Content(
