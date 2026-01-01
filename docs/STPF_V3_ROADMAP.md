@@ -174,16 +174,22 @@ class STPFInvariantRules:
     ]
     
     def validate_rule_1_gate_first(self, gates: Dict[str, float]) -> bool:
-        """Rule 1: Gate 통과 여부가 모든 계산보다 선행"""
+        """Rule 1: Gate 통과 여부가 모든 계산보다 선행
+        
+        v3.1 하드 룰: Gate < 4 → 즉시 0점 (1-10 스케일 기준)
+        """
         for gate_name, gate_value in gates.items():
-            if gate_value < 0.5:  # 시그모이드 임계점
+            if gate_value < 4:  # 1-10 스케일에서 4 미만 = Kill Switch
                 return False
         return True
     
     def validate_rule_2_proof_or_zero(self, proof_score: float, claim_count: int) -> float:
-        """Rule 2: 비용 지불 없는 주장은 0점"""
-        if proof_score < 0.3 and claim_count > 0:
-            return 0.0
+        """Rule 2: 비용 지불 없는 주장은 최대 3점
+        
+        v3.1 하드 룰: Evidence 없으면 해당 변수 최대 3점으로 제한
+        """
+        if proof_score < 3 and claim_count > 0:
+            return min(proof_score, 3.0)  # 최대 3점 제한
         return proof_score
     
     def apply_rule_4_essence_exponential(self, essence: float, alpha: float = 2.0) -> float:
@@ -351,18 +357,17 @@ class STPFNumerator(BaseModel):
     }
     
     def calculate_value(self) -> float:
-        """V = E^α × K^β × Nᵥ^γ × Cₙ^δ × Pᵣ^ε"""
-        normalized = {
-            "essence": (self.essence - 1) / 9,
-            "capability": (self.capability - 1) / 9,
-            "novelty": (self.novelty - 1) / 9,
-            "connection": (self.connection - 1) / 9,
-            "proof": (self.proof - 1) / 9,
-        }
+        """V = E^α × K^β × Nᵥ^γ × Cₙ^δ × Pᵣ^ε
         
-        return math.prod(
-            (normalized[k] + 0.01) ** v  # +0.01 for zero prevention
-            for k, v in self.EXPONENTS.items()
+        v3.1 Safe Math: Raw Score 1-10 사용 (Vanishing Gradient 방지)
+        """
+        # Raw Score 직접 사용 (정규화 X)
+        return (
+            (self.essence ** self.EXPONENTS["essence"]) *
+            (self.capability ** self.EXPONENTS["capability"]) *
+            (self.novelty ** self.EXPONENTS["novelty"]) *
+            (self.connection ** self.EXPONENTS["connection"]) *
+            (self.proof ** self.EXPONENTS["proof"])
         )
 
 
@@ -385,19 +390,23 @@ class STPFDenominator(BaseModel):
     }
     
     def calculate_friction(self) -> float:
-        """F = C^κ × R^λ × T^μ × Pr^ν × L^τ × U^υ"""
-        normalized = {
-            "cost": (self.cost - 1) / 9,
-            "risk": (self.risk - 1) / 9,
-            "threat": (self.threat - 1) / 9,
-            "pressure": (self.pressure - 1) / 9,
-            "time_lag": (self.time_lag - 1) / 9,
-            "uncertainty": (self.uncertainty - 1) / 9,
-        }
+        """F = Π(1 + w * norm(x))
         
-        return math.prod(
-            (normalized[k] + 0.01) ** v
-            for k, v in self.EXPONENTS.items()
+        v3.1 Safe Math: 1 + normalized * weight 패턴 (Division by Zero 방지)
+        - 저항=1(최소) → norm=0 → friction=1 (점수 보존)
+        - 저항=10(최대) → norm=1 → friction 증가 (점수 하락)
+        """
+        def safe_friction_term(raw_score: float, weight: float) -> float:
+            normalized = (raw_score - 1) / 9  # 1-10 → 0-1
+            return 1 + normalized * weight
+        
+        return (
+            safe_friction_term(self.cost, self.EXPONENTS["cost"]) *
+            safe_friction_term(self.risk, self.EXPONENTS["risk"]) *
+            safe_friction_term(self.threat, self.EXPONENTS["threat"]) *
+            safe_friction_term(self.pressure, self.EXPONENTS["pressure"]) *
+            safe_friction_term(self.time_lag, self.EXPONENTS["time_lag"]) *
+            safe_friction_term(self.uncertainty, self.EXPONENTS["uncertainty"])
         )
 
 
@@ -499,7 +508,7 @@ class STPFCalculatorV31:
             gate_passed=True,
             gate_total=g_total,
             value=v,
-            friction=f,
+            friction=f_total,
             multiplier_boost=m_boost,
             entropy_boost=entropy_boost,
             components={
@@ -1056,10 +1065,13 @@ class STPFReport(BaseModel):
 │  ├── [ ] API 엔드포인트 (/stpf/analyze)                            │
 │  └── [ ] 프론트엔드 Go/No-Go 표시                                  │
 │                                                                      │
-│  Week 5+                                                             │
-│  ├── [ ] NotebookLM 다중 깊이 연동                                  │
-│  ├── [ ] 실시간 코칭 STPF 갱신                                     │
-│  └── [ ] A/B 테스트 및 가중치 튜닝                                 │
+│  Week 5+ (기존 시스템 고도화)                                         │
+│  ├── [✓] NotebookLM 연동 (기존: notebooklm_api.py) → STPF 변수 매핑  │
+│  ├── [✓] 실시간 코칭 (기존: audio_coach.py) → STPF 갱신 통합         │
+│  ├── [ ] Evidence 임계치 설계 (ToT/Kelly 활성화 전 필수)             │
+│  └── [ ] A/B 테스트 및 가중치 튜닝                                  │
+│                                                                      │
+│  ⚠️ 주의: ToT/Monte Carlo + Kelly는 Evidence 분포 충분히 확보 후 활성화 │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
