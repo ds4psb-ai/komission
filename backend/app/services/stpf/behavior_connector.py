@@ -16,6 +16,7 @@ from datetime import datetime
 from app.services.stpf.bayesian_updater import (
     BayesianPatternUpdater, 
     PatternEvidence,
+    BayesianPrior,
     bayesian_updater
 )
 from app.services.stpf.free_energy import (
@@ -98,7 +99,13 @@ class STPFBehaviorConnector:
             success = compliance_rate >= self.COMPLIANCE_SUCCESS_THRESHOLD
             
             try:
-                prior_before = self.bayesian.get_pattern_prior(pattern_id)
+                # Get existing prior or create default
+                default_prior = BayesianPrior(
+                    pattern_id=pattern_id, 
+                    p_success=0.5, 
+                    sample_count=0
+                )
+                prior_before = self.bayesian.prior_database.get(pattern_id, default_prior)
                 
                 evidence = PatternEvidence(
                     pattern_id=pattern_id,
@@ -106,7 +113,7 @@ class STPFBehaviorConnector:
                     confidence=min(compliance_rate, 1.0),
                     source="coaching_session",
                 )
-                posterior = self.bayesian.update(evidence)
+                posterior = self.bayesian.update_posterior(pattern_id, evidence)
                 
                 result["prior_before"] = prior_before.p_success
                 result["prior_after"] = posterior.p_success
@@ -232,16 +239,20 @@ class STPFBehaviorConnector:
             Bayesian prior, Free Energy 상태
         """
         try:
-            prior = self.bayesian.get_pattern_prior(pattern_id)
-            fe_result = self.free_energy.check()
+            default_prior = BayesianPrior(
+                pattern_id=pattern_id, 
+                p_success=0.5, 
+                sample_count=0
+            )
+            prior = self.bayesian.prior_database.get(pattern_id, default_prior)
+            fe_result = self.free_energy.calculate_free_energy()
             
             return {
                 "pattern_id": pattern_id,
                 "bayesian": {
                     "p_success": prior.p_success,
-                    "confidence_interval": prior.confidence_interval,
                     "sample_count": prior.sample_count,
-                    "confidence_level": prior.get_confidence_level(),
+                    "last_updated": getattr(prior, 'last_updated', None),
                 },
                 "free_energy": {
                     "entropy": fe_result.entropy,
