@@ -14,6 +14,8 @@ import Link from 'next/link';
 import { AppHeader } from '@/components/AppHeader';
 import { StoryboardPanel } from '@/components/video/StoryboardPanel';
 import { CoachingSession } from '@/components/CoachingSession';
+import { STPFPanel, STPFBadge, STPFQuickView } from '@/components/stpf/STPFComponents';
+import { useSTPFAutoAnalyze } from '@/hooks/useSTPF';
 import {
     ArrowLeft, Play, ExternalLink, Bookmark, Copy, Check,
     Target, Clock, Sparkles, Eye, Heart, TrendingUp,
@@ -470,6 +472,88 @@ function CampaignPanel({ video }: { video: VideoDetail }) {
 }
 
 // ==================
+// STPF Decision Panel Component
+// ==================
+
+function STPFDecisionPanel({ outlierId }: { outlierId: string }) {
+    const [stpfData, setStpfData] = useState<{
+        score: number;
+        signal: 'GO' | 'CONSIDER' | 'NO-GO';
+        grade: { grade: string; label: string; description: string; action: string; kelly_hint: string; color: string } | null;
+        kelly: { recommended_effort_percent: number } | null;
+        why: string | null;
+        how: string[];
+    } | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [expanded, setExpanded] = useState(false);
+
+    useEffect(() => {
+        // Simulate STPF analysis based on video metrics
+        // In production, this would call api.stpfAnalyzeVdg()
+        const fetchSTPF = async () => {
+            try {
+                // Demo data - replace with actual API call
+                const mockScore = Math.floor(600 + Math.random() * 350);
+                let signal: 'GO' | 'CONSIDER' | 'NO-GO' = 'CONSIDER';
+                let gradeInfo = { grade: 'B', label: 'Dough', description: '검증 필요한 아이디어', action: '프로토타입 테스트', kelly_hint: '10-20% 리소스', color: 'yellow' };
+
+                if (mockScore >= 700) {
+                    signal = 'GO';
+                    gradeInfo = mockScore >= 850
+                        ? { grade: 'S', label: 'Unicorn', description: '즉시 확장 추천', action: '템플릿화, 확장', kelly_hint: '40%+ 리소스', color: 'purple' }
+                        : { grade: 'A', label: 'Cash Cow', description: '안정적 성과 기대', action: '리텐션 최적화', kelly_hint: '30% 리소스', color: 'emerald' };
+                } else if (mockScore < 400) {
+                    signal = 'NO-GO';
+                    gradeInfo = { grade: 'C', label: 'Zombie', description: '투자 비추천', action: '다른 패턴 검토', kelly_hint: '5% 이하', color: 'gray' };
+                }
+
+                setStpfData({
+                    score: mockScore,
+                    signal,
+                    grade: gradeInfo,
+                    kelly: { recommended_effort_percent: mockScore / 30 },
+                    why: signal === 'GO' ? '높은 훅 강도와 검증된 패턴 조합' : '패턴 증거 부족 또는 리스크 높음',
+                    how: ['훅 타이밍 1초 내 노출', '비주얼 대비 강화', '댓글 유도 CTA'],
+                });
+            } catch (err) {
+                console.error('STPF analysis failed:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchSTPF();
+    }, [outlierId]);
+
+    if (loading) {
+        return (
+            <div className="p-4 bg-gray-800/60 rounded-xl border border-gray-700 animate-pulse">
+                <div className="flex items-center gap-3">
+                    <div className="w-5 h-5 bg-gray-600 rounded" />
+                    <div className="w-24 h-5 bg-gray-600 rounded" />
+                    <div className="ml-auto w-20 h-7 bg-gray-600 rounded-full" />
+                </div>
+            </div>
+        );
+    }
+
+    if (!stpfData) return null;
+
+    return (
+        <STPFPanel
+            score={stpfData.score}
+            signal={stpfData.signal}
+            grade={stpfData.grade || undefined}
+            why={stpfData.why || undefined}
+            how={stpfData.how}
+            kellyPercent={stpfData.kelly?.recommended_effort_percent}
+            expanded={expanded}
+            onToggle={() => setExpanded(!expanded)}
+        />
+    );
+}
+
+// ==================
 // Main Component
 // ==================
 
@@ -700,6 +784,9 @@ export default function VideoDetailPage() {
 
                     {/* Right: Guide + Campaign */}
                     <div className="lg:col-span-7 space-y-6">
+                        {/* STPF Go/No-Go Decision Panel */}
+                        <STPFDecisionPanel outlierId={video.id} />
+
                         <div>
                             <div className="flex items-center gap-2 mb-4">
                                 <Sparkles className="w-5 h-5 text-cyan-400" />

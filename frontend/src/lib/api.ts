@@ -779,6 +779,148 @@ export class ApiClient {
     async getAllSessionsStats(): Promise<AllSessionsStatsResponse> {
         return this.request<AllSessionsStatsResponse>('/api/v1/coaching/stats/all-sessions');
     }
+
+    // ==================
+    // STPF v3.1 (Single Truth Pattern Formalization)
+    // ==================
+
+    /**
+     * STPF 빠른 점수 계산 (핵심 변수만)
+     */
+    async stpfQuickScore(data: {
+        essence: number;
+        novelty: number;
+        proof: number;
+        risk: number;
+        network: number;
+    }): Promise<STPFQuickScoreResponse> {
+        return this.request<STPFQuickScoreResponse>('/api/v1/stpf/quick-score', {
+            method: 'POST',
+            body: JSON.stringify({
+                gates: { trust_gate: 7, legality_gate: 8, hygiene_gate: 7 },
+                numerator: {
+                    essence: data.essence,
+                    capability: 5,
+                    novelty: data.novelty,
+                    connection: 5,
+                    proof: data.proof,
+                },
+                denominator: {
+                    cost: 4,
+                    risk: data.risk,
+                    threat: 5,
+                    pressure: 5,
+                    time_lag: 4,
+                    uncertainty: 5,
+                },
+                multipliers: {
+                    scarcity: 5,
+                    network: data.network,
+                    leverage: 5,
+                },
+            }),
+        });
+    }
+
+    /**
+     * STPF 전체 분석
+     */
+    async stpfAnalyze(data: {
+        gates: STPFGates;
+        numerator: STPFNumerator;
+        denominator: STPFDenominator;
+        multipliers: STPFMultipliers;
+        apply_patches?: boolean;
+        update_bayesian?: boolean;
+    }): Promise<STPFAnalyzeResponse> {
+        return this.request<STPFAnalyzeResponse>('/api/v1/stpf/analyze/manual', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    /**
+     * VDG ID로 STPF 분석
+     */
+    async stpfAnalyzeVdg(data: {
+        vdg_id: string;
+        outlier_id?: string;
+        apply_patches?: boolean;
+    }): Promise<STPFAnalyzeResponse> {
+        return this.request<STPFAnalyzeResponse>('/api/v1/stpf/analyze/vdg', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    /**
+     * STPF 등급 조회
+     */
+    async stpfGetGrade(score: number): Promise<STPFGradeResponse> {
+        return this.request<STPFGradeResponse>(`/api/v1/stpf/grade/${score}`);
+    }
+
+    /**
+     * Kelly Criterion 의사결정
+     */
+    async stpfKellyDecision(
+        score: number,
+        timeInvestmentHours: number = 10,
+        expectedViewMultiplier: number = 3
+    ): Promise<STPFKellyResponse> {
+        const params = new URLSearchParams({
+            time_investment_hours: timeInvestmentHours.toString(),
+            expected_view_multiplier: expectedViewMultiplier.toString(),
+        });
+        return this.request<STPFKellyResponse>(`/api/v1/stpf/kelly/${score}?${params}`);
+    }
+
+    /**
+     * ToT 시뮬레이션 (Worst/Base/Best)
+     */
+    async stpfSimulateTot(data: {
+        gates: STPFGates;
+        numerator: STPFNumerator;
+        denominator: STPFDenominator;
+        multipliers: STPFMultipliers;
+        variation?: number;
+    }): Promise<STPFToTResponse> {
+        return this.request<STPFToTResponse>('/api/v1/stpf/simulate/tot', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    /**
+     * Monte Carlo 시뮬레이션
+     */
+    async stpfSimulateMonteCarlo(data: {
+        gates: STPFGates;
+        numerator: STPFNumerator;
+        denominator: STPFDenominator;
+        multipliers: STPFMultipliers;
+        n_simulations?: number;
+        noise_std?: number;
+    }): Promise<STPFMonteCarloResponse> {
+        return this.request<STPFMonteCarloResponse>('/api/v1/stpf/simulate/monte-carlo', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    /**
+     * STPF 변수 목록 조회
+     */
+    async stpfGetVariables(): Promise<{ gates: STPFGates; numerator: STPFNumerator; denominator: STPFDenominator; multipliers: STPFMultipliers }> {
+        return this.request('/api/v1/stpf/variables');
+    }
+
+    /**
+     * STPF 서비스 상태 확인
+     */
+    async stpfHealth(): Promise<{ status: string; version: Record<string, string>; endpoints: string[] }> {
+        return this.request('/api/v1/stpf/health');
+    }
 }
 
 // Evidence Loop Types
@@ -1663,5 +1805,127 @@ export interface AllSessionsStatsResponse {
     avg_compliance_unknown_rate: number;
 }
 
+// ==================
+// STPF v3.1 Types
+// ==================
+
+export interface STPFGates {
+    trust_gate: number;
+    legality_gate: number;
+    hygiene_gate: number;
+}
+
+export interface STPFNumerator {
+    essence: number;
+    capability: number;
+    novelty: number;
+    connection: number;
+    proof: number;
+}
+
+export interface STPFDenominator {
+    cost: number;
+    risk: number;
+    threat: number;
+    pressure: number;
+    time_lag: number;
+    uncertainty: number;
+}
+
+export interface STPFMultipliers {
+    scarcity: number;
+    network: number;
+    leverage: number;
+}
+
+export interface STPFResult {
+    raw_score: number;
+    score_1000: number;
+    go_nogo: 'GO' | 'CONSIDER' | 'NO-GO';
+    gate_passed: boolean;
+    why?: string;
+    how?: string[];
+    improvements?: string[];
+}
+
+export interface STPFAnalyzeResponse {
+    success: boolean;
+    result?: STPFResult;
+    mapping_info: Record<string, any>;
+    validation_info: Record<string, any>;
+    metadata: Record<string, any>;
+    bayesian_info: Record<string, any>;
+    patch_info: Record<string, any>;
+    anchor_interpretations: Record<string, any>;
+    error?: string;
+}
+
+export interface STPFQuickScoreResponse {
+    score_1000: number;
+    go_nogo: string;
+    why: string;
+    how: string[];
+    anchor_interpretations: Record<string, any>;
+}
+
+export interface STPFKellyResponse {
+    score: number;
+    signal: 'GO' | 'MODERATE' | 'CAUTION' | 'NO_GO';
+    recommended_effort_percent: number;
+    reason: string;
+    action: string;
+    kelly_fractions: { raw: number; safe: number };
+    expected_value: number;
+    grade: {
+        score_1000: number;
+        grade: string;
+        label: string;
+        description: string;
+        action: string;
+        kelly_hint: string;
+        color: string;
+    };
+    inputs: Record<string, any>;
+}
+
+export interface STPFGradeResponse {
+    score_1000: number;
+    grade: string;
+    label: string;
+    description: string;
+    action: string;
+    kelly_hint: string;
+    color: string;
+}
+
+export interface STPFToTResponse {
+    success: boolean;
+    worst: { scenario: string; score_1000: number; go_nogo: string };
+    base: { scenario: string; score_1000: number; go_nogo: string };
+    best: { scenario: string; score_1000: number; go_nogo: string };
+    weighted_score: number;
+    score_range: [number, number];
+    recommendation: string;
+    confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+export interface STPFMonteCarloResponse {
+    success: boolean;
+    n_simulations: number;
+    mean: number;
+    median: number;
+    std: number;
+    percentile_10: number;
+    percentile_90: number;
+    min_score: number;
+    max_score: number;
+    go_probability: number;
+    consider_probability: number;
+    nogo_probability: number;
+    distribution_summary: Record<string, number>;
+    run_time_ms: number;
+}
+
 // Singleton instance
 export const api = new ApiClient();
+
