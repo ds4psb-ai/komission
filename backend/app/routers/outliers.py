@@ -1694,6 +1694,51 @@ async def promote_to_parent(
             video_url=item.video_url,
             platform=item.platform,
         )
+    
+    # P3: STPF 승격 기록 (상관관계 분석용)
+    stpf_record = None
+    try:
+        from app.services.stpf.behavior_connector import get_behavior_connector
+        from app.services.stpf import stpf_calculator
+        
+        connector = get_behavior_connector()
+        
+        # 간단한 STPF 점수 계산 (VDG 없이 조회수 기반)
+        view_count = item.view_count or 0
+        growth_rate_str = item.growth_rate or "0"
+        growth_val = float(growth_rate_str.replace("%", "").replace("+", "").strip() or 0)
+        
+        # 조회수 기반 초기 STPF 점수 추정
+        if view_count >= 1000000:
+            estimated_score = 900
+        elif view_count >= 100000:
+            estimated_score = 750
+        elif view_count >= 10000:
+            estimated_score = 600
+        else:
+            estimated_score = 450
+        
+        # growth_rate 보정
+        if growth_val > 100:
+            estimated_score = min(estimated_score + 100, 1000)
+        elif growth_val > 50:
+            estimated_score = min(estimated_score + 50, 1000)
+        
+        # 등급 및 신호 계산
+        from app.services.stpf.kelly_criterion import kelly_engine
+        grade_info = kelly_engine.get_grade_info(estimated_score)
+        kelly_decision = kelly_engine.decide_from_score(estimated_score)
+        
+        stpf_record = connector.on_outlier_promoted(
+            outlier_id=str(item.id),
+            stpf_score=estimated_score,
+            stpf_grade=grade_info["grade"],
+            stpf_signal=kelly_decision["signal"],
+            promoter_id=str(current_user.id),
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"STPF promotion record failed: {e}")
 
     return {
         "promoted": True,
@@ -1702,6 +1747,7 @@ async def promote_to_parent(
         "remix_id": str(node.id),
         "analysis_status": "analyzing",  # 즉시 분석 시작
         "decision_type": decision_type.value,
+        "stpf_record": stpf_record,  # P3: STPF 기록 추가
         "message": "VDG 분석이 자동으로 시작됩니다.",
     }
 

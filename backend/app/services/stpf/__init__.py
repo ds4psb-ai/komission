@@ -127,5 +127,12 @@ __all__ = [
     "FreeEnergyChecker",
     "free_energy_checker",
     "FreeEnergyResult",
+    # Behavior Integration (P2-P3)
+    "STPFBehaviorConnector",
+    "get_behavior_connector",
 ]
 
+# Lazy import behavior connector to avoid circular imports
+def get_behavior_connector():
+    from app.services.stpf.behavior_connector import get_behavior_connector as _get
+    return _get()

@@ -159,6 +159,24 @@ class CoachingSessionService:
         complete_log.compliance_rate = complete_log.calculate_compliance_rate()
         complete_log.unknown_rate = complete_log.calculate_unknown_rate()
         
+        # P2: STPF Bayesian 학습 연결
+        try:
+            from app.services.stpf.behavior_connector import get_behavior_connector
+            connector = get_behavior_connector()
+            
+            upload_outcome = complete_log.upload_outcome
+            stpf_result = connector.on_coaching_session_end(
+                pattern_id=session.pattern_id,
+                compliance_rate=complete_log.compliance_rate,
+                intervention_count=complete_log.intervention_count,
+                uploaded=upload_outcome.uploaded if upload_outcome else False,
+                early_views_bucket=upload_outcome.early_views_bucket if upload_outcome else None,
+            )
+            complete_log.stpf_learning_result = stpf_result
+            logger.info(f"STPF learning triggered for session {session_id}")
+        except Exception as e:
+            logger.warning(f"STPF learning failed for session {session_id}: {e}")
+        
         return complete_log
     
     # ====================

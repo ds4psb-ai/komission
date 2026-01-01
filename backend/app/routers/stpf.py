@@ -462,5 +462,41 @@ async def health_check():
             "POST /stpf/simulate/monte-carlo",
             "GET /stpf/kelly/{score}",
             "GET /stpf/grade/{score}",
+            # P2-P3 Behavior
+            "GET /stpf/ops/correlation",
+            "GET /stpf/pattern/{pattern_id}/stats",
         ],
     }
+
+
+# ==================
+# P2-P3: BEHAVIOR INTEGRATION ENDPOINTS
+# ==================
+
+@router.get("/ops/correlation")
+async def get_ops_promotion_correlation():
+    """
+    Ops 승격 STPF 상관관계 분석
+    
+    Returns:
+        승격된 아웃라이어들의 STPF 점수 분포
+    """
+    from app.services.stpf.behavior_connector import get_behavior_connector
+    connector = get_behavior_connector()
+    return connector.get_promotion_stpf_correlation()
+
+
+@router.get("/pattern/{pattern_id}/stats")
+async def get_pattern_learning_stats(pattern_id: str):
+    """
+    패턴별 학습 통계 조회
+    
+    Args:
+        pattern_id: 패턴 ID
+    
+    Returns:
+        Bayesian prior, Free Energy 상태
+    """
+    from app.services.stpf.behavior_connector import get_behavior_connector
+    connector = get_behavior_connector()
+    return connector.get_pattern_learning_stats(pattern_id)
