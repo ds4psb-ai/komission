@@ -150,9 +150,15 @@ class VDGDatabaseSaver:
                 mechanism = kick_data.get('mechanism', '')
                 creator_instruction = kick_data.get('creator_instruction', '')
                 
+                # Handle both formats: window dict OR direct t_start_ms/t_end_ms
                 window = kick_data.get('window', {})
-                start_ms = window.get('start_ms', 0) if isinstance(window, dict) else 0
-                end_ms = window.get('end_ms', 5000) if isinstance(window, dict) else 5000
+                if isinstance(window, dict) and window:
+                    start_ms = window.get('start_ms', 0)
+                    end_ms = window.get('end_ms', 5000)
+                else:
+                    # VDG pipeline stores t_start_ms/t_end_ms directly
+                    start_ms = kick_data.get('t_start_ms', 0)
+                    end_ms = kick_data.get('t_end_ms', 5000)
                 
                 keyframes_data = kick_data.get('keyframes', [])
                 evidence_ranks = kick_data.get('evidence_comment_ranks', [])

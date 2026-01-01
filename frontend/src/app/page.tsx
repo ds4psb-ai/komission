@@ -114,7 +114,11 @@ export default function Home() {
       setIsLoading(true);
     }
     try {
-      const params: Record<string, string> = { limit: '50', status: 'promoted' };
+      const params: Record<string, string> = {
+        limit: '50',
+        status: 'promoted',
+        analysis_status: 'completed'  // Only show fully analyzed videos on main page
+      };
       if (platform !== 'all') params.platform = platform;
       if (tier !== 'all') params.tier = tier;
 

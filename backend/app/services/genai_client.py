@@ -32,6 +32,10 @@ from google.genai.types import (
     SafetySetting,
 )
 
+# Load .env explicitly for background task contexts
+from dotenv import load_dotenv
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 
 # ============================================
@@ -39,7 +43,7 @@ logger = logging.getLogger(__name__)
 # ============================================
 
 DEFAULT_MODEL_FLASH = "gemini-2.0-flash-exp"
-DEFAULT_MODEL_PRO = "gemini-3.0-pro"  # Gemini 3.0 Pro for VDG analysis
+DEFAULT_MODEL_PRO = "gemini-3-pro-preview"  # Gemini 3.0 Pro for VDG analysis
 DEFAULT_MODEL_AUDIO = "gemini-2.5-flash-native-audio-latest"
 
 # Timeout and Retry Configuration
@@ -183,7 +187,7 @@ def get_genai_client() -> genai.Client:
     Returns:
         google.genai.Client instance
     """
-    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     
     if not api_key:
         raise ValueError("No API key found. Set GOOGLE_API_KEY or GEMINI_API_KEY")

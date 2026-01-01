@@ -124,7 +124,8 @@ TOP COMMENTS (ranked, use comment_rank to reference):
 === TASKS ===
 
 A) Causal reasoning:
-- Explain in one line why it goes viral.
+- **why_viral_one_liner** (REQUIRED): A single Korean sentence (max 80 chars) explaining WHY this video goes viral.
+  Example: "기업 합병을 유머러스하게 풍자하여 공감과 웃음 유발"
 - Provide a short causal chain (max 8 steps).
 - Provide a replication recipe in creator language (max 8 bullets).
 - List risks/unknowns (max 6).
@@ -133,8 +134,14 @@ B) Mise-en-scène intent:
 - Extract 6~12 mise_en_scene_signals.
 - Each must include: type, description, why_it_matters, anchor_ms(optional).
 
-C) Hook genome:
-- Identify hook_start_ms, hook_end_ms, strength (0-1).
+C) Hook genome (REQUIRED):
+- **pattern** (REQUIRED): Hook pattern type. Must be one of:
+  "question_hook", "visual_punch", "pattern_break", "unboxing", "tutorial_tease", 
+  "reaction_bait", "before_after", "transformation", "controversy", "challenge", "other"
+- **hook_summary** (REQUIRED): 1-2 Korean sentences describing the hook strategy.
+  Example: "2026년 영화 인트로라는 가짜 맥락으로 시청자의 호기심을 유발"
+- **strength** (REQUIRED): 0.0-1.0 score for hook effectiveness.
+- Identify hook_start_ms (usually 0), hook_end_ms (when hook completes).
 - Extract 4~8 microbeats with role, t_ms, description.
 
 D) Evidence anchors (comment_evidence_top5 + viral_kicks):
@@ -154,6 +161,22 @@ E) Analysis plan seeds for deterministic CV measurement:
   - key -> {{entity_type, description, appears_windows[], cv_priority}}
 
 F) Output schema_version as "unified_pass_llm.v2"
+
+G) Scene segmentation (REQUIRED):
+- Output `scenes`: 4~8 scenes that segment the video narrative.
+- Each scene MUST include:
+  - idx (int): scene index starting from 0
+  - window.start_ms, window.end_ms: time boundaries
+  - label: one of "hook", "setup", "demo", "reveal", "payoff", "cta", "bridge", "outro"
+  - summary: 1-2 sentence description in Korean (크리에이터 언어)
+- First scene should be the "hook" (first 3-5 seconds).
+- Last scene should be "cta" or "outro" if applicable.
+
+H) Capsule brief (director guidance):
+- Output `capsule_brief` with:
+  - shotlist: list of 3-6 shot descriptions (e.g., "클로즈업으로 제품 강조", "리액션 캡처")
+  - do_not: list of 2-4 things to AVOID (e.g., "흔들리는 카메라", "너무 긴 인트로")
+  - hook_script: 1-2 sentence spoken/on-screen hook script in Korean
 
 OUTPUT JSON MUST MATCH THE PROVIDED JSON SCHEMA EXACTLY.
 Language for text fields: Korean (natural creator language).

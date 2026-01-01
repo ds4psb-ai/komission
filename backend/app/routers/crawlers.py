@@ -158,7 +158,8 @@ async def _run_crawler_background(
                     for item in items:
                         existing = await db.execute(
                             select(OutlierItem).where(
-                                OutlierItem.external_id == item.external_id
+                                (OutlierItem.external_id == item.external_id) |
+                                (OutlierItem.video_url == item.video_url)
                             )
                         )
                         if not existing.scalar_one_or_none():
@@ -395,7 +396,8 @@ async def _run_strategy_crawl_background(
             for item in items:
                 existing = await db.execute(
                     select(OutlierItem).where(
-                        OutlierItem.external_id == item.external_id
+                        (OutlierItem.external_id == item.external_id) |
+                        (OutlierItem.video_url == item.video_url)
                     )
                 )
                 if not existing.scalar_one_or_none():

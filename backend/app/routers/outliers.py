@@ -252,6 +252,7 @@ async def list_outliers(
     platform: Optional[str] = None,
     tier: Optional[str] = None,
     status: Optional[str] = None,
+    analysis_status: Optional[str] = None,  # NEW: Filter by analysis status
     freshness: Optional[str] = Query(default="7d"),
     sort_by: Optional[str] = Query(default="outlier_score"),
     limit: int = Query(default=50, le=200),
@@ -276,6 +277,10 @@ async def list_outliers(
         status_enum = getattr(OutlierItemStatus, status_upper, None)
         if status_enum:
             query = query.where(OutlierItem.status == status_enum)
+    
+    # NEW: analysis_status filter (completed, analyzing, pending)
+    if analysis_status:
+        query = query.where(OutlierItem.analysis_status == analysis_status)
     
     # Freshness filter
     if freshness == "24h":
@@ -547,6 +552,7 @@ async def create_item_manual(
 @router.get("/items/{item_id}")
 async def get_outlier_item(
     item_id: str,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -595,6 +601,7 @@ async def get_outlier_item(
     
     # If promoted, fetch VDG analysis from RemixNode
     if item.promoted_to_node_id:
+        analysis = None  # Initialize to avoid UnboundLocalError when gemini_analysis is NULL
         node_result = await db.execute(
             select(RemixNode).where(RemixNode.id == item.promoted_to_node_id)
         )
@@ -603,7 +610,15 @@ async def get_outlier_item(
         if node and node.gemini_analysis:
             analysis = node.gemini_analysis
             
-            # Transform gemini_analysis to frontend VideoAnalysis format
+            # Get best_comments from multiple sources
+            best_comments_list = []
+            # Source 1: OutlierItem.best_comments
+            if item.best_comments:
+                best_comments_list = item.best_comments[:5]
+            # Source 2: semantic.audience_reaction.best_comments (VDG v5)
+            elif analysis.get("semantic", {}).get("audience_reaction", {}).get("best_comments"):
+                best_comments_list = analysis["semantic"]["audience_reaction"]["best_comments"][:5]
+            
             response["analysis"] = {
                 "hook_pattern": _extract_hook_pattern(analysis),
                 "hook_score": _extract_hook_score(analysis),
@@ -615,7 +630,8 @@ async def get_outlier_item(
                 "do_not": _extract_do_not(analysis),
                 "invariant": _extract_invariant(analysis),
                 "variable": _extract_variable(analysis),
-                "best_comment": item.best_comments[0] if item.best_comments else None,
+                "best_comment": best_comments_list[0].get("text") if best_comments_list and isinstance(best_comments_list[0], dict) else (best_comments_list[0] if best_comments_list else None),
+                "best_comments": best_comments_list,
             }
             
             # L2 Integration: Try to generate DirectorPack from VDG for richer guides
@@ -664,6 +680,85 @@ async def get_outlier_item(
             
             # Raw VDG data with Korean translation for Storyboard UI
             response["raw_vdg"] = _translate_vdg_to_korean(analysis)
+        
+        # Fetch viral_kicks from normalized table (P1-1) with fallback to gemini_analysis
+        from app.models import ViralKick
+        kicks_result = await db.execute(
+            select(ViralKick).where(ViralKick.node_id == item.promoted_to_node_id)
+        )
+        kicks = kicks_result.scalars().all()
+        
+        if kicks:
+            response["viral_kicks"] = [
+                {
+                    "kick_id": k.kick_id,
+                    "title": k.title,
+                    "mechanism": k.mechanism,
+                    "creator_instruction": k.creator_instruction,
+                    "t_start_ms": k.start_ms,  # Include both formats for compatibility
+                    "t_end_ms": k.end_ms,
+                    "start_ms": k.start_ms,
+                    "end_ms": k.end_ms,
+                    "peak_ms": k.peak_ms,
+                    "confidence": k.confidence,
+                    "proof_ready": k.proof_ready,
+                    "status": k.status.value if hasattr(k.status, 'value') else str(k.status),
+                }
+                for k in sorted(kicks, key=lambda x: x.kick_index or 0)
+            ]
+        else:
+            # Fallback: get viral_kicks from gemini_analysis.provenance
+            provenance = analysis.get("provenance", {}) if analysis else {}
+            prov_kicks = provenance.get("viral_kicks", [])
+            if prov_kicks:
+                response["viral_kicks"] = [
+                    {
+                        "kick_index": k.get("kick_index", i),
+                        "title": k.get("title", f"Kick {i+1}"),
+                        "mechanism": k.get("mechanism", ""),
+                        "creator_instruction": k.get("creator_instruction", ""),
+                        "t_start_ms": k.get("window", {}).get("start_ms", k.get("t_start_ms", 0)),
+                        "t_end_ms": k.get("window", {}).get("end_ms", k.get("t_end_ms", 0)),
+                    }
+                    for i, k in enumerate(prov_kicks)
+                ]
+        
+        if response.get("viral_kicks"):
+            # Also add as shooting_guide for frontend compatibility
+            response["shooting_guide"] = {
+                "kicks": response["viral_kicks"],
+                "kick_count": len(response["viral_kicks"]),
+            }
+        
+        # Add best_comments from OutlierItem
+        if item.best_comments:
+            response["best_comments"] = item.best_comments[:10]
+            # Also add top_comment for quick display
+            if item.best_comments:
+                first = item.best_comments[0]
+                if isinstance(first, dict):
+                    response["top_comment"] = first.get("text", str(first))[:200]
+                else:
+                    response["top_comment"] = str(first)[:200]
+
+        # 🚑 SELF-HEALING: Recover from lost background tasks (e.g. server restart)
+        # If Promoted + Pending Analysis, trigger it again
+        if item.promoted_to_node_id and item.analysis_status == "pending" and node:
+            print(f"🚑 Self-healing: Triggering lost analysis for {item.id}")
+            # Update status in DB immediately to prevent repeated triggers
+            item.analysis_status = "analyzing"
+            await db.commit()
+            
+            # Re-queue the background task
+            background_tasks.add_task(
+                _run_vdg_analysis_with_comments,
+                item_id=str(item.id),
+                node_id=node.node_id,
+                video_url=item.video_url,
+                platform=item.platform or "youtube",
+            )
+            # Update response to show analyzing
+            response["analysis_status"] = "analyzing"
     
     return response
 
@@ -726,11 +821,19 @@ def _translate_vdg_to_korean(analysis: dict) -> dict:
         "scenes": [],
     }
     
-    scenes = analysis.get("scenes") or []
+    # VDG v5: semantic.scenes OR top-level scenes
+    scenes = analysis.get("semantic", {}).get("scenes") or analysis.get("scenes") or []
     if not isinstance(scenes, list):
         scenes = []
     scenes = [scene for scene in scenes if isinstance(scene, dict)]
     result["scene_count"] = len(scenes)
+    
+    # Fill title and duration from analysis
+    result["title"] = analysis.get("title") or analysis.get("semantic", {}).get("summary", "")[:50] or "영상 분석"
+    result["title_ko"] = result["title"]
+    # Use analysis.duration_sec if available, otherwise will sum from scenes
+    pre_set_duration = analysis.get("duration_sec", 0)
+    result["total_duration"] = pre_set_duration
     
     for i, scene in enumerate(scenes):
         narrative = scene.get("narrative_unit") or {}
@@ -739,9 +842,18 @@ def _translate_vdg_to_korean(analysis: dict) -> dict:
         audio_style = setting.get("audio_style") or {}
         shots = scene.get("shots") or []
         
-        # Calculate timing
-        time_start = scene.get("time_start")
-        time_end = scene.get("time_end")
+        # Calculate timing - support VDG v5 (window.start_ms/end_ms) and legacy (time_start/time_end)
+        window = scene.get("window", {})
+        time_start = (
+            window.get("start_ms", 0) / 1000.0  # VDG v5: ms → seconds
+            if window.get("start_ms") is not None
+            else scene.get("time_start")  # Legacy
+        )
+        time_end = (
+            window.get("end_ms", 0) / 1000.0  # VDG v5: ms → seconds
+            if window.get("end_ms") is not None
+            else scene.get("time_end")  # Legacy
+        )
         try:
             time_start = float(time_start) if time_start is not None else 0.0
         except (TypeError, ValueError):
@@ -756,7 +868,9 @@ def _translate_vdg_to_korean(analysis: dict) -> dict:
             duration = float(raw_duration) if raw_duration is not None else (time_end - time_start)
         except (TypeError, ValueError):
             duration = time_end - time_start
-        result["total_duration"] += duration
+        # Only sum if duration wasn't pre-set from analysis.duration_sec
+        if not pre_set_duration:
+            result["total_duration"] += duration
         
         # Extract camera info from first shot
         camera_info = {}
@@ -791,11 +905,11 @@ def _translate_vdg_to_korean(analysis: dict) -> dict:
             "time_end": time_end,
             "duration_sec": duration,
             "time_label": f"{int(time_start//60)}:{int(time_start%60):02d} - {int(time_end//60)}:{int(time_end%60):02d}",
-            # Narrative
-            "role": _translate_term(narrative.get("role", "")),
-            "role_en": narrative.get("role", ""),
-            "summary": narrative.get("summary", ""),
-            "summary_ko": narrative.get("summary", ""),  # TODO: Translate via API
+            # Narrative - VDG v5: scene-level fields; legacy: narrative_unit
+            "role": _translate_term(scene.get("narrative_role") or narrative.get("role", "")),
+            "role_en": scene.get("narrative_role") or narrative.get("role", ""),
+            "summary": scene.get("summary") or narrative.get("summary", ""),
+            "summary_ko": scene.get("summary") or narrative.get("summary", ""),
             "dialogue": narrative.get("dialogue", ""),
             "comedic_device": narrative.get("comedic_device", []),
             # Camera
@@ -820,28 +934,70 @@ def _translate_vdg_to_korean(analysis: dict) -> dict:
 # VDG ANALYSIS EXTRACTION HELPERS
 # ==================
 def _extract_hook_pattern(analysis: dict) -> Optional[str]:
-    """Extract hook pattern from gemini_analysis (VDG v3 schema)"""
-    # 1. Direct hook_genome field
-    hook_genome = analysis.get("hook_genome")
-    if isinstance(hook_genome, dict):
-        return hook_genome.get("pattern")
+    """Extract hook pattern from gemini_analysis (VDG v3/v4/v5 schema)"""
+    pattern = None
+    hook_genome = None
     
-    # 2. VDG v3: scenes[0].narrative_unit.role (e.g., "Action", "Hook", "Setup")
+    # 1. VDG v5: semantic.hook_genome
+    semantic = analysis.get("semantic", {})
+    if isinstance(semantic, dict):
+        hook_genome = semantic.get("hook_genome")
+        if isinstance(hook_genome, dict):
+            pattern = hook_genome.get("pattern")
+    
+    # 2. Direct hook_genome field (VDG v3/v4)
+    if not hook_genome:
+        hook_genome = analysis.get("hook_genome")
+        if isinstance(hook_genome, dict):
+            pattern = hook_genome.get("pattern")
+    
+    # If pattern is "other" or None, try better alternatives
+    if pattern in ("other", None) and isinstance(hook_genome, dict):
+        # Try hook_summary first (best description)
+        hook_summary = hook_genome.get("hook_summary")
+        if hook_summary and len(hook_summary) > 5:
+            return hook_summary[:50]
+        
+        # Try first microbeat note
+        microbeats = hook_genome.get("microbeats", [])
+        if microbeats and isinstance(microbeats[0], dict):
+            note = microbeats[0].get("note") or microbeats[0].get("description", "")
+            if note and len(note) > 5:
+                return note[:50]
+        
+        # Try delivery as pattern
+        delivery = hook_genome.get("delivery")
+        if delivery and delivery != "visual_gag":
+            return delivery
+    
+    # Return pattern if it's a good value
+    if pattern and pattern != "other":
+        return pattern
+    
+    # 3. VDG v3: scenes[0].narrative_unit.role (e.g., "Action", "Hook", "Setup")
     if "scenes" in analysis and len(analysis["scenes"]) > 0:
         first_scene = analysis["scenes"][0]
         narrative = first_scene.get("narrative_unit", {})
         if narrative.get("role"):
             return narrative["role"].lower().replace(" ", "_")
-        # Fallback to shots[0].camera.move
-        shots = first_scene.get("shots", [])
-        if shots and shots[0].get("camera", {}).get("move"):
-            return shots[0]["camera"]["move"]
+        # VDG v5: scene-level summary
+        summary = first_scene.get("summary")
+        if summary and len(summary) > 10:
+            return summary[:50]
     
-    # 3. Legacy pattern field
-    return analysis.get("pattern")
+    # 4. Legacy pattern field
+    return analysis.get("pattern") or pattern
 
 def _extract_hook_score(analysis: dict) -> Optional[float]:
-    """Extract hook strength score"""
+    """Extract hook strength score (VDG v3/v4/v5)"""
+    # VDG v5: semantic.hook_genome.strength
+    semantic = analysis.get("semantic", {})
+    if isinstance(semantic, dict):
+        hook_genome = semantic.get("hook_genome")
+        if isinstance(hook_genome, dict) and hook_genome.get("strength"):
+            return hook_genome.get("strength")
+    
+    # VDG v3/v4: direct hook_genome
     hook_genome = analysis.get("hook_genome")
     if isinstance(hook_genome, dict):
         return hook_genome.get("strength")
@@ -866,7 +1022,17 @@ def _extract_hook_score(analysis: dict) -> Optional[float]:
     return None
 
 def _extract_hook_duration(analysis: dict) -> Optional[float]:
-    """Extract hook duration (first scene end time)"""
+    """Extract hook duration (VDG v3/v4/v5)"""
+    # VDG v5: semantic.hook_genome.end_sec
+    semantic = analysis.get("semantic", {})
+    if isinstance(semantic, dict):
+        hook_genome = semantic.get("hook_genome")
+        if isinstance(hook_genome, dict):
+            end_sec = hook_genome.get("end_sec")
+            if end_sec is not None:
+                return float(end_sec)
+    
+    # VDG v3/v4: direct hook_genome
     hook_genome = analysis.get("hook_genome")
     if isinstance(hook_genome, dict):
         return hook_genome.get("duration_sec")
@@ -892,11 +1058,42 @@ def _extract_hook_duration(analysis: dict) -> Optional[float]:
     return None
 
 def _extract_visual_patterns(analysis: dict) -> Optional[List[str]]:
-    """Extract visual patterns from VDG scenes with Korean translation"""
+    """Extract visual patterns from VDG - supports v3, v4, v5 schemas"""
     patterns = []
-    if "scenes" in analysis:
+    
+    # 1. VDG v5: mise_en_scene_signals (top-level or semantic)
+    mise_signals = analysis.get("mise_en_scene_signals") or \
+                   analysis.get("semantic", {}).get("mise_en_scene_signals", [])
+    if mise_signals:
+        for sig in mise_signals[:6]:
+            if isinstance(sig, dict):
+                sig_type = sig.get("type") or sig.get("category", "")
+                desc = sig.get("description", "")
+                if sig_type:
+                    patterns.append(_translate_term(sig_type))
+                if desc and len(patterns) < 6:
+                    # Extract key visual terms
+                    if "color" in desc.lower():
+                        patterns.append("컬러 그레이딩")
+                    if "edit" in desc.lower() or "cut" in desc.lower():
+                        patterns.append("빠른 편집")
+                    if "text" in desc.lower():
+                        patterns.append("온스크린 텍스트")
+    
+    # 2. VDG v4/v5: visual.analysis_results
+    visual = analysis.get("visual", {})
+    if visual.get("analysis_results"):
+        for result in visual["analysis_results"][:3]:
+            metrics = result.get("metrics", {})
+            for metric_id in metrics.keys():
+                if "color" in metric_id:
+                    patterns.append("시각적 색상")
+                if "motion" in metric_id:
+                    patterns.append("모션/움직임")
+    
+    # 3. Legacy: scenes[].shots[].camera (VDG v3)
+    if "scenes" in analysis and analysis["scenes"]:
         for scene in analysis["scenes"][:3]:
-            # VDG v3: shots[].camera.shot (LS, MS, CU etc.)
             shots = scene.get("shots", [])
             for shot in shots[:2]:
                 camera = shot.get("camera", {})
@@ -904,19 +1101,8 @@ def _extract_visual_patterns(analysis: dict) -> Optional[List[str]]:
                     patterns.append(_translate_term(camera["shot"]))
                 if camera.get("move"):
                     patterns.append(_translate_term(camera["move"]))
-                if camera.get("angle") and camera["angle"] != "eye":
-                    patterns.append(_translate_term(camera["angle"]))
-            # VDG v3: setting.visual_style
-            setting = scene.get("setting", {})
-            visual_style = setting.get("visual_style", {})
-            if visual_style.get("lighting"):
-                patterns.append(_translate_term(visual_style["lighting"]))
-            if visual_style.get("edit_pace"):
-                patterns.append(_translate_term(visual_style["edit_pace"]))
-            # Legacy: visual_elements
-            if "visual_elements" in scene:
-                patterns.extend([_translate_term(v) for v in scene["visual_elements"][:2]])
-    return list(dict.fromkeys(patterns))[:6] if patterns else None  # Dedupe
+    
+    return list(dict.fromkeys(patterns))[:6] if patterns else None
 
 def _extract_audio_pattern(analysis: dict) -> Optional[str]:
     """Extract audio pattern from VDG with Korean translation"""
@@ -952,135 +1138,213 @@ def _extract_audio_pattern(analysis: dict) -> Optional[str]:
     return None
 
 def _extract_shotlist(analysis: dict) -> Optional[List[str]]:
-    """Extract shotlist with actual scene descriptions from VDG"""
-    if "scenes" in analysis:
-        shotlist = []
+    """Extract shotlist from VDG - supports v3, v4, v5 schemas"""
+    shotlist = []
+    
+    # 1. VDG v5: semantic.capsule_brief.shotlist
+    capsule = analysis.get("semantic", {}).get("capsule_brief", {})
+    if capsule.get("shotlist"):
+        return capsule["shotlist"]
+    
+    # 2. VDG v5: Use viral_kicks as shotlist
+    provenance = analysis.get("provenance", {})
+    kicks = provenance.get("viral_kicks", [])
+    if kicks:
+        for kick in kicks:
+            title = kick.get("title", "")
+            instr = kick.get("creator_instruction", "")
+            # Format as shotlist item
+            t_start = kick.get("t_start_ms", 0) / 1000
+            t_end = kick.get("t_end_ms", 0) / 1000
+            shotlist.append(f"[{t_start:.0f}-{t_end:.0f}s] {title}: {instr[:50]}...")
+        if shotlist:
+            return shotlist
+    
+    # 3. VDG v3: scenes[].narrative_unit.summary
+    if "scenes" in analysis and analysis["scenes"]:
         for i, scene in enumerate(analysis["scenes"]):
-            # VDG v3: narrative_unit.summary is the best description
             narrative = scene.get("narrative_unit", {})
             summary = narrative.get("summary")
-            
             if summary:
-                # Add timing if available
                 duration = scene.get("duration_sec")
                 if duration:
                     shotlist.append(f"{summary} ({duration}s)")
                 else:
                     shotlist.append(summary)
-            elif narrative.get("dialogue"):
-                # Use dialogue if no summary
-                shotlist.append(f"[대사] {narrative['dialogue'][:50]}")
-            else:
-                # Fallback to scene description or ID
-                desc = scene.get("description") or f"Scene {scene.get('scene_id', i+1)}"
-                shotlist.append(desc)
-        return shotlist if shotlist else None
-    # Legacy shotlist field
+        if shotlist:
+            return shotlist
+    
+    # 4. Legacy shotlist field
     if "shotlist" in analysis:
         return analysis["shotlist"]
+    
     return None
 
 def _extract_timing(analysis: dict) -> Optional[List[str]]:
-    """Extract timing info from VDG scenes"""
-    if "scenes" in analysis:
-        timings = []
-
-        def _safe_float(value, fallback: float = 0.0) -> float:
-            try:
-                return float(value)
-            except (TypeError, ValueError):
-                return fallback
-
+    """Extract timing info from VDG - supports v3, v4, v5 schemas"""
+    timings = []
+    
+    def _safe_float(value, fallback: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return fallback
+    
+    # 1. VDG v5: analysis_plan.points
+    analysis_plan = analysis.get("analysis_plan", {})
+    points = analysis_plan.get("points", [])
+    if points:
+        for point in points[:6]:
+            t_center = _safe_float(point.get("t_center"))
+            t_window = point.get("t_window", [])
+            if t_window and len(t_window) == 2:
+                start = _safe_float(t_window[0])
+                end = _safe_float(t_window[1])
+                timings.append(f"{start:.1f}-{end:.1f}s: {point.get('reason', 'analysis')}")
+            elif t_center:
+                timings.append(f"{t_center:.1f}s: {point.get('reason', 'analysis')}")
+        if timings:
+            return timings
+    
+    # 2. VDG v5: Use viral_kicks for timing
+    provenance = analysis.get("provenance", {})
+    kicks = provenance.get("viral_kicks", [])
+    if kicks:
+        for kick in kicks:
+            # Support VDG v5 (window.start_ms/end_ms) and legacy (t_start_ms/t_end_ms)
+            window = kick.get("window", {})
+            t_start = (
+                window.get("start_ms", 0) / 1000 if window.get("start_ms") is not None
+                else kick.get("t_start_ms", 0) / 1000
+            )
+            t_end = (
+                window.get("end_ms", 0) / 1000 if window.get("end_ms") is not None
+                else kick.get("t_end_ms", 0) / 1000
+            )
+            timings.append(f"{t_start:.0f}-{t_end:.0f}s: {kick.get('title', 'kick')}")
+        if timings:
+            return timings
+    
+    # 3. VDG v3: scenes
+    if "scenes" in analysis and analysis["scenes"]:
         for scene in analysis["scenes"]:
-            # VDG v3: time_start, time_end, duration_sec
             if "duration_sec" in scene:
                 timings.append(f"{scene['duration_sec']}s")
             elif "time_start" in scene and "time_end" in scene:
                 start = _safe_float(scene.get("time_start"))
                 end = _safe_float(scene.get("time_end"), start)
-                duration = end - start
-                timings.append(f"{duration:.1f}s")
-            else:
-                # Legacy: start_time, end_time
-                start = _safe_float(scene.get("start_time"))
-                end = _safe_float(scene.get("end_time"), start + 2)
-                duration = end - start
-                timings.append(f"{duration:.1f}s")
-        return timings
+                timings.append(f"{end - start:.1f}s")
+        if timings:
+            return timings
+    
     return None
 
 def _extract_do_not(analysis: dict) -> Optional[List[str]]:
-    """Extract things to avoid"""
+    """Extract things to avoid - supports v3, v4, v5 schemas"""
+    do_not = []
+    
+    # 1. VDG v5: semantic.capsule_brief.do_not
+    capsule = analysis.get("semantic", {}).get("capsule_brief", {})
+    if capsule.get("do_not"):
+        return capsule["do_not"]
+    
+    # 2. Legacy fields
     if "warnings" in analysis:
         return analysis["warnings"]
     if "do_not" in analysis:
         return analysis["do_not"]
-    # Generate from audio_events if intensity is high
-    do_not = []
-    if "scenes" in analysis:
-        for scene in analysis["scenes"]:
-            audio_events = scene.get("setting", {}).get("audio_style", {}).get("audio_events", [])
-            for event in audio_events:
-                if isinstance(event, dict) and event.get("intensity") == "high":
-                    do_not.append(f"과도한 {event.get('description', '효과')} 사용 주의")
-    return do_not if do_not else None
+    
+    # 3. VDG v5: contract_candidates.forbidden_mutations_candidates
+    contract = analysis.get("contract_candidates", {})
+    forbidden = contract.get("forbidden_mutations_candidates", [])
+    if forbidden:
+        for item in forbidden[:5]:
+            if isinstance(item, str):
+                do_not.append(f"❌ {item}")
+            elif isinstance(item, dict):
+                do_not.append(f"❌ {item.get('description', str(item))}")
+        if do_not:
+            return do_not
+    
+    # 4. Generate from causal_reasoning risks
+    semantic = analysis.get("semantic", {})
+    prov = semantic.get("provenance", {}) or analysis.get("provenance", {})
+    causal = prov.get("causal_reasoning", {})
+    risks = causal.get("risks_or_unknowns", [])
+    if risks:
+        for risk in risks[:3]:
+            do_not.append(f"⚠️ {risk}")
+        return do_not
+    
+    return None
 
 def _extract_invariant(analysis: dict) -> Optional[List[str]]:
-    """Extract must-keep elements (불변 요소) from VDG analysis - Korean"""
+    """
+    Extract must-keep elements (불변 요소) from VDG analysis - Smart Inference
+    Priority: replication_recipe > hook_genome > viral_kicks > intent_layer
+    """
     invariant = []
     
-    # Hook pattern translation map
-    hook_ko_map = {
-        "pattern_break": "패턴 브레이크",
-        "visual_reaction": "시각적 리액션",
-        "unboxing": "언박싱",
-        "transformation": "변신/트랜스폼",
-        "reveal": "공개/리빌",
-        "action": "액션",
-        "setup": "셋업",
-        "question": "질문 유도",
-        "challenge": "챌린지",
-        "comparison": "비교",
-        "countdown": "카운트다운",
+    # Translation maps
+    delivery_map = {
+        "visual_gag": "시각적 개그",
+        "storytelling": "스토리텔링",
+        "reaction": "리액션",
+        "tutorial": "튜토리얼",
+        "reveal": "반전/공개",
+        "montage": "몽타주",
+        "talking_head": "토킹 헤드",
     }
     
-    # 1. Hook pattern is always invariant
-    hook_pattern = _extract_hook_pattern(analysis)
-    if hook_pattern:
-        hook_ko = hook_ko_map.get(hook_pattern.lower(), hook_pattern)
-        invariant.append(f"🎣 훅: {hook_ko}")
+    prov = analysis.get("provenance", {})
     
-    # 2. Hook duration
-    hook_dur = _extract_hook_duration(analysis)
-    if hook_dur:
-        invariant.append(f"⏱️ 처음 {hook_dur}초 안에 훅 완성")
+    # 1. PRIMARY: Use replication_recipe from causal_reasoning (most actionable)
+    causal = prov.get("causal_reasoning", {})
+    recipe = causal.get("replication_recipe", [])
+    if recipe:
+        # Take first 3 recipe steps as core invariants
+        for i, step in enumerate(recipe[:3]):
+            if step and isinstance(step, str):
+                invariant.append(f"📋 {step}")
     
-    # 3. First scene's key elements from VDG v3
-    if "scenes" in analysis and len(analysis["scenes"]) > 0:
-        first = analysis["scenes"][0]
-        narrative = first.get("narrative_unit", {})
-        
-        # Opening action/setup - use Korean role
-        role = narrative.get("role", "")
-        role_ko = _translate_term(role)
-        if role_ko and narrative.get("summary"):
-            invariant.append(f"🎬 오프닝 ({role_ko}): 이 구성 유지")
-        
-        # Camera style - translate
-        shots = first.get("shots", [])
-        if shots and shots[0].get("camera", {}).get("shot"):
-            cam = shots[0]["camera"]
-            shot_ko = _translate_term(cam.get("shot", ""))
-            move_ko = _translate_term(cam.get("move", ""))
-            cam_desc = f"{shot_ko} {move_ko}".strip()
-            if cam_desc:
-                invariant.append(f"📷 카메라워크: {cam_desc}")
+    # 2. SECONDARY: Hook genome details (if recipe not enough)
+    if len(invariant) < 3:
+        semantic = analysis.get("semantic", {})
+        if isinstance(semantic, dict):
+            hg = semantic.get("hook_genome", {})
+            if isinstance(hg, dict):
+                # Hook pattern - improve "other" handling
+                pattern = hg.get("pattern")
+                if pattern and pattern != "other":
+                    invariant.append(f"🎣 훅 패턴: {pattern}")
+                elif pattern == "other":
+                    # Infer from microbeats or hook_summary
+                    microbeats = hg.get("microbeats", [])
+                    if microbeats and microbeats[0].get("note"):
+                        note = microbeats[0]["note"][:40]
+                        invariant.append(f"🎣 훅 시작: {note}")
+                    elif hg.get("hook_summary"):
+                        invariant.append(f"🎣 {hg['hook_summary'][:40]}")
+                
+                # Delivery method
+                delivery = hg.get("delivery")
+                if delivery:
+                    delivery_kr = delivery_map.get(delivery, delivery)
+                    invariant.append(f"🎯 전달 방식: {delivery_kr}")
+                
+                # Timing
+                end_sec = hg.get("end_sec")
+                if end_sec:
+                    invariant.append(f"⏱️ 훅 완성: {end_sec}초 안에")
     
-    # 4. Pacing from metrics
-    if "metrics" in analysis:
-        metrics = analysis["metrics"]
-        if metrics.get("pacing"):
-            invariant.append(f"🎵 편집 리듬: {_translate_term(metrics['pacing'])}")
+    # 3. Fallback to legacy extraction if nothing found
+    if not invariant:
+        hook_pattern = _extract_hook_pattern(analysis)
+        if hook_pattern:
+            invariant.append(f"🎣 훅: {hook_pattern}")
+        hook_dur = _extract_hook_duration(analysis)
+        if hook_dur:
+            invariant.append(f"⏱️ 처음 {hook_dur}초 안에 훅 완성")
     
     return invariant if invariant else None
 
@@ -1199,36 +1463,52 @@ def _get_platform_specific_tips(platform: str) -> List[str]:
 
 
 def _extract_variable(analysis: dict) -> Optional[List[str]]:
-    """Extract creative variation elements (가변 요소) - Korean"""
+    """
+    Extract creative variation elements (가변 요소) - Data-Driven
+    Priority: viral_kicks.creator_instruction > format-based suggestions
+    """
     variable = []
     
-    # From commerce tag
-    if "commerce" in analysis:
-        variable.append("🛒 소재: 제품/서비스 변경 가능")
+    prov = analysis.get("provenance", {})
     
-    # Multiple scenes = middle scenes can vary
-    if "scenes" in analysis and len(analysis["scenes"]) > 1:
-        variable.append("🎞️ 중간 씬: 자유롭게 변주 가능")
+    # 1. PRIMARY: Use viral_kicks.creator_instruction (specific, actionable)
+    kicks = prov.get("viral_kicks", [])
+    if kicks:
+        for kick in kicks:
+            instruction = kick.get("creator_instruction")
+            if instruction and isinstance(instruction, str):
+                # Truncate if too long
+                text = instruction[:80] + "..." if len(instruction) > 80 else instruction
+                variable.append(f"🎬 {text}")
+    
+    # 2. SECONDARY: Additional recipe steps (if kicks not enough)
+    if len(variable) < 3:
+        causal = prov.get("causal_reasoning", {})
+        recipe = causal.get("replication_recipe", [])
+        # Skip first 3 (used in invariant), take next 2
+        for step in recipe[3:5]:
+            if step and isinstance(step, str):
+                text = step[:60] + "..." if len(step) > 60 else step
+                variable.append(f"✨ {text}")
+    
+    # 3. FALLBACK: Format-based suggestions if no data
+    if not variable:
+        semantic = analysis.get("semantic", {})
+        hook_genome = semantic.get("hook_genome", {}) if isinstance(semantic, dict) else {}
+        delivery = hook_genome.get("delivery", "")
         
-        # Check if there are different scene roles - translate to Korean
-        roles = set()
-        for scene in analysis["scenes"]:
-            role = scene.get("narrative_unit", {}).get("role")
-            if role:
-                roles.add(_translate_term(role))  # Translate to Korean
-        if len(roles) > 1:
-            roles_str = " → ".join(list(roles)[:3])
-            variable.append(f"📝 구성: {roles_str} 순서 유지 권장")
-    
-    # Default suggestions if empty
-    if len(variable) == 0:
         variable = [
-            "🎨 소재: 자유롭게 변경 가능",
-            "👤 인물: 성별/연령 변경 가능",
-            "📍 배경: 장소/환경 변경 가능",
+            "🎨 소재: 동일 포맷의 다른 주제 적용 가능",
+            "👤 인물: 다른 크리에이터 스타일로 재해석",
+            "📍 배경: 장소/환경 자유롭게 변경",
         ]
+        
+        if delivery == "visual_gag":
+            variable.append("😂 개그 소재: 다른 밈/유머로 대체 가능")
+        elif delivery == "storytelling":
+            variable.append("📖 스토리: 다른 내러티브로 재구성 가능")
     
-    return variable
+    return variable if variable else None
 
 
 @router.get("/candidates", response_model=OutlierCandidatesResponse)

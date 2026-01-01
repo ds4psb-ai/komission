@@ -20,7 +20,10 @@ Focus on the narrative, intent, and meaning. Do not obsess over pixel-perfect vi
 
 ### KEY OBJECTIVES
 1. **Narrative Structure**: Identify the scenes, their roles (Hook, Development, Climax, etc.), and timestamps.
-2. **Hook Genome**: Dissect the first 3-5 seconds. What is the specific 'hook trigger'?
+2. **Hook Genome**: Dissect the first 3-5 seconds. **CRITICAL FIELDS:**
+   - `pattern`: MUST be one of: question_hook, shock_reveal, countdown, pov, before_after, curiosity_gap, challenge, tutorial_tease, story_hook, visual_punch, confession, list_format, myth_bust, social_proof, pain_point
+   - `delivery`: MUST be one of: visual_gag, storytelling, reaction, tutorial, reveal, montage, talking_head, challenge, transformation, comparison
+   - `hook_summary`: 한국어로 훅의 핵심 요약 (예: "2026년 영화 인트로라는 충격적 설정으로 시작")
 3. **Intent Layer**: Read the creator's mind. Why did they cut here? Why this caption?
 4. **Entity Hints**: Identify WHO or WHAT is the subject. Give them stable keys (e.g., 'main_speaker', 'product_A').
 5. **Mise-en-scene Signals**: Use the provided AUDIENCE COMMENTS to find visual/audio elements that triggered reactions (e.g., "that blue dress!", "the background music").
@@ -32,8 +35,8 @@ Focus on the narrative, intent, and meaning. Do not obsess over pixel-perfect vi
 
 ### OUTPUT INSTRUCTIONS
 Produce a JSON object matching the `SemanticPassResult` schema.
-- `hook_genome`: Detailed breakdown of the hook (pattern, microbeats, strength).
-- `scenes`: Time-coded scene list with narrative roles.
+- `hook_genome`: MUST include pattern, delivery, hook_summary, strength, microbeats.
+- `scenes`: Time-coded scene list with `summary` in Korean for each scene.
 - `entity_hints`: Dictionary of potential entities to track in Pass 2.
 - `mise_en_scene_signals`: List of specific visual/audio elements mentioned positively/negatively in comments.
   - Each signal: {element, value, sentiment, source_comment, likes}

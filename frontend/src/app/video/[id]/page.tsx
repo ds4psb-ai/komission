@@ -33,12 +33,27 @@ interface VideoAnalysis {
     audio_pattern?: string;
     engagement_peak_sec?: number;
     best_comment?: string;
+    best_comments?: Array<{ rank: number; text: string; signal_type?: string; why_it_matters?: string; anchor_ms?: number }>;
     shotlist?: string[];
     timing?: string[];
     do_not?: string[];
     // Temporal Variation Theory: 불변/가변 가이드
     invariant?: string[];  // 🔒 절대 유지해야 할 요소
     variable?: string[];   // ✨ 창의성 발휘 가능 요소
+}
+
+// ViralKick from VDG analysis
+interface ViralKick {
+    kick_id: string;
+    title: string;
+    mechanism?: string;
+    creator_instruction?: string;
+    start_ms: number;
+    end_ms: number;
+    peak_ms?: number;
+    confidence?: number;
+    proof_ready?: boolean;
+    status?: string;
 }
 
 interface VideoDetail {
@@ -57,6 +72,7 @@ interface VideoDetail {
     creator_avg_views?: number;
     analysis?: VideoAnalysis;
     rawVdg?: RawVDG | null;
+    viral_kicks?: ViralKick[];  // P1-1: normalized viral kicks from DB
     hasCampaign?: boolean;
     campaignType?: 'product' | 'visit' | 'delivery';
 }
@@ -263,6 +279,53 @@ function ViralGuidePanel({ analysis }: { analysis?: VideoAnalysis }) {
                 )}
             </div>
 
+            {/* Timing - 타이밍 가이드 */}
+            {analysis.timing && analysis.timing.length > 0 && (
+                <div className="p-3 bg-gradient-to-br from-purple-500/10 to-violet-500/10 border border-purple-500/30 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Clock className="w-3.5 h-3.5 text-purple-400" />
+                        <span className="text-xs font-bold text-purple-300">⏱️ 타이밍 가이드</span>
+                        <span className="ml-auto px-1.5 py-0.5 bg-purple-500/20 rounded text-[10px] text-purple-300 font-mono">
+                            {analysis.timing.length}개 포인트
+                        </span>
+                    </div>
+                    <div className="space-y-1">
+                        {analysis.timing.slice(0, 4).map((t, i) => (
+                            <div key={i} className="text-[11px] text-white/80 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-purple-500/50" />
+                                <span className="font-mono text-purple-200">{t}</span>
+                            </div>
+                        ))}
+                        {analysis.timing.length > 4 && (
+                            <div className="text-[10px] text-white/40">+{analysis.timing.length - 4}개 더...</div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Shotlist - 샷리스트 */}
+            {analysis.shotlist && analysis.shotlist.length > 0 && (
+                <div className="p-3 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/30 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Camera className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="text-xs font-bold text-blue-300">🎬 샷리스트</span>
+                        <span className="ml-auto px-1.5 py-0.5 bg-blue-500/20 rounded text-[10px] text-blue-300 font-mono">
+                            {analysis.shotlist.length}개 샷
+                        </span>
+                    </div>
+                    <div className="space-y-2">
+                        {analysis.shotlist.slice(0, 3).map((shot, i) => (
+                            <div key={i} className="text-[11px] text-white/80 p-2 bg-white/5 rounded-lg border border-white/10">
+                                <span className="text-blue-300">{i + 1}.</span> {typeof shot === 'string' ? shot : (shot as { description?: string })?.description || ''}
+                            </div>
+                        ))}
+                        {analysis.shotlist.length > 3 && (
+                            <div className="text-[10px] text-white/40 text-center">+{analysis.shotlist.length - 3}개 더...</div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Visual + Audio 통합 */}
             <div className="grid grid-cols-2 gap-2">
                 {/* Visual */}
@@ -312,9 +375,12 @@ function ViralGuidePanel({ analysis }: { analysis?: VideoAnalysis }) {
                     <div className="flex items-center gap-2 mb-2">
                         <Lock className="w-3.5 h-3.5 text-orange-400" />
                         <span className="text-xs font-bold text-orange-300">🔒 핵심 유지 요소</span>
+                        <span className="ml-auto px-1.5 py-0.5 bg-orange-500/20 rounded text-[10px] text-orange-300 font-mono">
+                            {analysis.invariant.length}개
+                        </span>
                     </div>
                     <div className="space-y-1">
-                        {analysis.invariant.slice(0, 3).map((item, i) => (
+                        {analysis.invariant.map((item, i) => (
                             <div key={i} className="text-[11px] text-white/80 flex items-start gap-1.5">
                                 <span className="text-orange-400">•</span>
                                 <span>{item}</span>
@@ -330,9 +396,12 @@ function ViralGuidePanel({ analysis }: { analysis?: VideoAnalysis }) {
                     <div className="flex items-center gap-2 mb-2">
                         <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                         <span className="text-xs font-bold text-emerald-300">✨ 변주 가능 요소</span>
+                        <span className="ml-auto px-1.5 py-0.5 bg-emerald-500/20 rounded text-[10px] text-emerald-300 font-mono">
+                            {analysis.variable.length}개
+                        </span>
                     </div>
                     <div className="space-y-1">
-                        {analysis.variable.slice(0, 3).map((item, i) => (
+                        {analysis.variable.map((item, i) => (
                             <div key={i} className="text-[11px] text-white/80 flex items-start gap-1.5">
                                 <span className="text-emerald-400">✓</span>
                                 <span>{item}</span>
@@ -473,6 +542,15 @@ export default function VideoDetailPage() {
                         } : undefined,
                         // Raw VDG for Storyboard UI
                         rawVdg: data.raw_vdg || null,
+                        // P1-1: Normalized viral kicks from DB
+                        viral_kicks: data.viral_kicks || [],
+                    });
+                    // DEBUG: Log viral_kicks to verify data flow
+                    console.log('📊 Video data loaded:', {
+                        id: data.id,
+                        viral_kicks_count: data.viral_kicks?.length || 0,
+                        viral_kicks: data.viral_kicks,
+                        rawVdg: !!data.raw_vdg
                     });
                     setLoading(false);
                     return;
@@ -629,8 +707,52 @@ export default function VideoDetailPage() {
                         </div>
 
                         {/* Storyboard Panel - 씬별 스토리보드 UI */}
-                        {video.rawVdg && (
+                        {video.rawVdg && video.rawVdg.scenes && video.rawVdg.scenes.length > 0 ? (
                             <StoryboardPanel rawVdg={video.rawVdg} defaultExpanded={true} />
+                        ) : video.viral_kicks && video.viral_kicks.length > 0 ? (
+                            /* P1-1: Viral Kicks from normalized DB table */
+                            <div className="p-4 bg-gradient-to-br from-pink-500/10 to-orange-500/10 border border-pink-500/30 rounded-xl">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Film className="w-4 h-4 text-pink-400" />
+                                    <span className="text-sm font-bold text-white">🎬 바이럴 킥 포인트</span>
+                                    <span className="px-2 py-0.5 bg-pink-500/20 text-pink-300 text-[10px] font-bold rounded-full">
+                                        {video.viral_kicks.length}개
+                                    </span>
+                                </div>
+                                <div className="space-y-3">
+                                    {video.viral_kicks.map((kick, i) => (
+                                        <div key={kick.kick_id} className="p-3 bg-white/5 border border-white/10 rounded-lg">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-sm font-bold text-white">{kick.title}</span>
+                                                <span className="text-[10px] text-white/50 font-mono">
+                                                    {(kick.start_ms / 1000).toFixed(1)}s - {(kick.end_ms / 1000).toFixed(1)}s
+                                                </span>
+                                            </div>
+                                            {kick.mechanism && (
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="px-2 py-0.5 bg-cyan-500/20 border border-cyan-500/30 rounded text-[10px] text-cyan-300">
+                                                        {kick.mechanism}
+                                                    </span>
+                                                    {kick.confidence && (
+                                                        <span className="text-[10px] text-white/40">
+                                                            신뢰도: {(kick.confidence * 100).toFixed(0)}%
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {kick.creator_instruction && (
+                                                <p className="text-xs text-white/70 leading-relaxed">
+                                                    💡 {kick.creator_instruction}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-4 bg-white/5 border border-white/10 rounded-xl text-center text-sm text-white/40">
+                                스토리보드 데이터가 없습니다
+                            </div>
                         )}
 
                         {video.hasCampaign ? (
@@ -659,7 +781,23 @@ export default function VideoDetailPage() {
                             </div>
                         )}
 
-                        {video.analysis?.best_comment && (
+                        {/* Best Comments - Show top 5 */}
+                        {video.analysis?.best_comments && video.analysis.best_comments.length > 0 ? (
+                            <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-3">
+                                <div className="text-xs text-white/40 mb-2">💬 베스트 댓글 ({video.analysis.best_comments.length}개)</div>
+                                {video.analysis.best_comments.slice(0, 5).map((comment, i) => (
+                                    <div key={i} className="flex gap-3 p-2 bg-white/5 rounded-lg">
+                                        <span className="text-xs text-white/30 font-mono">#{comment.rank || i + 1}</span>
+                                        <div className="flex-1">
+                                            <p className="text-white/80 text-sm">"{comment.text}"</p>
+                                            {comment.why_it_matters && (
+                                                <p className="text-white/50 text-xs mt-1">→ {comment.why_it_matters}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : video.analysis?.best_comment && (
                             <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
                                 <div className="text-xs text-white/40 mb-2">💬 Top Comment</div>
                                 <p className="text-white/80">"{video.analysis.best_comment}"</p>

@@ -145,7 +145,7 @@ export const TemplateSeedNode = memo(({ data }: { data: TemplateSeedNodeData }) 
                                 <div className="flex flex-wrap gap-1">
                                     {seed.shotlist.map((shot, i) => (
                                         <span key={i} className="px-2 py-1 text-[10px] bg-white/5 border border-white/10 rounded text-white/70">
-                                            {i + 1}. {shot}
+                                            {i + 1}. {typeof shot === 'string' ? shot : (shot as { description?: string })?.description || ''}
                                         </span>
                                     ))}
                                 </div>

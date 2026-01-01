@@ -554,7 +554,7 @@ export const TemplateSeedNode = memo(({ data }: { data: TemplateSeedNodeData }) 
                             {seed.shotlist.slice(0, 3).map((shot, i) => (
                                 <div key={i} className="text-[11px] text-white/60 truncate flex items-center gap-1">
                                     <span className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[9px]">{i + 1}</span>
-                                    {shot}
+                                    {typeof shot === 'string' ? shot : (shot as { description?: string })?.description || ''}
                                 </div>
                             ))}
                             {seed.shotlist.length > 3 && (
@@ -626,7 +626,7 @@ export const GuideNode = memo(({ data }: { data: GuideNodeData }) => {
                             <div key={i} className="flex gap-3 items-start p-2 bg-black/20 rounded-lg hover:bg-white/5 transition-colors">
                                 <span className="text-[10px] text-cyan-500 font-mono mt-0.5">{(i + 1).toString().padStart(2, '0')}</span>
                                 <div className="space-y-1">
-                                    <div className="text-xs text-white/90 leading-snug">{shot}</div>
+                                    <div className="text-xs text-white/90 leading-snug">{typeof shot === 'string' ? shot : (shot as { description?: string })?.description || ''}</div>
                                     {data.timing?.[i] && (
                                         <span className="inline-block px-1.5 py-0.5 rounded bg-white/10 text-[9px] text-white/40 font-mono">
                                             {data.timing[i]}s

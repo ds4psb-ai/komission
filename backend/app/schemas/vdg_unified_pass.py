@@ -50,14 +50,28 @@ class MicrobeatLLM(BaseModel):
 
     t_ms: int = Field(..., ge=0, description="timestamp in ms")
     role: MicrobeatRole
-    description: str = Field(..., min_length=1, max_length=200)
-    evidence: Optional[str] = Field(None, max_length=200, description="짧은 근거 (대사/텍스트/행동 등)")
+    description: str = Field(..., min_length=1, max_length=500)
+    evidence: Optional[str] = Field(None, max_length=500, description="짧은 근거 (대사/텍스트/행동 등)")
 
 
 class HookGenomeLLM(BaseModel):
     """훅 유전체 (바이럴 DNA 핵심)"""
     # model_config removed for Gemini compatibility
 
+    # NEW: pattern and delivery fields for proper hook classification
+    pattern: Literal[
+        "question_hook", "shock_reveal", "countdown", "pov", "before_after",
+        "curiosity_gap", "challenge", "tutorial_tease", "story_hook", "visual_punch",
+        "confession", "list_format", "myth_bust", "social_proof", "pain_point"
+    ] = "curiosity_gap"
+    
+    delivery: Literal[
+        "visual_gag", "storytelling", "reaction", "tutorial", "reveal",
+        "montage", "talking_head", "challenge", "transformation", "comparison"
+    ] = "visual_gag"
+    
+    hook_summary: str = Field(default="", max_length=200, description="훅의 핵심 요약 (한국어)")
+    
     strength: float = Field(..., ge=0.0, le=1.0)
     hook_start_ms: int = Field(..., ge=0)
     hook_end_ms: int = Field(..., ge=0)
@@ -79,8 +93,27 @@ class SceneLLM(BaseModel):
 
     idx: int = Field(..., ge=0)
     window: TimeWindowMs
-    label: str = Field(..., min_length=1, max_length=60, description="예: setup/demo/reveal/payoff")
-    summary: str = Field(..., min_length=1, max_length=240)
+    label: str = Field(..., min_length=1, max_length=100, description="예: setup/demo/reveal/payoff")
+    summary: str = Field(..., min_length=1, max_length=500)
+
+
+class CapsuleBriefLLM(BaseModel):
+    """Capsule Brief - 촬영 가이드 (LLM 출력용)"""
+    # model_config removed for Gemini compatibility
+
+    shotlist: List[str] = Field(
+        default_factory=list, max_length=6,
+        description="3-6개 샷 설명 (예: '클로즈업으로 제품 강조')"
+    )
+    do_not: List[str] = Field(
+        default_factory=list, max_length=4,
+        description="2-4개 피해야 할 것 (예: '흔들리는 카메라', '너무 긴 인트로')"
+    )
+    hook_script: str = Field(
+        default="",
+        max_length=200,
+        description="훅 스크립트 (1-2문장)"
+    )
 
 
 # -------------------------
@@ -98,8 +131,8 @@ class MiseEnSceneSignalLLM(BaseModel):
     # model_config removed for Gemini compatibility
 
     type: MiseType
-    description: str = Field(..., min_length=1, max_length=240)
-    why_it_matters: str = Field(..., min_length=1, max_length=240)
+    description: str = Field(..., min_length=1, max_length=500)
+    why_it_matters: str = Field(..., min_length=1, max_length=500)
     anchor_ms: Optional[int] = Field(None, ge=0, description="대표 타임스탬프(없으면 None)")
 
 
@@ -107,10 +140,10 @@ class IntentLayerLLM(BaseModel):
     """크리에이터 의도 레이어"""
     # model_config removed for Gemini compatibility
 
-    creator_intent: str = Field(..., min_length=1, max_length=240)
-    audience_trigger: List[str] = Field(default_factory=list, max_length=8, description="감정/욕구 트리거")
-    novelty: str = Field(..., min_length=1, max_length=200)
-    clarity: str = Field(..., min_length=1, max_length=200)
+    creator_intent: str = Field(..., min_length=1, max_length=500)
+    audience_trigger: List[str] = Field(default_factory=list, max_length=12, description="감정/욕구 트리거")
+    novelty: str = Field(..., min_length=1, max_length=500)
+    clarity: str = Field(..., min_length=1, max_length=500)
 
 
 # -------------------------
@@ -139,7 +172,13 @@ class CausalReasoningLLM(BaseModel):
     """인과 추론 (왜 바이럴인가)"""
     # model_config removed for Gemini compatibility
 
-    why_viral_one_liner: str = Field(..., min_length=1, max_length=240)
+    why_viral_one_liner: str = Field(
+        default="",
+        max_length=300,
+        alias="why_viral",
+        validation_alias="why_viral",
+        description="왜 바이럴인지 한 줄 요약"
+    )
     causal_chain: List[str] = Field(default_factory=list, max_length=8, description="원인→결과 체인")
     replication_recipe: List[str] = Field(default_factory=list, max_length=8, description="따라하기 레시피(크리에이터 언어)")
     risks_or_unknowns: List[str] = Field(default_factory=list, max_length=6, description="불확실성/가정")
@@ -164,9 +203,9 @@ class CommentEvidenceLLM(BaseModel):
     # model_config removed for Gemini compatibility
 
     comment_rank: int = Field(..., ge=1, le=20, description="top_comments의 순위 (1-20)")
-    quote: str = Field(..., min_length=1, max_length=160, description="댓글 핵심 구절")
+    quote: str = Field(..., min_length=1, max_length=500, description="댓글 핵심 구절")
     signal_type: CommentSignalType
-    why_it_matters: str = Field(..., min_length=1, max_length=200, description="이 댓글이 왜 바이럴 신호인지")
+    why_it_matters: str = Field(..., min_length=1, max_length=500, description="이 댓글이 왜 바이럴 신호인지")
     anchor_ms: Optional[int] = Field(None, ge=0, description="이 댓글이 가리키는 영상 구간 (특정 가능시)")
 
 
@@ -194,28 +233,28 @@ class ViralKickLLM(BaseModel):
 
     kick_index: int = Field(..., ge=0, le=8)  # Allow 0-based from LLM
     window: TimeWindowMs
-    title: str = Field(..., min_length=1, max_length=100, description="킥 제목 (예: '2.3초 표정 반전')")
-    mechanism: str = Field(..., min_length=1, max_length=240, description="왜 먹히는지 인과 설명")
+    title: str = Field(..., min_length=1, max_length=200, description="킥 제목 (예: '2.3초 표정 반전')")
+    mechanism: str = Field(..., min_length=1, max_length=500, description="왜 먹히는지 인과 설명")
     
     # 증거 연결 (MUST)
     evidence_comment_ranks: List[int] = Field(
-        ..., min_length=1, max_length=3,
+        ..., min_length=1, max_length=5,
         description="comment_evidence_top5에서 참조하는 rank 목록 (최소 1개)"
     )
     evidence_cues: List[str] = Field(
-        ..., min_length=1, max_length=4,
+        ..., min_length=1, max_length=6,
         description="영상 증거: 대사/온스크린텍스트/행동 (최소 1개)"
     )
     
     # 키프레임 증거 (P0 Hardening - MUST)
     keyframes: List[KeyframeLLM] = Field(
-        default_factory=list, max_length=3,
+        default_factory=list, max_length=5,
         description="START/PEAK/END 3장 (프롬프트에서 강제, 전처리로 기본값 생성)"
     )
     
     # 코칭용
     creator_instruction: str = Field(
-        ..., min_length=1, max_length=200,
+        ..., min_length=1, max_length=500,
         description="크리에이터 언어로 된 실행 지시문 (1~2문장)"
     )
     scene_index: Optional[int] = Field(None, ge=0, description="scenes[] 인덱스 (해당시)")
@@ -269,7 +308,7 @@ class AnalysisPointSeedLLM(BaseModel):
     # model_config removed for Gemini compatibility
 
     t_center_ms: int = Field(..., ge=0)
-    t_window_ms: int = Field(..., ge=200, le=6000, description="CV 측정 윈도우 폭 (200~6000ms 권장)")
+    t_window_ms: int = Field(..., ge=200, le=15000, description="CV 측정 윈도우 폭 (200~15000ms 권장)")
     kick_index: Optional[int] = Field(None, ge=0, le=8, description="연결된 viral_kick.kick_index (해당시, 0=none)")
     priority: PlanPriority
     reason: str = Field(..., min_length=1, max_length=200)
@@ -340,6 +379,9 @@ class UnifiedPassLLMOutput(BaseModel):
 
     # Why viral
     causal_reasoning: CausalReasoningLLM
+
+    # Director guidance (신규)
+    capsule_brief: CapsuleBriefLLM = Field(default_factory=CapsuleBriefLLM)
 
     @model_validator(mode="after")
     def _validate_kick_coverage(self):

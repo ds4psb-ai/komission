@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "kmeme_password"
     POSTGRES_DB: str = "kmeme_db"
     POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: int = 5432
+    POSTGRES_PORT: int = 5434
 
     @property
     def DATABASE_URL(self) -> str:

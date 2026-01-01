@@ -644,7 +644,10 @@ class GeminiPipeline:
             logger.info("🚀 [v5] Running VDG Unified Pipeline...")
             
             def _run_sync():
-                pipeline = VDGUnifiedPipeline()
+                from app.services.vdg_2pass.vdg_unified_pipeline import PipelineConfig
+                # Skip CV Pass to prevent indefinite hangs (CV optimization is separate task)
+                config = PipelineConfig(skip_cv_pass=True)
+                pipeline = VDGUnifiedPipeline(config=config)
                 return pipeline.run(
                     video_path=temp_path,
                     platform=platform,
@@ -729,7 +732,7 @@ class GeminiPipeline:
         from app.schemas.vdg_v4 import (
             VDGv4, HookGenome, Scene, Microbeat,
             IntentLayer, MiseEnSceneSignal, AudienceReaction,
-            SemanticPassResult, SemanticPassProvenance,
+            SemanticPassResult, SemanticPassProvenance, CapsuleBrief,
             VisualPassResult, AnalysisPlan, AnalysisPoint,
             MediaSpec, MetricResult
         )
@@ -757,11 +760,12 @@ class GeminiPipeline:
             ))
         
         hook = HookGenome(
-            hook_start_ms=llm.hook_genome.hook_start_ms,
-            hook_end_ms=llm.hook_genome.hook_end_ms,
+            start_sec=llm.hook_genome.hook_start_ms / 1000.0,  # ms → seconds
+            end_sec=llm.hook_genome.hook_end_ms / 1000.0,      # ms → seconds
+            pattern=llm.hook_genome.pattern,          # NEW: from LLM schema
+            delivery=llm.hook_genome.delivery,        # NEW: from LLM schema
+            hook_summary=llm.hook_genome.hook_summary or "",  # NEW: from LLM schema
             strength=llm.hook_genome.strength,
-            spoken_hook=llm.hook_genome.spoken_hook,
-            on_screen_text=llm.hook_genome.on_screen_text,
             microbeats=microbeats,
         )
         
@@ -769,9 +773,10 @@ class GeminiPipeline:
         scenes = [
             Scene(
                 scene_id=f"S{s.idx:02d}",
-                time_start_ms=s.window.start_ms,
-                time_end_ms=s.window.end_ms,
-                label=s.label,
+                time_start=s.window.start_ms / 1000.0,  # ms → seconds
+                time_end=s.window.end_ms / 1000.0,      # ms → seconds
+                duration_sec=(s.window.end_ms - s.window.start_ms) / 1000.0,
+                narrative_role=s.label,
                 summary=s.summary,
             )
             for s in llm.scenes
@@ -847,12 +852,20 @@ class GeminiPipeline:
             run_at=unified_result.llm_provenance.run_at,
         )
         
+        # Capsule brief 변환
+        capsule_brief = CapsuleBrief(
+            hook_script=llm.capsule_brief.hook_script if llm.capsule_brief else "",
+            shotlist=[{"description": s} for s in (llm.capsule_brief.shotlist if llm.capsule_brief else [])],
+            do_not=llm.capsule_brief.do_not if llm.capsule_brief else [],
+        )
+        
         semantic = SemanticPassResult(
             scenes=scenes,
             hook_genome=hook,
             intent_layer=intent,
             audience_reaction=audience,
             mise_en_scene_signals=mise_signals,
+            capsule_brief=capsule_brief,
             summary=llm.causal_reasoning.why_viral_one_liner if llm.causal_reasoning else "",
             provenance=semantic_provenance,
         )

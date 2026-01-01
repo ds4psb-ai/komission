@@ -354,21 +354,8 @@ export function CoachingSession({
 
     if (!isOpen) return null;
 
-    // Desktop blocker
-    if (!isMobile) {
-        return (
-            <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6">
-                <div className="text-6xl mb-6">📱</div>
-                <h2 className="text-2xl font-bold text-white mb-2">모바일에서만 촬영 가능</h2>
-                <p className="text-white/50 text-center mb-8 max-w-sm">
-                    AI 코칭 촬영은 모바일 웹에서만 사용할 수 있습니다.
-                </p>
-                <button onClick={onClose} className="px-8 py-3 bg-white/10 border border-white/20 rounded-xl text-white font-bold">
-                    닫기
-                </button>
-            </div>
-        );
-    }
+    // Web/Desktop: Use responsive layout instead of blocking
+    // Previously blocked desktop users, now we allow both mobile and web
 
     // Error state
     if (error) {
