@@ -17,6 +17,7 @@ import { HeroSection } from "@/components/remix/HeroSection";
 import { CelebrationModal } from "@/components/CelebrationModal";
 import { StoryboardPanel } from "@/components/video/StoryboardPanel";
 import { VDGCard } from "@/components/canvas/VDGCard";
+import { CoachingSession } from "@/components/CoachingSession";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -47,6 +48,7 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
 
     const [isStarting, setIsStarting] = useState(false);
     const [showCelebration, setShowCelebration] = useState(false);
+    const [showCoaching, setShowCoaching] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const isMountedRef = useRef(true);
 
@@ -78,6 +80,8 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
             if (!isMountedRef.current) return;
             setRunCreated({ runId: forkedNode.node_id, forkNodeId: forkedNode.node_id });
             setRunStatus("shooting");
+            // Open AI coaching session after fork success
+            setShowCoaching(true);
         } catch (error) {
             console.warn("[ShootTab] Fork failed:", error);
             const message = error instanceof Error ? error.message : "촬영 시작에 실패했습니다.";
@@ -180,6 +184,19 @@ function ShootTabContent({ nodeId }: { nodeId: string }) {
                 nodeTitle={outlier?.title || "리믹스"}
                 earnedPoints={350}
                 questBonus={quest?.rewardPoints || 0}
+            />
+
+            {/* AI Coaching Session - Real-time audio coaching */}
+            <CoachingSession
+                isOpen={showCoaching}
+                onClose={() => setShowCoaching(false)}
+                videoId={nodeId}
+                packId={nodeId}
+                mode="variation"
+                onComplete={(sessionId) => {
+                    console.log("✅ Coaching session completed:", sessionId);
+                    setShowCoaching(false);
+                }}
             />
         </div>
     );
