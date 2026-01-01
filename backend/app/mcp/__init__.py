@@ -21,6 +21,7 @@ from app.mcp.tools import search
 from app.mcp.tools import pack_generator
 from app.mcp.tools import vdg_tools
 from app.mcp.tools import smart_analysis  # Claude Desktop 호환 데이터 제공
+from app.mcp.tools import stpf_tools  # STPF v3.1 분석 도구
 
 # Prompts 등록
 from app.mcp.prompts import recommendation
