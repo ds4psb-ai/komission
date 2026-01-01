@@ -1,7 +1,7 @@
 # VDG System v4.0: Unified Pipeline Architecture (Final)
 
 **작성**: 2025-12-28  
-**Updated**: 2025-12-31  
+**Updated**: 2026-01-01  
 **목표**: VDG v4.0 Unified Pipeline (Pro 1-Pass + CV) + Director Pack + Audio Coaching 통합 문서
 
 ---
@@ -154,34 +154,48 @@ class DirectorPack(BaseModel):
 - ✅ `CoachingOutcome` (compliance, metric_before/after)
 - ✅ `SessionContext` (persona, environment, device)
 
+### Normalized Evidence Tables (Added 2026-01-01)
+- ✅ `viral_kicks` (23 columns): 바이럴 킥 정규화 테이블
+- ✅ `keyframe_evidences` (14 columns): 프레임 증거 테이블
+- ✅ `comment_evidences` (8 columns): 댓글 증거 테이블
+
 ---
 
-## 5) File Structure
+## 5) File Structure (Updated 2026-01-01)
 
 ```
 backend/app/
 ├── schemas/
 │   ├── vdg_v4.py             # VDG v4.0 schemas (881 lines)
-│   ├── vdg_unified_pass.py   # Unified Pass output (333 lines)
+│   ├── vdg_unified_pass.py   # Unified Pass output (333 lines) + pattern/delivery/hook_summary
 │   ├── director_pack.py      # Director Pack (355 lines)
 │   └── metric_registry.py    # Metric SSoT (180 lines)
 │
 ├── services/
-│   ├── gemini_pipeline.py    # Main pipeline
+│   ├── gemini_pipeline.py    # [WRAPPER] → vdg_pipeline/ 패키지로 위임
+│   ├── vdg_extractor.py      # [NEW] VDG 헬퍼 함수 (extract_*, translate_*)
 │   ├── genai_client.py       # google-genai SDK client
 │   ├── audio_coach.py        # Gemini 2.5 Flash Live
 │   └── evidence_updater.py   # RL weight adjustment
+│
+├── services/vdg_pipeline/    # [NEW] Phase 2 리팩토링 (2026-01-01)
+│   ├── __init__.py           # 공개 API (GeminiPipeline, gemini_pipeline)
+│   ├── constants.py          # VDG_PROMPT (7771 chars)
+│   ├── prompt_builder.py     # 영상 길이별 프롬프트 빌더
+│   ├── sanitizer.py          # 페이로드 정제, 레거시 필드
+│   ├── converter.py          # UnifiedResult → VDGv4 변환
+│   └── analyzer.py           # GeminiPipeline 클래스 (main entry)
 │
 └── services/vdg_2pass/
     ├── unified_pass.py       # Pass 1: Pro LLM (433 lines)
     ├── cv_measurement_pass.py # Pass 2: CV (510 lines)
     ├── vdg_unified_pipeline.py # 오케스트레이터 (380 lines)
     ├── director_compiler.py  # Pack 컴파일러 (810 lines)
+    ├── quality_gate.py       # Proof Grade validation
     ├── frame_extractor.py    # Plan-based frames
     └── prompts/
         ├── unified_prompt.py # Pro 1-Pass 프롬프트
-        ├── semantic_prompt.py # (legacy)
-        └── visual_prompt.py  # (legacy)
+        └── semantic_prompt.py # pattern/delivery/hook_summary 지시
 ```
 
 ---
