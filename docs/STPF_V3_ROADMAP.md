@@ -1,9 +1,84 @@
-# 🚀 STPF v3.0 × Komission VDG
+# 🚀 STPF v3.1 × Komission VDG
 ## Single Truth Pattern Formalization — Complete Implementation Roadmap
 
 **작성**: 2026-01-01  
-**버전**: STPF v3.0 + VDG v4.1  
+**버전**: STPF v3.1 + VDG v4.1  
 **목표**: 바이럴 패턴의 단일 진실을 연산 가능한 동적 엔진으로 구현
+
+---
+
+## ⚠️ v3.1 Critical Fixes: 수학적 안전장치
+
+> **v3.0 → v3.1 업그레이드 이유**: AI 시스템이 STPF를 연산할 때 발생하는 치명적 수학 버그 수정
+
+### 🛑 Bug 1: Division by Zero (무한대 발산)
+
+**문제**: 분모 변수(Cost 등)가 최적(1점)일 때, 정규화 값이 0 → 분모가 0 → 점수 무한대
+
+```python
+# ❌ v3.0 문제 코드
+normalized = (cost - 1) / 9  # cost=1 → normalized=0
+friction = normalized ** 1.0  # friction=0
+score = value / friction  # 💥 Division by Zero!
+```
+
+**해결책 (v3.1)**: 분모는 **1에서 시작하여 저항만큼 증가**
+
+```python
+# ✅ v3.1 수정 코드
+def safe_friction(raw_score: float, weight: float = 1.0) -> float:
+    """저항 변수의 안전한 정규화 (1 + normalized * weight)"""
+    normalized = (raw_score - 1) / 9  # 1-10 → 0-1
+    return 1 + normalized * weight  # 항상 >= 1
+```
+
+### 🛑 Bug 2: Vanishing Gradient (본질 소멸)
+
+**문제**: 0-1 소수를 제곱하면 작아짐 (0.8² = 0.64) → 본질이 좋을수록 점수가 낮아지는 역설
+
+```python
+# ❌ v3.0 문제 코드
+normalized = (essence - 1) / 9  # essence=10 → normalized=1.0, essence=8 → 0.78
+value = normalized ** 2.0  # 0.78² = 0.61 😱 본질 8점이 오히려 낮아짐
+```
+
+**해결책 (v3.1)**: 분자는 **Raw Score(1-10)** 그대로 사용, **Log-Probability** 적용
+
+```python
+# ✅ v3.1 수정 코드: Raw Score 사용 + Log-Sum
+def calculate_value_v31(numerator: STPFNumerator) -> float:
+    """v3.1: Raw Score 사용으로 본질 압도 보장"""
+    return (
+        (numerator.essence ** 2.0) *      # 10² = 100
+        (numerator.capability ** 1.2) *   # 10^1.2 = 15.8
+        (numerator.novelty ** 1.1) *
+        (numerator.connection ** 1.0) *
+        (numerator.proof ** 1.3)
+    )
+    # essence=10이면 100, essence=5이면 25 → 압도적 본질이 승리
+
+def calculate_log_value(numerator: STPFNumerator) -> float:
+    """Log-Probability 방식: 곱셈 → 덧셈 변환"""
+    import math
+    log_value = (
+        2.0 * math.log(numerator.essence) +
+        1.2 * math.log(numerator.capability) +
+        1.1 * math.log(numerator.novelty) +
+        1.0 * math.log(numerator.connection) +
+        1.3 * math.log(numerator.proof)
+    )
+    return math.exp(log_value)  # 수치 안정성 보장
+```
+
+### 📊 v3.0 vs v3.1 비교
+
+| 항목 | v3.0 | v3.1 |
+|------|------|------|
+| 분모 정규화 | `(x-1)/9` | `1 + (x-1)/9 * weight` |
+| 분자 스케일 | 0-1 정규화 | **Raw 1-10 사용** |
+| 곱셈 안정성 | 소수 곱 → 소멸 | **Log-Sum 변환** |
+| Score 리스케일 | `1000 * s/(s+1)` | `1000 * s/(s+500)` |
+| Kelly 안전장치 | 기본 | **Edge Check + Fractional** |
 
 ---
 
@@ -365,12 +440,13 @@ $$Score = G_{total} \cdot \frac{V}{F^{\omega}} \cdot M_{boost} \cdot EntropyBoos
 ```python
 # services/stpf/calculator.py
 
-class STPFCalculator:
-    """STPF 통합 점수 계산기"""
+class STPFCalculatorV31:
+    """STPF v3.1 통합 점수 계산기 (수학적 안전장치 적용)"""
     
     def __init__(self):
         self.omega = 0.8  # 분모 완화 지수
         self.gamma = 0.6  # 엔트로피 보너스 계수
+        self.reference_score = 500  # v3.1: 리스케일 기준값 (Unicorn ~5000 → 900+)
     
     def calculate(
         self,
@@ -381,41 +457,41 @@ class STPFCalculator:
         expected_score: Optional[float] = None,
         actual_score: Optional[float] = None,
     ) -> STPFResult:
-        """통합 STPF 점수 계산"""
+        """v3.1: 수학적 안정성이 보장된 통합 점수 계산"""
         
-        # 1. Gate 통과율
-        g_total = gates.calculate_total()
-        
-        # Gate 미통과 시 조기 종료
-        if g_total < 0.3:
+        # 1. Gate 통과율 (Kill Switch)
+        gates_raw = [gates.trust_gate, gates.legality_gate, gates.hygiene_gate]
+        if min(gates_raw) < 4:
             return STPFResult(
                 raw_score=0.0,
                 score_1000=0,
                 gate_passed=False,
-                gate_failure_reason=self._identify_failed_gate(gates),
+                gate_failure_reason=f"Gate Failed: {self._identify_failed_gate(gates)}",
             )
         
-        # 2. 가치 (분자)
-        v = numerator.calculate_value()
+        # Gate Soft Factor (각 게이트/10의 곱)
+        g_total = math.prod(g / 10.0 for g in gates_raw)
         
-        # 3. 마찰 (분모)
-        f = denominator.calculate_friction()
+        # 2. 가치 (분자) - v3.1: Raw Score 사용으로 Vanishing Gradient 방지
+        v = self._calculate_value_v31(numerator)
         
-        # 4. 승수
-        m_boost = multipliers.calculate_boost()
+        # 3. 마찰 (분모) - v3.1: (1 + normalized) 패턴으로 Division by Zero 방지
+        f_total = self._calculate_friction_v31(denominator)
+        
+        # 4. 승수 (네트워크는 5점 초과시 지수 부스트)
+        m_boost = self._calculate_multipliers_v31(multipliers)
         
         # 5. 엔트로피 보너스 (갭)
         entropy_boost = 1.0
         if expected_score is not None and actual_score is not None:
             gap = max(0, actual_score - expected_score)
-            if gap > 0.01:
-                entropy_boost = 1 + self.gamma * math.log(1 + gap)
+            entropy_boost = 1 + math.log1p(gap) * 0.5  # log1p for stability
         
         # 6. 최종 점수
-        raw_score = g_total * (v / (f ** self.omega)) * m_boost * entropy_boost
+        raw_score = g_total * (v / (f_total ** self.omega)) * m_boost * entropy_boost
         
-        # 7. 0~1000 리스케일
-        score_1000 = int(1000 * raw_score / (raw_score + 1))
+        # 7. 0~1000 리스케일 (v3.1: reference=500으로 Unicorn~5000 → 900+)
+        score_1000 = int(1000 * raw_score / (raw_score + self.reference_score))
         
         return STPFResult(
             raw_score=raw_score,
@@ -957,7 +1033,7 @@ class STPFReport(BaseModel):
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    STPF v3.0 × VDG 구현 로드맵                       │
+│                    STPF v3.1 × VDG 구현 로드맵                       │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  Week 1                                                              │
@@ -992,5 +1068,5 @@ class STPFReport(BaseModel):
 
 ## 한 줄 요약
 
-> **"STPF v3.0은 VDG의 훅/킥/패턴을 12가지 불변 규칙과 베이지안 갱신으로 감싸,
+> **"STPF v3.1은 VDG의 훅/킥/패턴을 12가지 불변 규칙과 베이지안 갱신으로 감싸,
 > '점수'를 넘어 '확률 + 기대값 + 최적 베팅 비율'을 출력하는 단일 진실 엔진이다."**
