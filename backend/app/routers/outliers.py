@@ -2084,3 +2084,339 @@ async def list_pending_comment_items(
             for item in items
         ]
     }
+
+
+# ==================
+# P1-2: KICK CURATION API
+# ==================
+
+from app.models import ViralKick, ViralKickStatus, KeyframeEvidence, CommentEvidence
+
+
+@router.get("/kicks")
+async def list_kicks(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_curator),
+    status: Optional[str] = Query(None),
+    proof_ready: Optional[bool] = Query(None),
+    mechanism: Optional[str] = Query(None),
+    min_confidence: float = Query(0.0, ge=0.0, le=1.0),
+    limit: int = Query(50, le=200),
+    offset: int = Query(0),
+):
+    """
+    List viral kicks with filters for curation.
+    
+    Filters:
+    - status: pending | approved | rejected | needs_review
+    - proof_ready: true | false
+    - mechanism: partial match
+    - min_confidence: 0.0 - 1.0
+    
+    Returns kicks sorted by confidence (desc)
+    """
+    query = select(ViralKick)
+    
+    if status:
+        query = query.where(ViralKick.status == status)
+    
+    if proof_ready is not None:
+        query = query.where(ViralKick.proof_ready == proof_ready)
+    
+    if mechanism:
+        query = query.where(ViralKick.mechanism.ilike(f"%{mechanism}%"))
+    
+    if min_confidence > 0:
+        query = query.where(ViralKick.confidence >= min_confidence)
+    
+    query = query.order_by(ViralKick.confidence.desc()).offset(offset).limit(limit)
+    
+    result = await db.execute(query)
+    kicks = result.scalars().all()
+    
+    # Count total
+    count_query = select(func.count(ViralKick.id))
+    if status:
+        count_query = count_query.where(ViralKick.status == status)
+    if proof_ready is not None:
+        count_query = count_query.where(ViralKick.proof_ready == proof_ready)
+    
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
+    
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "kicks": [
+            {
+                "id": str(kick.id),
+                "kick_id": kick.kick_id,
+                "node_id": str(kick.node_id),
+                "kick_index": kick.kick_index,
+                "title": kick.title,
+                "mechanism": kick.mechanism,
+                "creator_instruction": kick.creator_instruction,
+                "start_ms": kick.start_ms,
+                "end_ms": kick.end_ms,
+                "confidence": kick.confidence,
+                "proof_ready": kick.proof_ready,
+                "missing_reason": kick.missing_reason,
+                "status": kick.status.value if hasattr(kick.status, 'value') else kick.status,
+                "comment_evidence_count": len(kick.comment_evidence_ids or []),
+                "frame_evidence_count": len(kick.frame_evidence_ids or []),
+                "created_at": kick.created_at.isoformat() if kick.created_at else None,
+            }
+            for kick in kicks
+        ]
+    }
+
+
+@router.get("/kicks/{kick_id}")
+async def get_kick_detail(
+    kick_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get detailed kick information with evidences.
+    """
+    # First try by kick_id string
+    result = await db.execute(
+        select(ViralKick).where(ViralKick.kick_id == kick_id)
+    )
+    kick = result.scalar_one_or_none()
+    
+    if not kick:
+        # Try by UUID
+        try:
+            kick_uuid = uuid.UUID(kick_id)
+            result = await db.execute(
+                select(ViralKick).where(ViralKick.id == kick_uuid)
+            )
+            kick = result.scalar_one_or_none()
+        except ValueError:
+            pass
+    
+    if not kick:
+        raise HTTPException(404, "Kick not found")
+    
+    # Get keyframes
+    kf_result = await db.execute(
+        select(KeyframeEvidence).where(KeyframeEvidence.kick_id == kick.id)
+    )
+    keyframes = kf_result.scalars().all()
+    
+    return {
+        "kick": {
+            "id": str(kick.id),
+            "kick_id": kick.kick_id,
+            "node_id": str(kick.node_id),
+            "kick_index": kick.kick_index,
+            "title": kick.title,
+            "mechanism": kick.mechanism,
+            "creator_instruction": kick.creator_instruction,
+            "start_ms": kick.start_ms,
+            "end_ms": kick.end_ms,
+            "peak_ms": kick.peak_ms,
+            "confidence": kick.confidence,
+            "proof_ready": kick.proof_ready,
+            "missing_reason": kick.missing_reason,
+            "status": kick.status.value if hasattr(kick.status, 'value') else kick.status,
+            "comment_evidence_ids": kick.comment_evidence_ids,
+            "frame_evidence_ids": kick.frame_evidence_ids,
+            "evidence_comment_ranks": kick.evidence_comment_ranks,
+            "reviewed_by": str(kick.reviewed_by) if kick.reviewed_by else None,
+            "reviewed_at": kick.reviewed_at.isoformat() if kick.reviewed_at else None,
+            "review_notes": kick.review_notes,
+            "created_at": kick.created_at.isoformat() if kick.created_at else None,
+        },
+        "keyframes": [
+            {
+                "evidence_id": kf.evidence_id,
+                "role": kf.role,
+                "t_ms": kf.t_ms,
+                "what_to_see": kf.what_to_see,
+                "blur_score": kf.blur_score,
+                "brightness": kf.brightness,
+                "motion_proxy": kf.motion_proxy,
+                "verified": kf.verified,
+            }
+            for kf in keyframes
+        ]
+    }
+
+
+from pydantic import BaseModel
+
+
+class KickReviewRequest(BaseModel):
+    """Kick review request"""
+    action: str  # "approve" | "reject" | "needs_review"
+    notes: Optional[str] = None
+
+
+@router.post("/kicks/{kick_id}/review")
+async def review_kick(
+    kick_id: str,
+    request: KickReviewRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_curator),
+):
+    """
+    Review (approve/reject) a viral kick.
+    
+    Actions:
+    - approve: Mark as approved for promotion
+    - reject: Mark as rejected with notes
+    - needs_review: Flag for further review
+    """
+    # Find kick
+    result = await db.execute(
+        select(ViralKick).where(ViralKick.kick_id == kick_id)
+    )
+    kick = result.scalar_one_or_none()
+    
+    if not kick:
+        try:
+            kick_uuid = uuid.UUID(kick_id)
+            result = await db.execute(
+                select(ViralKick).where(ViralKick.id == kick_uuid)
+            )
+            kick = result.scalar_one_or_none()
+        except ValueError:
+            pass
+    
+    if not kick:
+        raise HTTPException(404, "Kick not found")
+    
+    # Update status
+    action_to_status = {
+        "approve": ViralKickStatus.APPROVED,
+        "reject": ViralKickStatus.REJECTED,
+        "needs_review": ViralKickStatus.NEEDS_REVIEW,
+    }
+    
+    if request.action not in action_to_status:
+        raise HTTPException(400, f"Invalid action: {request.action}")
+    
+    kick.status = action_to_status[request.action]
+    kick.reviewed_by = current_user.id
+    kick.reviewed_at = utcnow()
+    kick.review_notes = request.notes
+    
+    await db.commit()
+    await db.refresh(kick)
+    
+    return {
+        "success": True,
+        "kick_id": kick.kick_id,
+        "new_status": kick.status.value if hasattr(kick.status, 'value') else kick.status,
+        "reviewed_by": current_user.email,
+    }
+
+
+@router.get("/kicks/stats/summary")
+async def get_kick_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_curator),
+):
+    """
+    Get kick curation statistics.
+    """
+    from sqlalchemy import case
+    
+    stats_query = select(
+        func.count(ViralKick.id).label("total"),
+        func.count(case((ViralKick.status == ViralKickStatus.PENDING, 1))).label("pending"),
+        func.count(case((ViralKick.status == ViralKickStatus.APPROVED, 1))).label("approved"),
+        func.count(case((ViralKick.status == ViralKickStatus.REJECTED, 1))).label("rejected"),
+        func.count(case((ViralKick.status == ViralKickStatus.NEEDS_REVIEW, 1))).label("needs_review"),
+        func.count(case((ViralKick.proof_ready == True, 1))).label("proof_ready"),
+        func.avg(ViralKick.confidence).label("avg_confidence"),
+    )
+    
+    result = await db.execute(stats_query)
+    row = result.one()
+    
+    return {
+        "total": row.total,
+        "by_status": {
+            "pending": row.pending,
+            "approved": row.approved,
+            "rejected": row.rejected,
+            "needs_review": row.needs_review,
+        },
+        "proof_ready": row.proof_ready,
+        "avg_confidence": round(float(row.avg_confidence or 0), 3),
+    }
+
+
+# ==================
+# P1-3: CLUSTER TEST API
+# ==================
+
+@router.post("/clusters/test")
+async def run_cluster_test(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_curator),
+    min_confidence: float = Query(0.6, ge=0.0, le=1.0),
+    limit: int = Query(500, le=1000),
+):
+    """
+    Run cluster test on proof-ready kicks.
+    
+    Only kicks with proof_ready=true and confidence >= min_confidence
+    are included in clustering.
+    
+    Returns cluster assignments and quality metrics.
+    """
+    from app.services.vdg_2pass.cluster_test import cluster_test_service
+    
+    result = await cluster_test_service.run_test(
+        db=db,
+        min_confidence=min_confidence,
+        limit=limit,
+    )
+    
+    return result
+
+
+@router.get("/clusters/test/summary")
+async def get_cluster_test_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_curator),
+):
+    """
+    Get quick cluster test summary without running full test.
+    Just counts potential candidates.
+    """
+    # Count proof-ready kicks
+    proof_ready_count = await db.execute(
+        select(func.count(ViralKick.id))
+        .where(ViralKick.proof_ready == True)
+    )
+    total_proof_ready = proof_ready_count.scalar() or 0
+    
+    # Count high-confidence (>=0.7)
+    high_conf_count = await db.execute(
+        select(func.count(ViralKick.id))
+        .where(ViralKick.proof_ready == True)
+        .where(ViralKick.confidence >= 0.7)
+    )
+    high_conf = high_conf_count.scalar() or 0
+    
+    # Count distinct nodes
+    distinct_nodes = await db.execute(
+        select(func.count(func.distinct(ViralKick.node_id)))
+        .where(ViralKick.proof_ready == True)
+    )
+    node_count = distinct_nodes.scalar() or 0
+    
+    return {
+        "proof_ready_kicks": total_proof_ready,
+        "high_confidence_kicks": high_conf,
+        "distinct_nodes": node_count,
+        "cluster_ready": total_proof_ready >= 10,
+        "message": f"{total_proof_ready} kicks ready for clustering" if total_proof_ready >= 10 
+                   else f"Need at least 10 proof-ready kicks (currently {total_proof_ready})",
+    }

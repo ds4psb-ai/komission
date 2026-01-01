@@ -1889,3 +1889,147 @@ class CoachingUploadOutcome(Base):
     
     # Relationships
     session: Mapped["CoachingSession"] = relationship("CoachingSession", back_populates="upload_outcome")
+
+
+# ==================
+# P1-1: VIRAL KICK NORMALIZATION
+# ==================
+
+class ViralKickStatus(str, enum.Enum):
+    """바이럴 킥 상태"""
+    PENDING = "pending"      # 검토 대기
+    APPROVED = "approved"    # 승인됨
+    REJECTED = "rejected"    # 거부됨
+    NEEDS_REVIEW = "needs_review"  # 수동 검토 필요
+
+
+class ViralKick(Base):
+    """
+    정규화된 바이럴 킥 테이블 (P1-1)
+    
+    VDG 분석 결과에서 추출된 개별 킥을 조회 가능하게 저장
+    - SQL 기반 큐레이션 쿼리 지원
+    - mechanism 태그 검색
+    - confidence 기반 필터링
+    """
+    __tablename__ = "viral_kicks"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kick_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)  # vk_{node_id}_{kick_index}
+    
+    # 연결
+    node_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("remix_nodes.id"), index=True)
+    outlier_item_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("outlier_items.id"), nullable=True, index=True
+    )
+    
+    # 킥 정보
+    kick_index: Mapped[int] = mapped_column(Integer, default=1)
+    title: Mapped[str] = mapped_column(String(200))
+    mechanism: Mapped[str] = mapped_column(String(240), index=True)  # 태그 검색용
+    creator_instruction: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    
+    # 시간 정보
+    start_ms: Mapped[int] = mapped_column(Integer)
+    end_ms: Mapped[int] = mapped_column(Integer)
+    peak_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    # Proof-Grade 필드 (P0-2에서 정의)
+    confidence: Mapped[float] = mapped_column(Float, default=0.7, index=True)
+    missing_reason: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    proof_ready: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    
+    # 증거 연결 (JSONB)
+    comment_evidence_ids: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)  # ["ev.comment.xxx", ...]
+    frame_evidence_ids: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)    # ["ev.frame.xxx", ...]
+    evidence_comment_ranks: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)  # [1, 3, 5]
+    
+    # 큐레이션 상태
+    status: Mapped[str] = mapped_column(SQLEnum(ViralKickStatus), default=ViralKickStatus.PENDING)
+    reviewed_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    review_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # 메타
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    
+    # Relationships
+    node: Mapped["RemixNode"] = relationship("RemixNode", backref="viral_kicks")
+    outlier_item: Mapped[Optional["OutlierItem"]] = relationship("OutlierItem", backref="viral_kicks")
+    reviewer: Mapped[Optional["User"]] = relationship("User", foreign_keys=[reviewed_by])
+    keyframes: Mapped[List["KeyframeEvidence"]] = relationship("KeyframeEvidence", back_populates="kick")
+
+
+class KeyframeEvidence(Base):
+    """
+    키프레임 증거 테이블 (P1-1)
+    
+    CV로 검증된 키프레임 정보 저장
+    - evidence_id로 조인 가능
+    - CV 측정값 포함
+    """
+    __tablename__ = "keyframe_evidences"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    evidence_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)  # ev.frame.k1.start.xxx
+    
+    # 연결
+    kick_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("viral_kicks.id"), index=True)
+    node_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("remix_nodes.id"), index=True)
+    
+    # 키프레임 정보
+    role: Mapped[str] = mapped_column(String(20))  # start, peak, end
+    t_ms: Mapped[int] = mapped_column(Integer)
+    what_to_see: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    
+    # CV 측정값 (P0-3)
+    blur_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    brightness: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    motion_proxy: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    frame_hash: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    
+    # 검증 상태
+    verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    verification_reason: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    
+    # 메타
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    
+    # Relationships
+    kick: Mapped["ViralKick"] = relationship("ViralKick", back_populates="keyframes")
+    node: Mapped["RemixNode"] = relationship("RemixNode", backref="keyframe_evidences")
+
+
+class CommentEvidence(Base):
+    """
+    댓글 증거 테이블 (P1-1)
+    
+    VDG 분석에 사용된 댓글 증거 저장
+    - comment_id로 조인 가능
+    - 어느 kick에 연결되었는지 추적
+    """
+    __tablename__ = "comment_evidences"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    evidence_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)  # ev.comment.xxx
+    
+    # 연결
+    node_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("remix_nodes.id"), index=True)
+    
+    # 댓글 정보
+    text_snippet: Mapped[str] = mapped_column(String(500))  # 원문 일부
+    like_count: Mapped[int] = mapped_column(Integer, default=0)
+    rank: Mapped[int] = mapped_column(Integer, default=0)  # top5 중 순위
+    
+    # 킥 연결
+    matched_kick_ids: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)  # [kick_id, ...]
+    
+    # 메타
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    
+    # Relationships
+    node: Mapped["RemixNode"] = relationship("RemixNode", backref="comment_evidences")
+
