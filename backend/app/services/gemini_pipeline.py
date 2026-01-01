@@ -670,12 +670,31 @@ class GeminiPipeline:
                 duration_sec=duration_sec,
             )
             
+            # 4.5 P0-1: Quality Gate validation
+            from app.services.vdg_2pass.quality_gate import proof_grade_gate
+            proof_ready, quality_issues = proof_grade_gate.validate(
+                vdg.model_dump(), 
+                int(duration_sec * 1000)
+            )
+            
+            # Add quality gate results to metadata
+            vdg_data = vdg.model_dump()
+            if 'meta' not in vdg_data:
+                vdg_data['meta'] = {}
+            vdg_data['meta']['proof_ready'] = proof_ready
+            vdg_data['meta']['quality_issues'] = quality_issues if quality_issues else None
+            
+            if proof_ready:
+                logger.info(f"✅ [v5] Quality Gate PASSED")
+            else:
+                logger.warning(f"⚠️ [v5] Quality Gate FAILED: {quality_issues[:3]}")
+            
             # 5. Save to cache (24 hours)
             try:
                 await cache.cache_vdg_v4(
                     video_url=video_url,
                     comments_hash=comments_hash,
-                    vdg_data=vdg.model_dump(),
+                    vdg_data=vdg_data,
                 )
                 logger.info(f"💾 [v5] Cache SAVED for {video_url[:50]}...")
             except Exception as e:

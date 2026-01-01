@@ -90,13 +90,50 @@ class RedisCache:
         """Get cached Gemini analysis"""
         return await self.get_json(f"gemini:{video_url}")
 
-    # ---- VDG v4 Cache (Comments-aware) ----
+    # ---- VDG v4 Cache (Comments-aware + Versioned) ----
     
-    def _make_vdg_cache_key(self, video_url: str, comments_hash: str) -> str:
-        """Generate VDG v4 cache key with comments hash"""
+    # Version constants (update when prompt/schema/model changes)
+    VDG_PROMPT_VERSION = "v4.2"
+    VDG_SCHEMA_VERSION = "unified_v4"
+    VDG_MODEL_ID = "gemini-3.0-pro"
+    VDG_PIPELINE_VERSION = "2pass_v1"
+    
+    def _make_vdg_cache_key(
+        self, 
+        video_url: str, 
+        comments_hash: str,
+        prompt_version: str = None,
+        schema_version: str = None,
+        model_id: str = None,
+        pipeline_version: str = None
+    ) -> str:
+        """
+        Generate VDG v4 cache key with version components
+        
+        Key includes:
+        - video_url hash
+        - comments_hash
+        - prompt_version
+        - schema_version  
+        - model_id
+        - pipeline_version
+        
+        This prevents stale cache reuse after code/prompt changes.
+        """
         import hashlib
+        
+        # Use defaults if not provided
+        p_ver = prompt_version or self.VDG_PROMPT_VERSION
+        s_ver = schema_version or self.VDG_SCHEMA_VERSION
+        m_id = model_id or self.VDG_MODEL_ID
+        pl_ver = pipeline_version or self.VDG_PIPELINE_VERSION
+        
+        # Combine all components
         url_hash = hashlib.md5(video_url.encode()).hexdigest()[:12]
-        return f"vdg_v4:{url_hash}:{comments_hash[:8]}"
+        version_str = f"{p_ver}_{s_ver}_{m_id}_{pl_ver}"
+        version_hash = hashlib.md5(version_str.encode()).hexdigest()[:6]
+        
+        return f"vdg_v4:{url_hash}:{comments_hash[:8]}:{version_hash}"
 
     async def cache_vdg_v4(
         self, 
@@ -107,13 +144,13 @@ class RedisCache:
     ):
         """
         Cache VDG v4 analysis result (24 hours default)
-        Key includes comments hash to distinguish same video with different comments
+        Key includes comments hash AND version components
         """
         key = self._make_vdg_cache_key(video_url, comments_hash)
         await self.set_json(key, vdg_data, ttl)
 
     async def get_vdg_v4(self, video_url: str, comments_hash: str) -> Optional[dict]:
-        """Get cached VDG v4 analysis"""
+        """Get cached VDG v4 analysis (version-aware)"""
         key = self._make_vdg_cache_key(video_url, comments_hash)
         return await self.get_json(key)
 

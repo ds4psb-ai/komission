@@ -219,6 +219,24 @@ class ViralKickLLM(BaseModel):
         description="크리에이터 언어로 된 실행 지시문 (1~2문장)"
     )
     scene_index: Optional[int] = Field(None, ge=0, description="scenes[] 인덱스 (해당시)")
+    
+    # P0-2: Proof-Grade Evidence Anchoring
+    confidence: float = Field(
+        default=0.7, ge=0.0, le=1.0,
+        description="킥 신뢰도 점수 (high-conf >= 0.6)"
+    )
+    missing_reason: Optional[str] = Field(
+        None, max_length=50,
+        description="증거 부족 사유: 'no_evidence' | 'out_of_range' | 'low_confidence'"
+    )
+    comment_evidence_refs: List[str] = Field(
+        default_factory=list, max_length=5,
+        description="댓글 증거 ID 리스트 (ev.comment.xxx 형식)"
+    )
+    frame_evidence_refs: List[str] = Field(
+        default_factory=list, max_length=5,
+        description="프레임 증거 ID 리스트 (ev.frame.xxx 형식)"
+    )
 
 
 # -------------------------
