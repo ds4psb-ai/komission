@@ -38,6 +38,24 @@ from app.schemas.evidence import (
     OutlierRejectRequest,
 )
 
+# VDG Extraction helpers (extracted to separate module for maintainability)
+from app.services.vdg_extractor import (
+    VDG_KOREAN_MAP as _VDG_KOREAN_MAP_IMPORTED,
+    translate_term as _translate_term,
+    translate_vdg_to_korean as _translate_vdg_to_korean,
+    extract_hook_pattern as _extract_hook_pattern,
+    extract_hook_score as _extract_hook_score,
+    extract_hook_duration as _extract_hook_duration,
+    extract_shotlist as _extract_shotlist,
+    extract_timing as _extract_timing,
+    extract_do_not as _extract_do_not,
+    extract_invariant as _extract_invariant,
+    extract_variable as _extract_variable,
+    extract_visual_patterns as _extract_visual_patterns,
+    extract_audio_pattern as _extract_audio_pattern,
+    get_platform_specific_tips as _get_platform_specific_tips,
+)
+
 router = APIRouter(prefix="/outliers", tags=["Outliers"])
 
 
