@@ -784,8 +784,10 @@ export default function VideoDetailPage() {
 
                     {/* Right: Guide + Campaign */}
                     <div className="lg:col-span-7 space-y-6">
-                        {/* STPF Go/No-Go Decision Panel */}
+                        {/* STPF Panel - Hidden for regular users (ops-only feature)
+                            TODO: Move to /ops dashboard with proper role check
                         <STPFDecisionPanel outlierId={video.id} />
+                        */}
 
                         <div>
                             <div className="flex items-center gap-2 mb-4">

@@ -317,7 +317,7 @@ export default function OpsConsolePage() {
                 {!loading && !error && status && (
                     <>
                         {/* Stats Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
                             {/* Runs */}
                             <div className="p-5 bg-gradient-to-br from-violet-500/10 to-violet-900/10 border border-violet-500/20 rounded-2xl">
                                 <div className="flex items-center gap-2 text-violet-400 mb-2">
@@ -370,6 +370,19 @@ export default function OpsConsolePage() {
                                 </div>
                                 <div className="mt-2 text-xs text-white/40">
                                     {p2Progress?.progress_percent || 0}% 완료
+                                </div>
+                            </div>
+
+                            {/* STPF Engine Status (Ops-Only) */}
+                            <div className="p-5 bg-gradient-to-br from-emerald-500/10 to-emerald-900/10 border border-emerald-500/20 rounded-2xl">
+                                <div className="flex items-center gap-2 text-emerald-400 mb-2">
+                                    <Target className="w-4 h-4" />
+                                    <span className="text-xs font-medium">STPF Engine</span>
+                                </div>
+                                <div className="text-3xl font-black text-white">v3.1</div>
+                                <div className="mt-2 flex gap-2 text-xs">
+                                    <span className="text-emerald-400">✓ 14 APIs</span>
+                                    <span className="text-cyan-400">7 MCP</span>
                                 </div>
                             </div>
                         </div>
