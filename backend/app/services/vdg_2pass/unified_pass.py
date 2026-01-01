@@ -358,7 +358,17 @@ class UnifiedPass:
             if 'entity_hints' in raw_json:
                 valid_cv_priority = {'primary', 'secondary', 'optional'}
                 priority_map = {'high': 'primary', 'medium': 'secondary', 'low': 'optional'}
+                valid_entity_types = {'person', 'face', 'hand', 'product', 'text', 'environment', 'other'}
+                entity_type_map = {
+                    'food': 'product', 'dish': 'product', 'ingredient': 'product', 'cooking': 'environment',
+                    'object': 'other', 'item': 'product', 'location': 'environment', 'scene': 'environment',
+                    'animal': 'other', 'nature': 'environment', 'background': 'environment'
+                }
                 for hint in raw_json['entity_hints']:
+                    # Fix entity_type
+                    et = hint.get('entity_type', 'other')
+                    if et not in valid_entity_types:
+                        hint['entity_type'] = entity_type_map.get(et, 'other')
                     # Fix cv_priority
                     cv_p = hint.get('cv_priority', 'secondary')
                     if cv_p not in valid_cv_priority:
@@ -376,11 +386,19 @@ class UnifiedPass:
             # Preprocess: fix analysis_plan.points
             if 'analysis_plan' in raw_json and 'points' in raw_json['analysis_plan']:
                 valid_agg = {'mean', 'median', 'max', 'min', 'first', 'last', 'p95'}
+                valid_roi = {'full_frame', 'face', 'main_subject', 'product', 'text_overlay'}
+                roi_map = {
+                    'global': 'full_frame', 'full': 'full_frame', 'frame': 'full_frame',
+                    'person': 'main_subject', 'subject': 'main_subject', 'object': 'main_subject',
+                    'text': 'text_overlay', 'overlay': 'text_overlay',
+                }
                 for point in raw_json['analysis_plan']['points']:
                     if 'measurements' in point:
                         for m in point['measurements']:
                             if m.get('aggregation') not in valid_agg:
                                 m['aggregation'] = 'mean'
+                            if m.get('roi') not in valid_roi:
+                                m['roi'] = roi_map.get(m.get('roi'), 'full_frame')
             
             # Preprocess: analysis_plan defaults
             if 'analysis_plan' not in raw_json:

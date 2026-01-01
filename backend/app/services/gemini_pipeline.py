@@ -674,133 +674,232 @@ class GeminiPipeline:
     ) -> VDGv4:
         """UnifiedResult를 VDGv4 포맷으로 변환"""
         from app.schemas.vdg_v4 import (
-            VDGv4, HookGenomeV4, SceneV4, NarrativeUnitV4,
-            IntentLayerV4, CausalReasoningV4, ViralKick,
-            MiseEnSceneSignal, FocusWindow, Provenance4
+            VDGv4, HookGenome, Scene, Microbeat,
+            IntentLayer, MiseEnSceneSignal, AudienceReaction,
+            SemanticPassResult, SemanticPassProvenance,
+            VisualPassResult, AnalysisPlan, AnalysisPoint,
+            MediaSpec, MetricResult
         )
         
         llm = unified_result.llm_output
         cv = unified_result.cv_result
         
+        # Role mapping from UnifiedPass to VDGv4
+        role_map = {
+            'start': 'start', 'setup': 'start', 'hook': 'start',
+            'punch': 'punch', 'reveal': 'punch', 'twist': 'punch',
+            'build': 'build', 'demo': 'build',
+            'end': 'end', 'cta': 'end', 'loop': 'end', 'payoff': 'end',
+        }
+        
         # Hook genome 변환
-        hook = HookGenomeV4(
+        microbeats = []
+        for m in (llm.hook_genome.microbeats or []):
+            mb_role = role_map.get(m.role, 'start')
+            microbeats.append(Microbeat(
+                t=m.t_ms / 1000.0,  # ms → seconds
+                role=mb_role,
+                cue='visual',
+                note=m.description[:50] if m.description else '',
+            ))
+        
+        hook = HookGenome(
             hook_start_ms=llm.hook_genome.hook_start_ms,
             hook_end_ms=llm.hook_genome.hook_end_ms,
             strength=llm.hook_genome.strength,
             spoken_hook=llm.hook_genome.spoken_hook,
             on_screen_text=llm.hook_genome.on_screen_text,
-            microbeats=[
-                {"t_ms": m.t_ms, "role": m.role, "description": m.description}
-                for m in llm.hook_genome.microbeats
-            ],
+            microbeats=microbeats,
         )
         
         # Scenes 변환
-        scenes = []
-        for s in llm.scenes:
-            scene = SceneV4(
+        scenes = [
+            Scene(
                 scene_id=f"S{s.idx:02d}",
                 time_start_ms=s.window.start_ms,
                 time_end_ms=s.window.end_ms,
                 label=s.label,
                 summary=s.summary,
             )
-            scenes.append(scene)
-        
-        # Viral kicks 변환
-        viral_kicks = []
-        for k in llm.viral_kicks:
-            kick = ViralKick(
-                kick_index=k.kick_index,
-                t_start_ms=k.window.start_ms,
-                t_end_ms=k.window.end_ms,
-                title=k.title,
-                mechanism=k.mechanism,
-                creator_instruction=k.creator_instruction,
-                evidence_comment_ranks=k.evidence_comment_ranks,
-                evidence_cues=k.evidence_cues,
-            )
-            viral_kicks.append(kick)
+            for s in llm.scenes
+        ]
         
         # Intent layer 변환
-        intent = IntentLayerV4(
+        intent = IntentLayer(
             creator_intent=llm.intent_layer.creator_intent,
             audience_trigger=llm.intent_layer.audience_trigger,
             novelty=llm.intent_layer.novelty,
             clarity=llm.intent_layer.clarity,
         )
         
-        # Causal reasoning 변환
-        causal = CausalReasoningV4(
-            why_viral_one_liner=llm.causal_reasoning.why_viral_one_liner,
-            causal_chain=llm.causal_reasoning.causal_chain,
-            replication_recipe=llm.causal_reasoning.replication_recipe,
-            risks_or_unknowns=llm.causal_reasoning.risks_or_unknowns,
-        )
-        
         # Mise-en-scene signals 변환
-        mise_signals = [
-            MiseEnSceneSignal(
-                type=m.type,
-                description=m.description,
-                why_it_matters=m.why_it_matters,
-                anchor_ms=m.anchor_ms,
-            )
-            for m in llm.mise_en_scene_signals
-        ]
+        # Element mapping from UnifiedPass to VDGv4
+        element_map = {
+            'prop': 'props', 'composition': 'setting', 'color': 'outfit_color',
+            'wardrobe': 'outfit_color', 'camera': 'setting', 'editing': 'setting',
+            'audio': 'setting', 'text': 'setting',
+        }
+        valid_elements = {'outfit_color', 'background', 'lighting', 'props', 'makeup', 'setting'}
         
-        # CV measurements를 focus windows로 변환
-        focus_windows = []
-        for i, ap in enumerate(unified_result.analysis_points):
-            metrics_dict = {}
-            for metric_id, metric_result in ap.metrics.items():
-                metrics_dict[metric_id] = {
-                    "value": metric_result.value,
-                    "confidence": metric_result.confidence,
-                }
-            
-            fw = FocusWindow(
-                window_id=f"W{i:02d}",
-                t_start_ms=ap.t_center_ms - ap.t_window_ms // 2,
-                t_end_ms=ap.t_center_ms + ap.t_window_ms // 2,
-                metrics=metrics_dict,
-            )
-            focus_windows.append(fw)
+        mise_signals = []
+        for m in llm.mise_en_scene_signals:
+            element = element_map.get(m.type, m.type)
+            if element not in valid_elements:
+                element = 'setting'  # default fallback
+            mise_signals.append(MiseEnSceneSignal(
+                element=element,
+                value=m.description[:50],
+                sentiment="positive",
+                source_comment="",
+                likes=0,
+            ))
         
-        # Comment evidence 변환
-        comment_evidence = [
+        # Comment evidence를 audience_reaction으로 변환
+        best_comments = [
             {
-                "comment_rank": c.comment_rank,
-                "quote": c.quote,
+                "rank": c.comment_rank,
+                "text": c.quote,
                 "signal_type": c.signal_type,
                 "why_it_matters": c.why_it_matters,
+                "anchor_ms": getattr(c, 'anchor_ms', None),
             }
             for c in llm.comment_evidence_top5
         ]
         
-        # Provenance
-        provenance = Provenance4(
-            pipeline_version="v5.0_unified",
-            pass1_model=unified_result.pass1_provenance.model_id,
-            pass2_version=unified_result.pass2_provenance.version if cv else None,
-            prompt_version=unified_result.pass1_provenance.prompt_version,
+        # Viral kicks 변환
+        viral_kicks = [
+            {
+                "kick_index": k.kick_index,
+                "t_start_ms": k.window.start_ms,
+                "t_end_ms": k.window.end_ms,
+                "title": k.title,
+                "mechanism": k.mechanism,
+                "creator_instruction": k.creator_instruction,
+                "evidence_comment_ranks": k.evidence_comment_ranks,
+                "evidence_cues": k.evidence_cues,
+            }
+            for k in llm.viral_kicks
+        ]
+        
+        audience = AudienceReaction(
+            best_comments=best_comments,
+            sentiment_distribution={},
+            top_themes=[],
+        )
+        
+        # Semantic pass result
+        semantic_provenance = SemanticPassProvenance(
+            model_id=unified_result.llm_provenance.model_id,
+            prompt_version=unified_result.llm_provenance.prompt_version,
+            run_at=unified_result.llm_provenance.run_at,
+        )
+        
+        semantic = SemanticPassResult(
+            scenes=scenes,
+            hook_genome=hook,
+            intent_layer=intent,
+            audience_reaction=audience,
+            mise_en_scene_signals=mise_signals,
+            summary=llm.causal_reasoning.why_viral_one_liner if llm.causal_reasoning else "",
+            provenance=semantic_provenance,
+        )
+        
+        # Analysis plan 변환
+        analysis_points = []
+        if llm.analysis_plan and llm.analysis_plan.points:
+            # Reason mapping from UnifiedPass to VDGv4
+            reason_map = {
+                'critical': 'hook_punch', 'high': 'key_dialogue',
+                'medium': 'scene_boundary', 'low': 'text_appear',
+            }
+            valid_reasons = {
+                'hook_punch', 'hook_start', 'hook_build', 'hook_end',
+                'scene_boundary', 'sentiment_shift', 'product_mention',
+                'key_dialogue', 'text_appear', 'comment_mise_en_scene', 'comment_evidence'
+            }
+            for i, p in enumerate(llm.analysis_plan.points):
+                # Map reason to valid enum or use priority-based mapping
+                llm_reason = getattr(p, 'reason', '')
+                if llm_reason in valid_reasons:
+                    mapped_reason = llm_reason
+                else:
+                    mapped_reason = reason_map.get(p.priority, 'key_dialogue')
+                
+                t_start = (p.t_center_ms - p.t_window_ms // 2) / 1000.0
+                t_end = (p.t_center_ms + p.t_window_ms // 2) / 1000.0
+                
+                point = AnalysisPoint(
+                    id=f"AP_{i:02d}",
+                    t_center=p.t_center_ms / 1000.0,
+                    t_window=[t_start, t_end],
+                    priority=p.priority,
+                    reason=mapped_reason,
+                    source_ref=f"llm_plan_{i}",
+                )
+                analysis_points.append(point)
+        
+        analysis_plan = AnalysisPlan(
+            points=analysis_points,
+        )
+        
+        # Visual pass result (CV measurements)
+        visual = VisualPassResult()
+        if unified_result.analysis_points:
+            from app.schemas.vdg_v4 import AnalysisPointResult
+            analysis_results = []
+            for ap in unified_result.analysis_points:
+                metrics_dict = {}
+                for mid, mr in ap.metrics.items():
+                    # Infer value_type from value
+                    val = mr.value
+                    if isinstance(val, bool):
+                        value_type = "bool"
+                    elif isinstance(val, (list, tuple)):
+                        value_type = "vector2"
+                    elif isinstance(val, float):
+                        value_type = "scalar"
+                    else:
+                        value_type = "scalar"
+                    
+                    metrics_dict[mid] = MetricResult(
+                        metric_id=mid,
+                        value_type=value_type,
+                        confidence=mr.confidence,
+                    )
+                
+                analysis_results.append(AnalysisPointResult(
+                    ap_id=ap.ap_id,
+                    t_center_ms=ap.t_center_ms,
+                    t_window_ms=ap.t_window_ms,
+                    metrics=metrics_dict,
+                ))
+            visual.analysis_results = analysis_results
+        
+        # Media spec
+        media = MediaSpec(
+            duration_ms=int(duration_sec * 1000),
         )
         
         return VDGv4(
-            schema_version="vdg_v5.0",
             content_id=content_id,
-            video_url=video_url,
             platform=platform,
-            duration_ms=int(duration_sec * 1000),
-            hook_genome=hook,
-            scenes=scenes,
-            viral_kicks=viral_kicks,
-            intent_layer=intent,
-            causal_reasoning=causal,
+            duration_sec=duration_sec,
+            media=media,
+            semantic=semantic,
+            analysis_plan=analysis_plan,
+            visual=visual,
             mise_en_scene_signals=mise_signals,
-            focus_windows=focus_windows,
-            comment_evidence=comment_evidence,
-            provenance=provenance,
+            provenance={
+                "pipeline_version": "v5.0_unified",
+                "pass1_model": unified_result.llm_provenance.model_id,
+                "pass2_version": unified_result.cv_provenance.version if cv else None,
+                "viral_kicks": viral_kicks,
+                "causal_reasoning": {
+                    "why_viral_one_liner": llm.causal_reasoning.why_viral_one_liner,
+                    "causal_chain": llm.causal_reasoning.causal_chain,
+                    "replication_recipe": llm.causal_reasoning.replication_recipe,
+                } if llm.causal_reasoning else {},
+            },
         )
 
 
