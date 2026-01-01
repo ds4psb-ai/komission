@@ -593,8 +593,26 @@ class GeminiPipeline:
         
         Pass 1: Gemini 3.0 Pro 1회 호출 (의미/인과/Plan Seed)
         Pass 2: CV 결정론적 측정 (수치/좌표)
+        
+        ** Redis Cache 지원: 동일 영상+댓글 조합은 24시간 캐시 **
         """
         import asyncio
+        import hashlib
+        from app.services.cache import cache
+        
+        # Generate comments hash for cache key
+        comments_str = json.dumps(audience_comments or [], sort_keys=True)
+        comments_hash = hashlib.md5(comments_str.encode()).hexdigest()
+        
+        # 0. Check cache first
+        try:
+            await cache.connect()
+            cached_data = await cache.get_vdg_v4(video_url, comments_hash)
+            if cached_data:
+                logger.info(f"✅ [v5] Cache HIT for {video_url[:50]}...")
+                return VDGv4.model_validate(cached_data)
+        except Exception as e:
+            logger.warning(f"Cache check failed (continuing without cache): {e}")
         
         temp_path = None
         try:
@@ -651,6 +669,17 @@ class GeminiPipeline:
                 platform=platform,
                 duration_sec=duration_sec,
             )
+            
+            # 5. Save to cache (24 hours)
+            try:
+                await cache.cache_vdg_v4(
+                    video_url=video_url,
+                    comments_hash=comments_hash,
+                    vdg_data=vdg.model_dump(),
+                )
+                logger.info(f"💾 [v5] Cache SAVED for {video_url[:50]}...")
+            except Exception as e:
+                logger.warning(f"Cache save failed (result still returned): {e}")
             
             return vdg
 

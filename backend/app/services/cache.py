@@ -90,6 +90,34 @@ class RedisCache:
         """Get cached Gemini analysis"""
         return await self.get_json(f"gemini:{video_url}")
 
+    # ---- VDG v4 Cache (Comments-aware) ----
+    
+    def _make_vdg_cache_key(self, video_url: str, comments_hash: str) -> str:
+        """Generate VDG v4 cache key with comments hash"""
+        import hashlib
+        url_hash = hashlib.md5(video_url.encode()).hexdigest()[:12]
+        return f"vdg_v4:{url_hash}:{comments_hash[:8]}"
+
+    async def cache_vdg_v4(
+        self, 
+        video_url: str, 
+        comments_hash: str,
+        vdg_data: dict, 
+        ttl: int = 86400
+    ):
+        """
+        Cache VDG v4 analysis result (24 hours default)
+        Key includes comments hash to distinguish same video with different comments
+        """
+        key = self._make_vdg_cache_key(video_url, comments_hash)
+        await self.set_json(key, vdg_data, ttl)
+
+    async def get_vdg_v4(self, video_url: str, comments_hash: str) -> Optional[dict]:
+        """Get cached VDG v4 analysis"""
+        key = self._make_vdg_cache_key(video_url, comments_hash)
+        return await self.get_json(key)
+
+
     async def cache_recipe_view(self, node_id: str, html: str, ttl: int = 3600):
         """
         Cache rendered recipe view (1 hour default)
