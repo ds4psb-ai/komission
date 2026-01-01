@@ -10,17 +10,43 @@
 
 import { Lightbulb, Zap } from 'lucide-react';
 
-// VDG Data types (subset of VDGCard types)
+// VDG Data types (VDGv4 schema support)
 interface HookGenome {
     pattern?: string;
     delivery?: string;
     strength?: number;
     hook_summary?: string;
+    // VDGv4 fields
+    hook_start_ms?: number;
+    hook_end_ms?: number;
+}
+
+interface Keyframe {
+    t_ms: number;
+    role: 'start' | 'peak' | 'end';
+    what_to_see: string;
+}
+
+interface ViralKick {
+    kick_index: number;
+    title: string;
+    mechanism: string;
+    creator_instruction: string;
+    keyframes?: Keyframe[];
+    window?: { start_ms: number; end_ms: number };
 }
 
 interface VDGData {
+    // OLD VDG format
     hook_genome?: HookGenome;
     summary?: string;
+    // VDGv4 format
+    semantic?: {
+        hook_genome?: HookGenome;
+    };
+    provenance?: {
+        viral_kicks?: ViralKick[];
+    };
     [key: string]: unknown;
 }
 
@@ -31,7 +57,26 @@ interface FilmingGuideProps {
     className?: string;
 }
 
-// Hook pattern guide configurations (from QuickGuide.tsx)
+// Helper: Get viral kicks from VDGv4 or fall back to hook pattern
+function getGuideSteps(vdgAnalysis: VDGData | null | undefined): { title: string; desc: string; color: string }[] {
+    // VDGv4: Use viral_kicks if available
+    const viralKicks = vdgAnalysis?.provenance?.viral_kicks;
+    if (viralKicks && viralKicks.length >= 3) {
+        const colors = ['violet', 'pink', 'orange'];
+        return viralKicks.slice(0, 3).map((kick, idx) => ({
+            title: kick.title || `Kick ${kick.kick_index}`,
+            desc: kick.creator_instruction || kick.mechanism || '',
+            color: colors[idx % colors.length],
+        }));
+    }
+
+    // Fall back to hook_genome.pattern based guide
+    const hookPattern = (vdgAnalysis?.hook_genome?.pattern || vdgAnalysis?.semantic?.hook_genome?.pattern || '')
+        .toLowerCase().replace(/\s+/g, "_");
+    return HOOK_PATTERN_GUIDE[hookPattern]?.steps || HOOK_PATTERN_GUIDE.default.steps;
+}
+
+// Hook pattern guide configurations (fallback for old VDG format)
 const HOOK_PATTERN_GUIDE: Record<string, { steps: { title: string; desc: string; color: string }[] }> = {
     pattern_break: {
         steps: [
@@ -92,13 +137,16 @@ export function FilmingGuide({
     compact = false,
     className = '',
 }: FilmingGuideProps) {
-    // Extract hook pattern from VDG analysis
-    const hookPattern = vdgAnalysis?.hook_genome?.pattern?.toLowerCase().replace(/\s+/g, "_");
-    const hookSummary = vdgAnalysis?.hook_genome?.hook_summary;
-    const isVDGConnected = !!hookPattern && hookPattern !== "default";
+    // Get guide steps from VDGv4 viral_kicks or fallback to hook pattern
+    const guideSteps = getGuideSteps(vdgAnalysis);
 
-    // Get guide steps based on hook pattern
-    const guideConfig = HOOK_PATTERN_GUIDE[hookPattern || ""] || HOOK_PATTERN_GUIDE.default;
+    // Check if VDGv4 viral_kicks are used
+    const hasViralKicks = (vdgAnalysis?.provenance?.viral_kicks?.length ?? 0) >= 3;
+    const hookSummary = vdgAnalysis?.hook_genome?.hook_summary || vdgAnalysis?.semantic?.hook_genome?.hook_summary;
+    const isVDGConnected = hasViralKicks || !!hookSummary;
+
+    // Guideconfig wrapper for compatibility
+    const guideConfig = { steps: guideSteps };
 
     // Pending/Analyzing state
     if (analysisStatus !== 'completed' || !vdgAnalysis) {

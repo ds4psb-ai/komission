@@ -254,8 +254,8 @@ async def analyze_node_video(
         except Exception as ce:
             print(f"⚠️ Comment extraction failed (non-fatal): {ce}")
         
-        # 2. Gemini Analysis with audience comments
-        analysis = await gemini_pipeline.analyze_video(
+        # 2. Gemini Analysis with audience comments (VDG v4)
+        analysis = await gemini_pipeline.analyze_video_v4(
             node.source_video_url, 
             node_id,
             audience_comments=audience_comments

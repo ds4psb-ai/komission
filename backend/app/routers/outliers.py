@@ -79,7 +79,7 @@ def trigger_auto_analysis(node_id: str, video_url: str):
         
         try:
             print(f"🚀 Auto-analyzing node {node_id}...")
-            result = await gemini_pipeline.analyze_video(video_url, node_id)
+            result = await gemini_pipeline.analyze_video_v4(video_url, node_id)
             
             # Save result to database
             async with async_session_maker() as db:
@@ -1803,8 +1803,8 @@ async def _run_vdg_analysis_with_comments(
                         )
             
             # 3. Run VDG analysis with comment context (only proceeds if comments exist)
-            print(f"🚀 Starting VDG analysis for {node_id} with {len(best_comments)} comments...")
-            result = await gemini_pipeline.analyze_video(
+            print(f"🚀 Starting VDG v4 analysis for {node_id} with {len(best_comments)} comments...")
+            result = await gemini_pipeline.analyze_video_v4(
                 video_url, 
                 node_id,
                 audience_comments=best_comments  # Pass comments to pipeline
