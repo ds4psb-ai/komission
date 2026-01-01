@@ -518,6 +518,17 @@ class VDGv4(BaseModel):
     
     # v3.3 Compatibility
     legacy_flat_view: Optional[Dict[str, Any]] = None
+    
+    # P0-1: Quality Gate Meta (added for proof_ready tracking)
+    meta: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            "proof_ready": False,
+            "quality_issues": None,
+            "prompt_version": None,
+            "model_id": None,
+            "schema_version": "4.0.2",
+        }
+    )
 
 
 # ====================

@@ -67,13 +67,16 @@ async def resolve_short_url(url: str):
 # ==================
 # AUTO-ANALYSIS HELPER
 # ==================
-def trigger_auto_analysis(node_id: str, video_url: str):
+def trigger_auto_analysis(node_id: str, video_url: str, outlier_item_id: str = None):
     """
     Background task to trigger Gemini analysis after promote.
     Uses sync wrapper for async operations.
+    
+    Now also saves to normalized viral_kicks tables.
     """
     async def _run_analysis():
         from app.services.gemini_pipeline import gemini_pipeline
+        from app.services.vdg_2pass.vdg_db_saver import vdg_db_saver
         from app.database import async_session_maker
         from app.models import RemixNode
         
@@ -88,9 +91,24 @@ def trigger_auto_analysis(node_id: str, video_url: str):
                 node = db_result.scalar_one_or_none()
                 
                 if node:
-                    node.gemini_analysis = result.model_dump()
+                    vdg_data = result.model_dump()
+                    node.gemini_analysis = vdg_data
                     await db.commit()
                     print(f"✅ Auto-analysis complete for {node_id}")
+                    
+                    # P1-1: Save to normalized viral_kicks tables
+                    try:
+                        save_result = await vdg_db_saver.save_vdg_to_db(
+                            db=db,
+                            node_id=node_id,
+                            vdg_data=vdg_data,
+                            video_path=None,  # Already deleted after pipeline
+                            outlier_item_id=outlier_item_id,
+                        )
+                        print(f"💾 VDG DB saved: {save_result['kicks_saved']} kicks, "
+                              f"{save_result['keyframes_saved']} keyframes")
+                    except Exception as e:
+                        print(f"⚠️ VDG DB save failed (analysis still saved): {e}")
                 else:
                     print(f"⚠️ Node {node_id} not found for analysis save")
         except Exception as e:

@@ -677,17 +677,22 @@ class GeminiPipeline:
                 int(duration_sec * 1000)
             )
             
-            # Add quality gate results to metadata
-            vdg_data = vdg.model_dump()
-            if 'meta' not in vdg_data:
-                vdg_data['meta'] = {}
-            vdg_data['meta']['proof_ready'] = proof_ready
-            vdg_data['meta']['quality_issues'] = quality_issues if quality_issues else None
+            # Update VDG meta with quality gate results
+            vdg.meta = {
+                "proof_ready": proof_ready,
+                "quality_issues": quality_issues if quality_issues else None,
+                "prompt_version": "v4.2",
+                "model_id": "gemini-3.0-pro",
+                "schema_version": vdg.vdg_version,
+            }
             
             if proof_ready:
                 logger.info(f"✅ [v5] Quality Gate PASSED")
             else:
                 logger.warning(f"⚠️ [v5] Quality Gate FAILED: {quality_issues[:3]}")
+            
+            # Get final vdg_data for cache
+            vdg_data = vdg.model_dump()
             
             # 5. Save to cache (24 hours)
             try:
