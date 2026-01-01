@@ -1,9 +1,9 @@
 # Docs Index: Structure + Dependencies + SoR Rules
 
-**작성**: 2025-12-28 (Updated: 2025-12-31 VDG Unified Pipeline)  
+**작성**: 2025-12-28 (Updated: 2026-01-01 STPF v3.1 + VDG 리팩토링)  
 **목표**: 문서 체계/범주/의존관계/SoR 규칙을 단일 인덱스로 고정
 
-> **Note**: 2025-12-31 VDG Unified Pipeline 문서 통합 반영
+> **Note**: 2026-01-01 STPF v3.1 Computational Truth 로드맵 및 vdg_pipeline 패키지 반영
 
 ---
 
@@ -12,16 +12,17 @@
 - `docs/00_SINGLE_SOURCE_OF_TRUTH.md`
 - `docs/00_EXECUTIVE_SUMMARY.md`
 - `docs/ARCHITECTURE_FINAL.md` ← **PRIMARY: 최종 아키텍처 (통합)**
+- `docs/STPF_V3_ROADMAP.md` ← **NEW: STPF v3.1 Computational Truth (1200줄)**
 - `docs/CHANGELOG.md` ← 개발 이력
 - `docs/14_PDR.md`
-- `docs/NOTEBOOKLM_SPEC.md` ← **NEW: NotebookLM 통합 스펙**
+- `docs/NOTEBOOKLM_SPEC.md` ← NotebookLM 통합 스펙
 - `docs/10_VIRLO_BENCHMARK.md`
 - `docs/09_UI_UX_STRATEGY.md`
 - `docs/16_NEXT_STEP_ROADMAP.md`
 - `docs/17_UI_COMPONENT_SPEC.md`
 - `docs/18_PAGE_IA_REDESIGN.md`
 - `docs/19_FRONTEND_FILE_AUDIT.md`
-- `docs/vdg_v4_2pass_protocol.md` ← **VDG v4.0 2-Pass Protocol**
+- `docs/vdg_v4_2pass_protocol.md` ← VDG v4.0 2-Pass Protocol
 
 ### B. 아키텍처/데이터
 - `docs/01_VDG_SYSTEM.md`

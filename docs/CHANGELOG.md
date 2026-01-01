@@ -1,6 +1,49 @@
 # CHANGELOG
 
-> VDG v4.0 Unified Pipeline + Audio Coaching 개발 이력
+> VDG v4.0 Unified Pipeline + STPF v3.1 개발 이력
+
+---
+
+## 2026-01-01 (STPF v3.1 + Cleanup)
+
+### 🚀 STPF v3.1 Computational Truth Architecture
+- **`STPF_V3_ROADMAP.md`** (1200줄): 완전 구현 로드맵
+  - 12가지 불변 규칙 × VDG 매핑
+  - Bayesian 갱신 + Kelly Criterion 의사결정
+  - MCP 2025 Latest: Elicitation, Streamable HTTP, OAuth 2.1
+- 수학적 안전장치 v3.1:
+  - 분자: Raw Score 1-10 (Vanishing Gradient 방지)
+  - 분모: `1 + normalized * weight` (Division by Zero 방지)
+  - Gate Kill Switch: `<4 = 즉시 0점`
+
+### 🔧 VDG Pipeline Phase 2 Refactoring
+- `gemini_pipeline.py` → `vdg_pipeline/` 패키지 분리
+  - `constants.py`: VDG_PROMPT
+  - `prompt_builder.py`: 동적 프롬프트
+  - `sanitizer.py`: 후처리
+  - `converter.py`: VDGv4 변환
+  - `analyzer.py`: GeminiPipeline 클래스
+- 100% 하위 호환성 유지 (게이트웨이 래퍼)
+
+### 🧹 Codebase Cleanup
+- **Backend 삭제** (1,058줄):
+  - `theme_engine.py`, `governance.py` (미사용)
+- **Frontend → `_legacy/` 이동** (650줄):
+  - `agent/page.tsx`, `SubmissionReviewCard.tsx`, `MutationStrategyCard.tsx`
+- **⚠️ 복구**: `agent.py`, `pipelines.py`, `websocket.py` (main.py 등록 확인)
+
+### 🛡️ Expert Feedback Fixes
+- STPF 수학 버그: `friction=f` → `friction=f_total`
+- Evidence Rule: `0점` → `최대 3점` 제한
+- Week 5+ 재정렬: NotebookLM/Coaching "기존 구축" 표시
+
+### Git Commits
+- `a826c97` refactor: VDG pipeline package
+- `73b3290` docs: STPF v3.1 mathematical safeguards
+- `b47b3e9` docs: MCP 2025 latest features
+- `f806233` chore: Remove unused services
+- `0c7fbfe` chore: Legacy frontend isolation
+- `b4b7d78` fix: Expert feedback - restore routers, fix math
 
 ---
 
