@@ -237,6 +237,8 @@ class UnifiedPass:
             if 'hook_genome' in raw_json and 'microbeats' in raw_json['hook_genome']:
                 valid_roles = {'start', 'setup', 'hook', 'punch', 'reveal', 'demo', 'payoff', 'cta', 'loop'}
                 for mb in raw_json['hook_genome']['microbeats']:
+                    if not isinstance(mb, dict):
+                        continue  # Skip non-dict items
                     if mb.get('role') not in valid_roles:
                         mb['role'] = 'hook'
             
@@ -245,6 +247,8 @@ class UnifiedPass:
                 valid_mise_types = {'composition', 'lighting', 'color', 'wardrobe', 'prop', 'setting', 'camera', 'editing', 'audio', 'text'}
                 type_fixes = {'props': 'prop', 'sound': 'audio', 'costume': 'wardrobe'}
                 for mes in raw_json['mise_en_scene_signals']:
+                    if not isinstance(mes, dict):
+                        continue  # Skip non-dict items
                     t = mes.get('type', '')
                     if t not in valid_mise_types:
                         mes['type'] = type_fixes.get(t, 'setting')
@@ -253,6 +257,8 @@ class UnifiedPass:
             if 'comment_evidence_top5' in raw_json:
                 valid_signal_types = {'hook', 'twist', 'relatability', 'aesthetic', 'instruction', 'shock', 'product', 'editing', 'music', 'humor', 'other'}
                 for ce in raw_json['comment_evidence_top5']:
+                    if not isinstance(ce, dict):
+                        continue  # Skip non-dict items
                     # Fix comment_rank (might be 'C01' string)
                     cr = ce.get('comment_rank', 1)
                     if isinstance(cr, str):
@@ -287,6 +293,8 @@ class UnifiedPass:
             # Preprocess: fix existing viral_kicks fields
             if 'viral_kicks' in raw_json:
                 for i, kick in enumerate(raw_json['viral_kicks']):
+                    if not isinstance(kick, dict):
+                        continue  # Skip non-dict items
                     # Ensure kick_index
                     if 'kick_index' not in kick:
                         kick['kick_index'] = i + 1
@@ -365,6 +373,8 @@ class UnifiedPass:
                     'animal': 'other', 'nature': 'environment', 'background': 'environment'
                 }
                 for hint in raw_json['entity_hints']:
+                    if not isinstance(hint, dict):
+                        continue  # Skip non-dict items
                     # Fix entity_type
                     et = hint.get('entity_type', 'other')
                     if et not in valid_entity_types:
@@ -383,16 +393,7 @@ class UnifiedPass:
                                 fixed_windows.append(w)
                         hint['appears_windows'] = fixed_windows
             
-            # Preprocess: fix analysis_plan.points
-            if 'analysis_plan' in raw_json and 'points' in raw_json['analysis_plan']:
-                valid_agg = {'mean', 'median', 'max', 'min', 'first', 'last', 'p95'}
-                valid_roi = {'full_frame', 'face', 'main_subject', 'product', 'text_overlay'}
-                roi_map = {
-                    'global': 'full_frame', 'full': 'full_frame', 'frame': 'full_frame',
-                    'person': 'main_subject', 'subject': 'main_subject', 'object': 'main_subject',
-                    'text': 'text_overlay', 'overlay': 'text_overlay',
-                }
-                for point in raw_json['analysis_plan']['points']:
+            # Preprocess: fix analysis_plan.points\n            if 'analysis_plan' in raw_json and 'points' in raw_json['analysis_plan']:\n                valid_agg = {'mean', 'median', 'max', 'min', 'first', 'last', 'p95'}\n                valid_roi = {'full_frame', 'face', 'main_subject', 'product', 'text_overlay'}\n                roi_map = {\n                    'global': 'full_frame', 'full': 'full_frame', 'frame': 'full_frame',\n                    'person': 'main_subject', 'subject': 'main_subject', 'object': 'main_subject',\n                    'text': 'text_overlay', 'overlay': 'text_overlay',\n                }\n                for point in raw_json['analysis_plan']['points']:\n                    if not isinstance(point, dict):\n                        continue  # Skip non-dict items
                     if 'measurements' in point:
                         for m in point['measurements']:
                             if m.get('aggregation') not in valid_agg:
@@ -471,6 +472,11 @@ class UnifiedPass:
             except Exception:
                 pass
 
+        # Warn if polling timed out without reaching ACTIVE state
+        state = getattr(video_file, 'state', None)
+        name = getattr(state, 'name', None) if state else None
+        if name and name not in ('ACTIVE', 'SUCCEEDED'):
+            logger.warning(f'Video file polling timed out, state={name}. Inference may fail.')
         return video_file
 
     def _normalize_and_validate_metrics(
