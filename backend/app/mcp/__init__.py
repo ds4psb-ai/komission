@@ -15,6 +15,7 @@ from app.mcp.server import mcp, get_logger
 from app.mcp.resources import patterns
 from app.mcp.resources import outliers
 from app.mcp.resources import director_pack
+from app.mcp.resources import stpf  # STPF v3.1 리소스
 
 # Tools 등록
 from app.mcp.tools import search

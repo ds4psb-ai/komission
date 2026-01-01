@@ -64,6 +64,18 @@ from app.services.stpf.kelly_criterion import (
     STPF_GRADE_BRACKETS,
 )
 
+# Hardening modules
+from app.services.stpf.report import (
+    STPFReportGenerator,
+    report_generator,
+    STPFReport,
+)
+from app.services.stpf.free_energy import (
+    FreeEnergyChecker,
+    free_energy_checker,
+    FreeEnergyResult,
+)
+
 __all__ = [
     # Schemas
     "STPFGates",
@@ -108,4 +120,12 @@ __all__ = [
     "KellyDecision",
     "GradeInfo",
     "STPF_GRADE_BRACKETS",
+    # Hardening
+    "STPFReportGenerator",
+    "report_generator",
+    "STPFReport",
+    "FreeEnergyChecker",
+    "free_energy_checker",
+    "FreeEnergyResult",
 ]
+
