@@ -327,6 +327,17 @@ class UnifiedPass:
                     # Ensure creator_instruction
                     if 'creator_instruction' not in kick:
                         kick['creator_instruction'] = kick.get('instruction', kick.get('action', 'Follow this pattern'))[:200]
+                    # P2-1: Ensure keyframes (3 keyframes: start, peak, end)
+                    if 'keyframes' not in kick or len(kick.get('keyframes', [])) < 3:
+                        window = kick.get('window', {})
+                        start = window.get('start_ms', kick.get('kick_index', 1) * 1000)
+                        end = window.get('end_ms', start + 2000)
+                        mid = (start + end) // 2
+                        kick['keyframes'] = [
+                            {'t_ms': start, 'role': 'start', 'what_to_see': 'Hook entry point'},
+                            {'t_ms': mid, 'role': 'peak', 'what_to_see': 'Peak viral moment'},
+                            {'t_ms': max(start, end - 100), 'role': 'end', 'what_to_see': 'Resolution/payoff'},
+                        ]
             
             # Preprocess: viral_kicks defaults (requires 3-6)
             if 'viral_kicks' not in raw_json or len(raw_json.get('viral_kicks', [])) < 3:
@@ -340,7 +351,12 @@ class UnifiedPass:
                         'mechanism': 'Placeholder',
                         'evidence_comment_ranks': [1],
                         'evidence_cues': ['Visual element'],
-                        'creator_instruction': 'Placeholder'
+                        'creator_instruction': 'Placeholder',
+                        'keyframes': [
+                            {'t_ms': idx * 1000, 'role': 'start', 'what_to_see': 'Entry point'},
+                            {'t_ms': idx * 1000 + 1000, 'role': 'peak', 'what_to_see': 'Peak moment'},
+                            {'t_ms': idx * 1000 + 1900, 'role': 'end', 'what_to_see': 'Resolution'},
+                        ]
                     })
                 raw_json['viral_kicks'] = existing[:6]
             

@@ -170,11 +170,25 @@ class CommentEvidenceLLM(BaseModel):
     anchor_ms: Optional[int] = Field(None, ge=0, description="이 댓글이 가리키는 영상 구간 (특정 가능시)")
 
 
+KeyframeRole = Literal["start", "peak", "end"]
+
+
+class KeyframeLLM(BaseModel):
+    """
+    키프레임 증거 (START/PEAK/END)
+    
+    각 바이럴 킥당 정확히 3장 필수
+    """
+    t_ms: int = Field(..., ge=0, description="정확한 타임스탬프 (밀리초)")
+    role: KeyframeRole
+    what_to_see: str = Field(..., min_length=1, max_length=100, description="이 프레임의 바이럴 포인트")
+
+
 class ViralKickLLM(BaseModel):
     """
     바이럴 킥 구간 (3~5개)
     
-    댓글 증거 + 영상 증거 cue를 반드시 포함해야 함
+    댓글 증거 + 영상 증거 cue + 키프레임 3장을 반드시 포함
     """
     # model_config removed for Gemini compatibility
 
@@ -191,6 +205,12 @@ class ViralKickLLM(BaseModel):
     evidence_cues: List[str] = Field(
         ..., min_length=1, max_length=4,
         description="영상 증거: 대사/온스크린텍스트/행동 (최소 1개)"
+    )
+    
+    # 키프레임 증거 (P0 Hardening - MUST)
+    keyframes: List[KeyframeLLM] = Field(
+        default_factory=list, max_length=3,
+        description="START/PEAK/END 3장 (프롬프트에서 강제, 전처리로 기본값 생성)"
     )
     
     # 코칭용
@@ -232,6 +252,7 @@ class AnalysisPointSeedLLM(BaseModel):
 
     t_center_ms: int = Field(..., ge=0)
     t_window_ms: int = Field(..., ge=200, le=6000, description="CV 측정 윈도우 폭 (200~6000ms 권장)")
+    kick_index: Optional[int] = Field(None, ge=1, le=8, description="연결된 viral_kick.kick_index (해당시)")
     priority: PlanPriority
     reason: str = Field(..., min_length=1, max_length=200)
 

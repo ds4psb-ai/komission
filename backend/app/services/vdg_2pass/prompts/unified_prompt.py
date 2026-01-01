@@ -110,6 +110,10 @@ TOP COMMENTS (ranked, use comment_rank to reference):
      * `evidence_comment_ranks`: at least 1 rank from comment_evidence_top5
      * `evidence_cues`: at least 1 video cue (dialogue/on-screen text/action)
      * `creator_instruction`: actionable instruction in creator language (1-2 sentences)
+     * `keyframes`: EXACTLY 3 keyframes with:
+       - `t_ms`: precise timestamp in milliseconds (within the kick's window)
+       - `role`: one of "start", "peak", "end"
+       - `what_to_see`: what makes this frame viral-worthy (1 sentence, max 100 chars)
    - Each viral_kick MUST have a precise time range (`window.start_ms`, `window.end_ms`).
 
 3) PLAN COVERAGE:
@@ -141,6 +145,7 @@ E) Analysis plan seeds for deterministic CV measurement:
 - Each point must include:
   - t_center_ms (int)
   - t_window_ms (int, 200~6000)
+  - kick_index (int, optional): if this measurement is for a specific viral_kick, reference its kick_index
   - priority (critical/high/medium/low)
   - reason (why this moment matters)
   - measurements[]: list of MeasurementSpec with allowed metric_id, aggregation, roi
