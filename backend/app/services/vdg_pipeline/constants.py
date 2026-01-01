@@ -41,7 +41,29 @@ VDG_PROMPT = """
 - **Evolving elements**: 변화하는 요소
 - **Director intent**: 연출 의도
 
-### 5. SENTIMENT ARC
+### 4.5 SCENE TRANSITIONS (2026 AI Video Trend - Sora 2 / Veo 3 대비)
+각 씬 전환에서 분석:
+- **transition_type**: cut | fade | dissolve | wipe | zoom | whip_pan | match_cut | jump_cut
+- **continuity_score**: 캐릭터/배경 일관성 (0-1)
+- **rhythm_match**: 컷 리듬이 자연스러운가?
+- **transition_quality**: seamless | acceptable | jarring
+
+### 4.6 CAMERA METADATA (Gaussian Splatting 3D 재구성 대비)
+각 씬에서 카메라 무빙 분석:
+- **movement_type**: static | pan | tilt | dolly | truck | zoom | handheld | drone | orbit
+- **movement_intensity**: subtle | moderate | dynamic
+- **estimated_fov**: 추정 화각 (넓으면 >90°, 좁으면 <50°)
+- **spatial_consistency**: 3D 재구성 적합도 (0-1, 흔들림 적고 깊이 변화 있으면 높음)
+- **steady_score**: 안정성 점수 (0=심하게 흔들림, 1=완벽히 안정)
+
+### 4.7 MULTI-SHOT CONSISTENCY (AI 영상 퀄리티 핵심)
+전체 영상의 멀티샷 일관성:
+- **character_persistence**: 캐릭터가 컷 사이에서 동일하게 보이는가? (0-1)
+- **location_consistency**: 장소가 컷마다 일관되는가? (0-1)
+- **prop_tracking**: 소품이 일관되게 등장하는가? (0-1)
+- **lighting_consistency**: 조명이 씬마다 일관되는가? (0-1)
+- **overall_coherence**: 전체 스토리/시각 연결이 매끄러운가? (0-1)
+- **ai_generation_likelihood**: AI 생성 영상일 확률 (0-1, 불일관성 많으면 높음)
 감정 변화 추적:
 - start_sentiment, end_sentiment, trajectory
 
@@ -172,6 +194,41 @@ VDG_PROMPT = """
     "entity_state_changes": [
       {"entity_id": "손님", "initial_state": "정중한 손님", "final_state": "당당한 소비자", "triggering_event": "사장의 욕설", "scene_id": "S01", "time_span": [4.2, 7.8]}
     ]
+  },
+  
+  "scene_transitions": [
+    {
+      "from_scene_idx": 0,
+      "to_scene_idx": 1,
+      "t_transition": 3.5,
+      "transition_type": "cut",
+      "continuity_score": 0.85,
+      "rhythm_match": true,
+      "transition_quality": "seamless"
+    }
+  ],
+  
+  "camera_metadata": [
+    {
+      "scene_id": "S01",
+      "movement_type": "static",
+      "movement_intensity": "subtle",
+      "estimated_fov": 50,
+      "spatial_consistency": 0.9,
+      "depth_variation": "shallow",
+      "steady_score": 0.95
+    }
+  ],
+  
+  "multi_shot_analysis": {
+    "character_persistence": 0.95,
+    "location_consistency": 0.90,
+    "prop_tracking": 0.85,
+    "lighting_consistency": 0.88,
+    "color_grading_consistency": 0.92,
+    "overall_coherence": 0.90,
+    "ai_generation_likelihood": 0.1,
+    "notes": "일관된 캐릭터/배경, 자연스러운 컷 전환"
   },
   
   "asr_transcript": {

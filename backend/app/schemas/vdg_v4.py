@@ -58,6 +58,72 @@ class EvidenceLink(BaseModel):
 # 1. METRIC REGISTRY (Patch #1: domain.name.v1 versioning)
 # ====================
 
+# ====================
+# 1.5 AI VIDEO TREND ANALYSIS (2026 Future-Proof)
+# ====================
+
+class SceneTransitionType(str, Enum):
+    """컷 전환 유형"""
+    CUT = "cut"
+    FADE = "fade"
+    DISSOLVE = "dissolve"
+    WIPE = "wipe"
+    ZOOM = "zoom"
+    WHIP_PAN = "whip_pan"
+    MATCH_CUT = "match_cut"
+    JUMP_CUT = "jump_cut"
+
+
+class SceneTransition(BaseModel):
+    """컷 전환 분석 - AI 영상 퀄리티 핵심 지표 (Sora 2 / Veo 3 대비)"""
+    from_scene_idx: int = Field(description="전환 전 씬 인덱스")
+    to_scene_idx: int = Field(description="전환 후 씬 인덱스")
+    t_transition: float = Field(description="전환 시점 (초)")
+    transition_type: SceneTransitionType = Field(default=SceneTransitionType.CUT)
+    continuity_score: float = Field(ge=0, le=1, description="캐릭터/배경 일관성 0-1")
+    rhythm_match: bool = Field(default=True, description="리듬 연결 자연스러움")
+    transition_quality: Literal["seamless", "acceptable", "jarring"] = "acceptable"
+
+
+class CameraMovementType(str, Enum):
+    """카메라 무빙 유형"""
+    STATIC = "static"
+    PAN = "pan"
+    TILT = "tilt"
+    DOLLY = "dolly"
+    TRUCK = "truck"
+    ZOOM = "zoom"
+    HANDHELD = "handheld"
+    DRONE = "drone"
+    ORBIT = "orbit"
+    WHIP_PAN = "whip_pan"
+
+
+class CameraMetadata(BaseModel):
+    """카메라 무빙 분석 - 3D 재구성 대비 (Gaussian Splatting)"""
+    scene_id: str = Field(description="씬 ID")
+    movement_type: CameraMovementType = Field(default=CameraMovementType.STATIC)
+    movement_intensity: Literal["subtle", "moderate", "dynamic"] = "moderate"
+    estimated_fov: Optional[float] = Field(default=None, description="추정 화각 (도)")
+    spatial_consistency: float = Field(ge=0, le=1, default=0.8, description="3D 재구성 적합도")
+    depth_variation: Literal["flat", "shallow", "deep"] = "shallow"
+    steady_score: float = Field(ge=0, le=1, default=0.8, description="안정성 (0=흔들림, 1=완벽)")
+
+
+class MultiShotAnalysis(BaseModel):
+    """멀티샷 일관성 분석 - AI 영상 퀄리티 핵심 (Sora 2 Multi-Shot Consistency)"""
+    character_persistence: float = Field(ge=0, le=1, description="캐릭터 동일성 0-1")
+    location_consistency: float = Field(ge=0, le=1, description="장소 일관성 0-1")
+    prop_tracking: float = Field(ge=0, le=1, description="소품 추적 일관성 0-1")
+    lighting_consistency: float = Field(ge=0, le=1, description="조명 일관성 0-1")
+    color_grading_consistency: float = Field(ge=0, le=1, description="색보정 일관성 0-1")
+    overall_coherence: float = Field(ge=0, le=1, description="전체 스토리 흐름 0-1")
+    ai_generation_likelihood: float = Field(ge=0, le=1, default=0.0, description="AI 생성 영상일 확률")
+    notes: Optional[str] = Field(default=None, description="일관성 분석 메모")
+
+
+
+
 MetricUnit = Literal[
     "norm_0_1",
     "norm_-1_1",
