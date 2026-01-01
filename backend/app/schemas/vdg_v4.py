@@ -569,6 +569,20 @@ class VDGv4(BaseModel):
     # Pass 2: Visual
     visual: VisualPassResult = Field(default_factory=VisualPassResult)
     
+    # 2026 AI Video Trend Analysis (Future-Proof)
+    scene_transitions: List[SceneTransition] = Field(
+        default_factory=list,
+        description="씬 전환 분석 (Sora 2 / Veo 3 멀티샷 대비)"
+    )
+    camera_metadata: List[CameraMetadata] = Field(
+        default_factory=list,
+        description="카메라 무빙 분석 (Gaussian Splatting 3D 변환 대비)"
+    )
+    multi_shot_analysis: Optional[MultiShotAnalysis] = Field(
+        default=None,
+        description="멀티샷 일관성 분석 (AI 영상 퀄리티 핵심)"
+    )
+    
     # Merger Quality
     merger_quality: Optional[MergerQuality] = None
     

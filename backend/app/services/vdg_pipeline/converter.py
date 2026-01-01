@@ -11,7 +11,11 @@ from app.schemas.vdg_v4 import (
     IntentLayer, MiseEnSceneSignal, AudienceReaction,
     SemanticPassResult, SemanticPassProvenance, CapsuleBrief,
     VisualPassResult, AnalysisPlan, AnalysisPoint,
-    MediaSpec, MetricResult
+    MediaSpec, MetricResult,
+    # 2026 AI Video Trend Analysis
+    SceneTransition, SceneTransitionType,
+    CameraMetadata, CameraMovementType,
+    MultiShotAnalysis,
 )
 
 logger = logging.getLogger(__name__)
@@ -235,6 +239,56 @@ def convert_unified_to_vdg_v4(
         duration_ms=int(duration_sec * 1000),
     )
     
+    # 2026 AI Video Trend Analysis - Parse from LLM output if available
+    scene_transitions = []
+    raw_transitions = getattr(llm, 'scene_transitions', None) or []
+    for t in raw_transitions:
+        try:
+            scene_transitions.append(SceneTransition(
+                from_scene_idx=t.get('from_scene_idx', 0),
+                to_scene_idx=t.get('to_scene_idx', 1),
+                t_transition=t.get('t_transition', 0.0),
+                transition_type=t.get('transition_type', 'cut'),
+                continuity_score=t.get('continuity_score', 0.8),
+                rhythm_match=t.get('rhythm_match', True),
+                transition_quality=t.get('transition_quality', 'acceptable'),
+            ))
+        except Exception as e:
+            logger.warning(f"Failed to parse scene transition: {e}")
+    
+    camera_metadata_list = []
+    raw_camera = getattr(llm, 'camera_metadata', None) or []
+    for c in raw_camera:
+        try:
+            camera_metadata_list.append(CameraMetadata(
+                scene_id=c.get('scene_id', 'S01'),
+                movement_type=c.get('movement_type', 'static'),
+                movement_intensity=c.get('movement_intensity', 'moderate'),
+                estimated_fov=c.get('estimated_fov'),
+                spatial_consistency=c.get('spatial_consistency', 0.8),
+                depth_variation=c.get('depth_variation', 'shallow'),
+                steady_score=c.get('steady_score', 0.8),
+            ))
+        except Exception as e:
+            logger.warning(f"Failed to parse camera metadata: {e}")
+    
+    multi_shot = None
+    raw_multi_shot = getattr(llm, 'multi_shot_analysis', None)
+    if raw_multi_shot:
+        try:
+            multi_shot = MultiShotAnalysis(
+                character_persistence=raw_multi_shot.get('character_persistence', 0.8),
+                location_consistency=raw_multi_shot.get('location_consistency', 0.8),
+                prop_tracking=raw_multi_shot.get('prop_tracking', 0.8),
+                lighting_consistency=raw_multi_shot.get('lighting_consistency', 0.8),
+                color_grading_consistency=raw_multi_shot.get('color_grading_consistency', 0.8),
+                overall_coherence=raw_multi_shot.get('overall_coherence', 0.8),
+                ai_generation_likelihood=raw_multi_shot.get('ai_generation_likelihood', 0.0),
+                notes=raw_multi_shot.get('notes'),
+            )
+        except Exception as e:
+            logger.warning(f"Failed to parse multi-shot analysis: {e}")
+    
     return VDGv4(
         content_id=content_id,
         platform=platform,
@@ -244,6 +298,10 @@ def convert_unified_to_vdg_v4(
         analysis_plan=analysis_plan,
         visual=visual,
         mise_en_scene_signals=mise_signals,
+        # 2026 AI Video Trend Analysis
+        scene_transitions=scene_transitions,
+        camera_metadata=camera_metadata_list,
+        multi_shot_analysis=multi_shot,
         provenance={
             "pipeline_version": "v5.0_unified",
             "pass1_model": unified_result.llm_provenance.model_id,
