@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useCoachingWebSocket, CoachingFeedback as WSFeedback, RuleUpdate, SessionStatus } from '@/hooks/useCoachingWebSocket';
+import { useAudioCapture } from '@/hooks/useAudioCapture';
 
 // ==================
 // Types
@@ -96,6 +97,7 @@ export function CoachingSession({
         disconnect: wsDisconnect,
         sendControl,
         sendMetric,
+        sendAudio,
     } = useCoachingWebSocket(sessionId, {
         voiceStyle: 'friendly',
         onFeedback: (feedback) => {
@@ -127,6 +129,29 @@ export function CoachingSession({
             }
         },
         onError: (err) => console.error('Coaching WebSocket error:', err),
+    });
+
+    // Audio Capture Hook - streams microphone PCM to WebSocket
+    const {
+        start: startAudioCapture,
+        stop: stopAudioCapture,
+        isCapturing: isAudioCapturing,
+        isSpeaking,
+        audioLevel,
+        error: audioError,
+    } = useAudioCapture({
+        onAudioData: (pcmBase64) => {
+            // Stream audio to WebSocket if connected and recording
+            if (useRealCoaching && wsStatus === 'recording') {
+                sendAudio(pcmBase64);
+            }
+        },
+        onSpeechDetected: () => {
+            console.log('🗣️ Speech detected');
+        },
+        onSilenceDetected: () => {
+            console.log('🔇 Silence detected');
+        },
     });
 
     // Refs
@@ -386,16 +411,17 @@ export function CoachingSession({
         if (useRealCoaching && sessionId) {
             // Connect and start real-time coaching
             wsConnect();
-            // Give WebSocket time to connect, then send start control
+            // Give WebSocket time to connect, then send start control + start audio capture
             setTimeout(() => {
                 sendControl('start');
-                console.log('🎙️ Real-time coaching started');
+                startAudioCapture();  // Start streaming microphone to server
+                console.log('🎙️ Real-time coaching started with audio capture');
             }, 500);
         } else {
             // Fallback: Simulate coaching feedback (demo mode)
             simulateCoaching();
         }
-    }, [useRealCoaching, sessionId, wsConnect, sendControl, sendMetric, wsStatus, simulateCoaching]);
+    }, [useRealCoaching, sessionId, wsConnect, sendControl, sendMetric, wsStatus, simulateCoaching, startAudioCapture]);
 
     const stopRecording = useCallback(() => {
         setIsRecording(false);
@@ -412,6 +438,7 @@ export function CoachingSession({
 
         // Real WebSocket mode: send stop control and disconnect
         if (useRealCoaching && wsStatus !== 'disconnected') {
+            stopAudioCapture();  // Stop microphone capture
             sendControl('stop');
             setTimeout(() => wsDisconnect(), 500);
         }
@@ -419,7 +446,7 @@ export function CoachingSession({
         if (sessionId && onComplete) {
             onComplete(sessionId);
         }
-    }, [sessionId, onComplete, useRealCoaching, wsStatus, sendControl, wsDisconnect]);
+    }, [sessionId, onComplete, useRealCoaching, wsStatus, sendControl, wsDisconnect, stopAudioCapture]);
 
     if (!isOpen) return null;
 
