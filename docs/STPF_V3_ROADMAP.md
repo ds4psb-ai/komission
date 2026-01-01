@@ -1100,13 +1100,40 @@ def calculate_safe_kelly(p: float, b: float, confidence: float) -> float:
     return max(0, safe_kelly)
 ```
 
-### 13.2 MCP (Model Context Protocol) 통합
+### 13.2 MCP (Model Context Protocol) 통합 — 2025 Latest
+
+> **MCP Spec June 2025** 기준 최신 기능 반영
 
 | 구성요소 | 설명 | STPF 적용 |
 |----------|------|-----------|
 | **Tools** | AI 실행 가능 액션 | `/stpf/analyze`, `/stpf/simulate` |
 | **Resources** | 구조화된 데이터 | `VDG v4.1`, `PatternConfidence` |
 | **Prompts** | 사전 정의 템플릿 | `STPF Master Prompt v3.1` |
+| **Elicitation** ⭐ | 서버→사용자 추가 입력 요청 | 변수 확인, 시나리오 선택 |
+
+#### 2025 신규 기능
+
+| 기능 | 설명 | 적용 시점 |
+|------|------|-----------|
+| **Streamable HTTP** | SSE 대체 전송 프로토콜 | Week 5+ |
+| **Elicitation** | Multi-step 워크플로우 (사용자 입력 대기) | Week 5+ |
+| **OAuth 2.1 + PKCE** | 필수 보안 (Dynamic Client Registration) | Week 5+ |
+| **Server Discovery** | 서버 자동 발견 (11월 2025 예정) | TBD |
+
+#### 보안 요구사항 (Enterprise)
+
+```python
+# OAuth 2.1 PKCE 필수 (RFC 7636)
+MCP_SECURITY_CONFIG = {
+    "oauth_version": "2.1",
+    "pkce_required": True,                    # 필수
+    "token_audience_validation": True,        # RFC 8707
+    "dynamic_client_registration": True,      # RFC 7591
+    "https_only": True,
+    "token_expiry_seconds": 3600,
+    "refresh_token_rotation": True,
+}
+```
 
 ```python
 # MCP 서버 구조
@@ -1121,6 +1148,20 @@ async def stpf_analyze(vdg_id: str) -> STPFReport:
 async def get_pattern_confidence(pattern_id: str) -> Dict:
     """패턴 신뢰도 리소스"""
     return await bayesian_updater.get_posterior(pattern_id)
+
+# Elicitation 예시 (2025 신규)
+@mcp_server.tool()
+async def stpf_interactive_analyze(vdg_id: str, ctx: MCPContext) -> STPFReport:
+    """Elicitation을 통한 대화형 STPF 분석"""
+    vdg = await get_vdg(vdg_id)
+    
+    # 사용자에게 시나리오 선택 요청 (Elicitation)
+    scenario = await ctx.elicit(
+        message="어떤 시나리오로 분석할까요?",
+        options=["worst", "base", "best"]
+    )
+    
+    return STPFSimulator().run_scenario(vdg, scenario)
 ```
 
 ### 13.3 NotebookLM 파이프라인
