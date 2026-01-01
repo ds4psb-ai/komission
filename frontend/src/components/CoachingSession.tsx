@@ -25,6 +25,7 @@ import {
     Play, Square, RotateCcw, Sparkles, FlaskConical
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useCoachingWebSocket, CoachingFeedback as WSFeedback, RuleUpdate, SessionStatus } from '@/hooks/useCoachingWebSocket';
 
 // ==================
 // Types
@@ -77,12 +78,56 @@ export function CoachingSession({
     const [recordingTime, setRecordingTime] = useState(0);
     const [isMobile, setIsMobile] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [useRealCoaching, setUseRealCoaching] = useState(true);  // Toggle for real vs demo
 
     // P1: Control Group State
     const [assignment, setAssignment] = useState<'coached' | 'control'>('coached');
     const [holdoutGroup, setHoldoutGroup] = useState(false);
     const [currentInterventionId, setCurrentInterventionId] = useState<string | null>(null);
     const [currentCheckpoint, setCurrentCheckpoint] = useState<string>('hook_punch');
+
+    // Real-time WebSocket Hook
+    const {
+        status: wsStatus,
+        lastFeedback: wsFeedback,
+        geminiConnected,
+        stats: wsStats,
+        connect: wsConnect,
+        disconnect: wsDisconnect,
+        sendControl,
+        sendMetric,
+    } = useCoachingWebSocket(sessionId, {
+        voiceStyle: 'friendly',
+        onFeedback: (feedback) => {
+            if (assignment === 'control') return;  // Skip for control group
+            setCurrentFeedback({
+                message: feedback.message,
+                type: feedback.priority === 'critical' ? 'warning' : 'instruction',
+                rule_id: feedback.rule_id,
+                timestamp: Date.now(),
+            });
+            setFeedbackHistory(prev => [...prev.slice(-4), {
+                message: feedback.message,
+                type: 'instruction',
+                rule_id: feedback.rule_id,
+                timestamp: Date.now(),
+            }]);
+            setProgress(prev => Math.min(prev + 15, 100));
+        },
+        onRuleUpdate: (update) => {
+            setRules(prev => prev.map(r =>
+                r.rule_id === update.rule_id
+                    ? { ...r, status: update.status }
+                    : r
+            ));
+        },
+        onStatusChange: (status) => {
+            if (status.stats?.res_score) {
+                setProgress(Math.round(status.stats.res_score * 100));
+            }
+        },
+        onError: (err) => console.error('Coaching WebSocket error:', err),
+    });
 
     // Refs
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -326,13 +371,31 @@ export function CoachingSession({
             setRecordingTime(prev => {
                 const next = prev + 1;
                 recordingTimeRef.current = next;
+
+                // Real-time WebSocket: Send periodic metric updates
+                if (useRealCoaching && wsStatus === 'recording') {
+                    // Example: send current recording time as a metric
+                    sendMetric('recording_progress', next / 60, next);
+                }
+
                 return next;
             });
         }, 1000);
 
-        // Simulate coaching feedback (demo mode)
-        simulateCoaching();
-    }, [simulateCoaching]);
+        // Real WebSocket mode vs Demo mode
+        if (useRealCoaching && sessionId) {
+            // Connect and start real-time coaching
+            wsConnect();
+            // Give WebSocket time to connect, then send start control
+            setTimeout(() => {
+                sendControl('start');
+                console.log('🎙️ Real-time coaching started');
+            }, 500);
+        } else {
+            // Fallback: Simulate coaching feedback (demo mode)
+            simulateCoaching();
+        }
+    }, [useRealCoaching, sessionId, wsConnect, sendControl, sendMetric, wsStatus, simulateCoaching]);
 
     const stopRecording = useCallback(() => {
         setIsRecording(false);
@@ -347,10 +410,16 @@ export function CoachingSession({
         isRecordingRef.current = false;
         recordingTimeRef.current = 0;
 
+        // Real WebSocket mode: send stop control and disconnect
+        if (useRealCoaching && wsStatus !== 'disconnected') {
+            sendControl('stop');
+            setTimeout(() => wsDisconnect(), 500);
+        }
+
         if (sessionId && onComplete) {
             onComplete(sessionId);
         }
-    }, [sessionId, onComplete]);
+    }, [sessionId, onComplete, useRealCoaching, wsStatus, sendControl, wsDisconnect]);
 
     if (!isOpen) return null;
 

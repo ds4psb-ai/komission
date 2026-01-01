@@ -137,6 +137,10 @@ app.include_router(agent_router, tags=["Agent"])
 from app.routers.coaching import router as coaching_router
 app.include_router(coaching_router, tags=["Coaching"])
 
+# Register Coaching WebSocket routes (Real-time Audio Coaching)
+from app.routers.coaching_ws import router as coaching_ws_router
+app.include_router(coaching_ws_router, prefix="/api/v1", tags=["Coaching WebSocket"])
+
 # Register STPF routes (Single Truth Pattern Formalization v3.1)
 from app.routers.stpf import router as stpf_router
 app.include_router(stpf_router, prefix="/api/v1", tags=["STPF"])
