@@ -263,6 +263,8 @@ class VDGUnifiedPipeline:
         if not self.config.skip_cv_pass:
             pass2_start = time.time()
             
+            logger.info(f"🔬 Pass 2 starting (CV measurement)...")
+            
             try:
                 cv_result, cv_prov = self.pass2.run(
                     video_path=video_path,

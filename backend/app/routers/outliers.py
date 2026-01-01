@@ -107,8 +107,10 @@ def trigger_auto_analysis(node_id: str, video_url: str, outlier_item_id: str = N
                         )
                         print(f"💾 VDG DB saved: {save_result['kicks_saved']} kicks, "
                               f"{save_result['keyframes_saved']} keyframes")
+                        print(f"🏁 Full VDG analysis complete for {node_id}")
                     except Exception as e:
                         print(f"⚠️ VDG DB save failed (analysis still saved): {e}")
+                        print(f"🏁 VDG analysis complete for {node_id} (DB save failed)")
                 else:
                     print(f"⚠️ Node {node_id} not found for analysis save")
         except Exception as e:

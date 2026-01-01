@@ -192,7 +192,7 @@ class ViralKickLLM(BaseModel):
     """
     # model_config removed for Gemini compatibility
 
-    kick_index: int = Field(..., ge=1, le=8)
+    kick_index: int = Field(..., ge=0, le=8)  # Allow 0-based from LLM
     window: TimeWindowMs
     title: str = Field(..., min_length=1, max_length=100, description="킥 제목 (예: '2.3초 표정 반전')")
     mechanism: str = Field(..., min_length=1, max_length=240, description="왜 먹히는지 인과 설명")
@@ -270,7 +270,7 @@ class AnalysisPointSeedLLM(BaseModel):
 
     t_center_ms: int = Field(..., ge=0)
     t_window_ms: int = Field(..., ge=200, le=6000, description="CV 측정 윈도우 폭 (200~6000ms 권장)")
-    kick_index: Optional[int] = Field(None, ge=1, le=8, description="연결된 viral_kick.kick_index (해당시)")
+    kick_index: Optional[int] = Field(None, ge=0, le=8, description="연결된 viral_kick.kick_index (해당시, 0=none)")
     priority: PlanPriority
     reason: str = Field(..., min_length=1, max_length=200)
 
@@ -336,7 +336,7 @@ class UnifiedPassLLMOutput(BaseModel):
 
     # CV guidance
     entity_hints: List[EntityHintLLM] = Field(default_factory=list, max_length=10)
-    analysis_plan: AnalysisPlanSeedLLM
+    analysis_plan: AnalysisPlanSeedLLM = Field(default_factory=AnalysisPlanSeedLLM)
 
     # Why viral
     causal_reasoning: CausalReasoningLLM

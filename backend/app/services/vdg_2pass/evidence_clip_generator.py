@@ -217,7 +217,7 @@ class EvidenceGuidedClipGenerator:
                 scene_cmd,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=180  # 3분 (긴 영상 지원)
             )
             
             # Parse scene changes from stderr

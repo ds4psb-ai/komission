@@ -360,12 +360,20 @@ class UnifiedPass:
                     })
                 raw_json['viral_kicks'] = existing[:6]
             
-            # Preprocess: causal_reasoning defaults
+            # Preprocess: causal_reasoning defaults or fix if string
             if 'causal_reasoning' not in raw_json:
                 raw_json['causal_reasoning'] = {
                     'why_viral_one_liner': 'Unknown',
                     'causal_chain': [],
                     'replication_recipe': [],
+                    'risks_or_unknowns': []
+                }
+            elif isinstance(raw_json['causal_reasoning'], str):
+                # LLM sometimes returns causal_reasoning as a plain string
+                raw_json['causal_reasoning'] = {
+                    'why_viral_one_liner': raw_json['causal_reasoning'][:240],
+                    'causal_chain': raw_json.get('causal_chain', []),
+                    'replication_recipe': raw_json.get('replication_recipe', []),
                     'risks_or_unknowns': []
                 }
             
@@ -409,7 +417,18 @@ class UnifiedPass:
                                 fixed_windows.append(w)
                         hint['appears_windows'] = fixed_windows
             
-            # Preprocess: fix analysis_plan.points\n            if 'analysis_plan' in raw_json and 'points' in raw_json['analysis_plan']:\n                valid_agg = {'mean', 'median', 'max', 'min', 'first', 'last', 'p95'}\n                valid_roi = {'full_frame', 'face', 'main_subject', 'product', 'text_overlay'}\n                roi_map = {\n                    'global': 'full_frame', 'full': 'full_frame', 'frame': 'full_frame',\n                    'person': 'main_subject', 'subject': 'main_subject', 'object': 'main_subject',\n                    'text': 'text_overlay', 'overlay': 'text_overlay',\n                }\n                for point in raw_json['analysis_plan']['points']:\n                    if not isinstance(point, dict):\n                        continue  # Skip non-dict items
+            # Preprocess: fix analysis_plan.points
+            if 'analysis_plan' in raw_json and 'points' in raw_json['analysis_plan']:
+                valid_agg = {'mean', 'median', 'max', 'min', 'first', 'last', 'p95'}
+                valid_roi = {'full_frame', 'face', 'main_subject', 'product', 'text_overlay'}
+                roi_map = {
+                    'global': 'full_frame', 'full': 'full_frame', 'frame': 'full_frame',
+                    'person': 'main_subject', 'subject': 'main_subject', 'object': 'main_subject',
+                    'text': 'text_overlay', 'overlay': 'text_overlay',
+                }
+                for point in raw_json['analysis_plan']['points']:
+                    if not isinstance(point, dict):
+                        continue  # Skip non-dict items
                     if 'measurements' in point:
                         for m in point['measurements']:
                             if m.get('aggregation') not in valid_agg:
@@ -547,7 +566,7 @@ class UnifiedPass:
                 ],
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=180,  # 3분 (영상 길이에 따라 증가 가능)
             )
             
             if result.returncode == 0 and result.stdout.strip():
@@ -608,7 +627,7 @@ def get_video_duration_ms(video_path: str) -> int:
             ],
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=30,  # ffprobe는 빠르므로 30초
         )
         duration_sec = float(result.stdout.strip())
         return int(duration_sec * 1000)

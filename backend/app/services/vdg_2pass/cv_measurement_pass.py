@@ -153,7 +153,7 @@ class FrameExtractor:
                 cmd,
                 capture_output=True,
                 check=True,
-                timeout=30,
+                timeout=180,  # 3분 (긴 영상 지원)
             )
         except subprocess.CalledProcessError as e:
             logger.error(f"ffmpeg failed: {e.stderr.decode()}")
