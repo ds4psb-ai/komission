@@ -1,8 +1,9 @@
 """
-STPF Service Layer (Week 2 Hardened)
+STPF Service Layer (Week 3 Hardened)
 
 비즈니스 로직을 캡슐화한 서비스 레이어.
 Week 2: Bayesian + Reality Patches + Anchors 통합.
+Week 3: Simulation + Kelly Criterion 통합.
 """
 import logging
 from typing import Optional, Dict, Any, List
@@ -32,6 +33,19 @@ from app.services.stpf.reality_patches import (
     PatchResult,
 )
 from app.services.stpf.anchors import VDG_SCALE_ANCHORS, VDGAnchorLookup
+
+# Week 3 imports
+from app.services.stpf.simulation import (
+    STPFSimulator,
+    STPFVariables,
+    ToTResult,
+    MonteCarloResult,
+)
+from app.services.stpf.kelly_criterion import (
+    KellyDecisionEngine,
+    KellyDecision,
+    GradeInfo,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +85,9 @@ class STPFAnalysisResponse:
 
 
 class STPFService:
-    """STPF 서비스 레이어 (Week 2 Hardened)"""
+    """STPF 서비스 레이어 (Week 3 Hardened)"""
     
-    VERSION = "2.0"  # Week 2
+    VERSION = "3.0"  # Week 3
     
     def __init__(self):
         self.calculator = STPFCalculator()
@@ -83,6 +97,9 @@ class STPFService:
         self.bayesian = BayesianPatternUpdater()
         self.patches = RealityDistortionPatches()
         self.anchor_lookup = VDGAnchorLookup()
+        # Week 3 modules
+        self.simulator = STPFSimulator()
+        self.kelly = KellyDecisionEngine()
     
     async def analyze_vdg(
         self,
@@ -405,8 +422,81 @@ class STPFService:
                 "domain": config.get("domain", ""),
             }
         return descriptions
+    
+    # ========== Week 3: Simulation + Kelly ==========
+    
+    def run_tot_simulation(
+        self,
+        gates: STPFGates,
+        numerator: STPFNumerator,
+        denominator: STPFDenominator,
+        multipliers: STPFMultipliers,
+        variation: float = 0.2,
+    ) -> ToTResult:
+        """Tree of Thoughts 시뮬레이션
+        
+        Worst/Base/Best 3가지 시나리오 분석.
+        """
+        variables = STPFVariables(
+            gates=gates,
+            numerator=numerator,
+            denominator=denominator,
+            multipliers=multipliers,
+        )
+        return self.simulator.run_tot_simulation(variables, variation)
+    
+    def run_monte_carlo(
+        self,
+        gates: STPFGates,
+        numerator: STPFNumerator,
+        denominator: STPFDenominator,
+        multipliers: STPFMultipliers,
+        n_simulations: int = 1000,
+        noise_std: float = 1.0,
+    ) -> MonteCarloResult:
+        """Monte Carlo 시뮬레이션
+        
+        n회 랜덤 시뮬레이션으로 확률 분포 추정.
+        """
+        variables = STPFVariables(
+            gates=gates,
+            numerator=numerator,
+            denominator=denominator,
+            multipliers=multipliers,
+        )
+        return self.simulator.run_monte_carlo(
+            variables, n_simulations, noise_std
+        )
+    
+    def get_kelly_decision(
+        self,
+        score_1000: int,
+        p_success: Optional[float] = None,
+        time_investment_hours: float = 10.0,
+        expected_view_multiplier: float = 3.0,
+    ) -> KellyDecision:
+        """Kelly Criterion 의사결정
+        
+        STPF 점수 기반 최적 투자 비율 계산.
+        """
+        return self.kelly.calculate_from_stpf(
+            score_1000=score_1000,
+            p_success=p_success,
+            time_investment_hours=time_investment_hours,
+            expected_view_multiplier=expected_view_multiplier,
+        )
+    
+    def get_grade_info(self, score_1000: int) -> GradeInfo:
+        """STPF 점수 등급 조회"""
+        return self.kelly.get_grade_info(score_1000)
+    
+    def compare_options(
+        self,
+        options: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """여러 옵션 Kelly 비교"""
+        return self.kelly.compare_options(options)
 
 
 # Singleton instance
 stpf_service = STPFService()
-

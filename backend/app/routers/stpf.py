@@ -308,6 +308,124 @@ async def get_all_anchors(variable: str):
     }
 
 
+# ========== Week 3 Endpoints ==========
+
+class SimulationRequest(BaseModel):
+    """시뮬레이션 요청"""
+    gates: STPFGates
+    numerator: STPFNumerator
+    denominator: STPFDenominator
+    multipliers: STPFMultipliers
+    variation: float = Field(0.2, ge=0.05, le=0.5, description="변동 비율")
+
+
+class MonteCarloRequest(BaseModel):
+    """Monte Carlo 요청"""
+    gates: STPFGates
+    numerator: STPFNumerator
+    denominator: STPFDenominator
+    multipliers: STPFMultipliers
+    n_simulations: int = Field(1000, ge=100, le=10000)
+    noise_std: float = Field(1.0, ge=0.1, le=3.0)
+
+
+@router.post("/simulate/tot")
+async def simulate_tot(request: SimulationRequest):
+    """Tree of Thoughts 시뮬레이션
+    
+    Worst/Base/Best 3가지 시나리오 분석.
+    """
+    try:
+        result = stpf_service.run_tot_simulation(
+            gates=request.gates,
+            numerator=request.numerator,
+            denominator=request.denominator,
+            multipliers=request.multipliers,
+            variation=request.variation,
+        )
+        return {
+            "success": True,
+            "worst": result.worst.model_dump(),
+            "base": result.base.model_dump(),
+            "best": result.best.model_dump(),
+            "weighted_score": result.weighted_score,
+            "score_range": result.score_range,
+            "recommendation": result.recommendation,
+            "confidence": result.confidence,
+        }
+    except Exception as e:
+        logger.exception(f"ToT simulation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/simulate/monte-carlo")
+async def simulate_monte_carlo(request: MonteCarloRequest):
+    """Monte Carlo 시뮬레이션
+    
+    n회 랜덤 시뮬레이션으로 확률 분포 추정.
+    """
+    try:
+        result = stpf_service.run_monte_carlo(
+            gates=request.gates,
+            numerator=request.numerator,
+            denominator=request.denominator,
+            multipliers=request.multipliers,
+            n_simulations=request.n_simulations,
+            noise_std=request.noise_std,
+        )
+        return {
+            "success": True,
+            "n_simulations": result.n_simulations,
+            "mean": result.mean,
+            "median": result.median,
+            "std": result.std,
+            "percentile_10": result.percentile_10,
+            "percentile_90": result.percentile_90,
+            "min_score": result.min_score,
+            "max_score": result.max_score,
+            "go_probability": result.go_probability,
+            "consider_probability": result.consider_probability,
+            "nogo_probability": result.nogo_probability,
+            "distribution_summary": result.distribution_summary,
+            "run_time_ms": result.run_time_ms,
+        }
+    except Exception as e:
+        logger.exception(f"Monte Carlo simulation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/kelly/{score}")
+async def get_kelly_decision(
+    score: int = Query(..., ge=0, le=1000),
+    time_investment_hours: float = Query(10.0, ge=1, le=100),
+    expected_view_multiplier: float = Query(3.0, ge=1, le=100),
+):
+    """Kelly Criterion 의사결정
+    
+    STPF 점수 기반 최적 투자 비율 계산.
+    """
+    try:
+        decision = stpf_service.get_kelly_decision(
+            score_1000=score,
+            time_investment_hours=time_investment_hours,
+            expected_view_multiplier=expected_view_multiplier,
+        )
+        return decision.model_dump()
+    except Exception as e:
+        logger.exception(f"Kelly decision failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/grade/{score}")
+async def get_grade_info(score: int = Query(..., ge=0, le=1000)):
+    """STPF 점수 등급 조회
+    
+    S/A/B/C 등급 및 권장 행동 반환.
+    """
+    grade = stpf_service.get_grade_info(score)
+    return grade.model_dump()
+
+
 @router.get("/health")
 async def health_check():
     """STPF 서비스 상태 확인"""
@@ -315,6 +433,8 @@ async def health_check():
     from app.services.stpf.vdg_mapper import VDGToSTPFMapper
     from app.services.stpf.bayesian_updater import BayesianPatternUpdater
     from app.services.stpf.reality_patches import RealityDistortionPatches
+    from app.services.stpf.simulation import STPFSimulator
+    from app.services.stpf.kelly_criterion import KellyDecisionEngine
     
     return {
         "status": "healthy",
@@ -324,6 +444,8 @@ async def health_check():
             "mapper": VDGToSTPFMapper.VERSION,
             "bayesian": BayesianPatternUpdater.VERSION,
             "patches": RealityDistortionPatches.VERSION,
+            "simulator": STPFSimulator.VERSION,
+            "kelly": KellyDecisionEngine.VERSION,
         },
         "endpoints": [
             "POST /stpf/analyze/manual",
@@ -335,5 +457,10 @@ async def health_check():
             "POST /stpf/pattern/{id}/update",
             "GET /stpf/anchor/{variable}/{score}",
             "GET /stpf/anchors/{variable}",
+            # Week 3
+            "POST /stpf/simulate/tot",
+            "POST /stpf/simulate/monte-carlo",
+            "GET /stpf/kelly/{score}",
+            "GET /stpf/grade/{score}",
         ],
     }

@@ -12,8 +12,8 @@ Components:
 - bayesian_updater: Pattern confidence updater ✅ Week 2
 - reality_patches: Outlier correction patches ✅ Week 2
 - anchors: VDG Scale Anchors (1-10) ✅ Week 2
-- simulator: ToT + Monte Carlo (Week 3)
-- kelly_criterion: Go/No-Go decision engine (Week 3)
+- simulator: ToT + Monte Carlo ✅ Week 3
+- kelly_criterion: Go/No-Go decision engine ✅ Week 3
 """
 
 from app.services.stpf.schemas import (
@@ -48,6 +48,22 @@ from app.services.stpf.anchors import (
     anchor_lookup,
 )
 
+# Week 3 modules
+from app.services.stpf.simulation import (
+    STPFSimulator,
+    stpf_simulator,
+    STPFVariables,
+    ToTResult,
+    MonteCarloResult,
+)
+from app.services.stpf.kelly_criterion import (
+    KellyDecisionEngine,
+    kelly_engine,
+    KellyDecision,
+    GradeInfo,
+    STPF_GRADE_BRACKETS,
+)
+
 __all__ = [
     # Schemas
     "STPFGates",
@@ -80,4 +96,16 @@ __all__ = [
     "VDG_SCALE_ANCHORS",
     "VDGAnchorLookup",
     "anchor_lookup",
+    # Week 3: Simulation
+    "STPFSimulator",
+    "stpf_simulator",
+    "STPFVariables",
+    "ToTResult",
+    "MonteCarloResult",
+    # Week 3: Kelly
+    "KellyDecisionEngine",
+    "kelly_engine",
+    "KellyDecision",
+    "GradeInfo",
+    "STPF_GRADE_BRACKETS",
 ]
