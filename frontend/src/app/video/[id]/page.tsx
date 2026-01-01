@@ -211,15 +211,19 @@ function VideoEmbed({ video }: { video: VideoDetail }) {
     }
 
     if (video.platform === 'tiktok') {
-        // Use TikTok player with loop=1 to auto-replay (Virlo-style UX)
+        // Use TikTokPlayer component with unmute button (Virlo-style UX)
+        const { TikTokPlayer } = require('@/components/outlier/TikTokPlayer');
         return (
             <div className="relative w-full h-full flex items-center justify-center bg-zinc-950/50 rounded-2xl">
                 <div className="relative w-full max-w-[340px] aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-2xl">
-                    <iframe
-                        src={`https://www.tiktok.com/player/v1/${videoId}?loop=1&autoplay=0&music_info=0&description=0`}
-                        className="absolute inset-0 w-full h-full border-0"
-                        allow="fullscreen"
-                        allowFullScreen
+                    <TikTokPlayer
+                        videoUrl={video.video_url}
+                        videoId={videoId}
+                        autoplay={false}
+                        loop={true}
+                        showControls={true}
+                        showUnmute={true}
+                        className="w-full h-full"
                     />
                 </div>
             </div>
