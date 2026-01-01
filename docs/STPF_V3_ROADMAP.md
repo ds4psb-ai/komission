@@ -1070,3 +1070,97 @@ class STPFReport(BaseModel):
 
 > **"STPF v3.1은 VDG의 훅/킥/패턴을 12가지 불변 규칙과 베이지안 갱신으로 감싸,
 > '점수'를 넘어 '확률 + 기대값 + 최적 베팅 비율'을 출력하는 단일 진실 엔진이다."**
+
+---
+
+## 13. Best Practices (2024 Research)
+
+> 웹 리서치 결과를 반영한 산업 표준 권장사항
+
+### 13.1 Kelly Criterion + ML 강화
+
+| Best Practice | 적용 | STPF 구현 |
+|---------------|------|-----------|
+| **Fractional Kelly** | 추정 오차 대비 0.5x~0.33x | `safe_kelly = kelly * 0.5` |
+| **Ensemble Learning** | 다중 모델 예측 평균 | `BayesianPatternUpdater` |
+| **Reinforcement Learning** | 동적 환경 적응 | `CoachingOutcome` 피드백 루프 |
+| **Transaction Costs** | 실제 비용 반영 | `Denominator.cost` 변수 |
+| **Risk-Constrained** | Drawdown 제한 | `Gate.trust_gate < 4` → Kill |
+
+```python
+# 개선: Confidence-Adjusted Kelly
+def calculate_safe_kelly(p: float, b: float, confidence: float) -> float:
+    """신뢰도 낮으면 베팅 축소"""
+    raw_kelly = (b * p - (1 - p)) / b
+    
+    # Fractional Kelly (0.5x) + Confidence 조정
+    safe_kelly = raw_kelly * 0.5 * confidence
+    
+    # 음수면 NO_GO
+    return max(0, safe_kelly)
+```
+
+### 13.2 MCP (Model Context Protocol) 통합
+
+| 구성요소 | 설명 | STPF 적용 |
+|----------|------|-----------|
+| **Tools** | AI 실행 가능 액션 | `/stpf/analyze`, `/stpf/simulate` |
+| **Resources** | 구조화된 데이터 | `VDG v4.1`, `PatternConfidence` |
+| **Prompts** | 사전 정의 템플릿 | `STPF Master Prompt v3.1` |
+
+```python
+# MCP 서버 구조
+@mcp_server.tool()
+async def stpf_analyze(vdg_id: str) -> STPFReport:
+    """STPF v3.1 분석 실행"""
+    vdg = await get_vdg(vdg_id)
+    variables = ViralVideoAdapter().convert_vdg_to_stpf(vdg)
+    return STPFCalculatorV31().calculate(**variables.model_dump())
+
+@mcp_server.resource("stpf://patterns/{pattern_id}")
+async def get_pattern_confidence(pattern_id: str) -> Dict:
+    """패턴 신뢰도 리소스"""
+    return await bayesian_updater.get_posterior(pattern_id)
+```
+
+### 13.3 NotebookLM 파이프라인
+
+| 단계 | Best Practice | 구현 |
+|------|---------------|------|
+| **Ontology** | 명확한 엔티티/관계 정의 | `parent_node_id`, `genealogy_depth` |
+| **Ingestion** | 자동화된 청크 업로드 | `upload_source_pack_to_notebook.py` |
+| **Quality** | 소스 품질이 출력 품질 | Outlier 큐레이션 |
+| **Extraction** | Mind Map → Knowledge Graph | `DistillRun` 스키마 |
+
+```python
+# NotebookLM 다중 깊이 연동
+class NotebookLMPipeline:
+    """Parent-Kids 계층 자동 확장"""
+    
+    async def ingest_cluster(self, cluster_id: str, max_depth: int = 3):
+        """클러스터의 모든 노드를 NotebookLM에 업로드"""
+        nodes = await self._get_nodes_by_depth(cluster_id, max_depth)
+        
+        for depth in range(max_depth + 1):
+            depth_nodes = [n for n in nodes if n.genealogy_depth == depth]
+            
+            # 각 깊이별 소스팩 생성
+            source_pack = self._create_source_pack(depth_nodes)
+            
+            # NotebookLM API로 업로드
+            await self._upload_to_notebook(source_pack, f"depth_{depth}")
+    
+    async def extract_invariants(self, notebook_id: str) -> List[str]:
+        """NotebookLM Mind Map에서 불변요소 추출"""
+        mind_map = await self._get_mind_map(notebook_id)
+        return self._parse_invariants(mind_map)
+```
+
+### 13.4 수치 안정성 체크리스트
+
+- [x] **Division by Zero**: `1 + normalized * weight` 패턴
+- [x] **Vanishing Gradient**: Raw Score 1-10 사용
+- [x] **Log Underflow**: `math.log1p()` 사용
+- [x] **Probability Bounds**: `min(0.95, max(0.1, p))` 강제
+- [x] **Kelly Edge Check**: `bp - q > 0` 사전 검증
+- [ ] **Monte Carlo Variance**: 1000회 이상 시뮬레이션
