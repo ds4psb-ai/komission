@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 # ============================================
 
 DEFAULT_MODEL_FLASH = "gemini-2.0-flash-exp"
-DEFAULT_MODEL_PRO = "gemini-2.0-flash-exp"  # Note: pro model not available, using flash
+DEFAULT_MODEL_PRO = "gemini-3.0-pro"  # Gemini 3.0 Pro for VDG analysis
 DEFAULT_MODEL_AUDIO = "gemini-2.5-flash-native-audio-latest"
 
 # Timeout and Retry Configuration
