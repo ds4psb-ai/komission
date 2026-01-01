@@ -121,13 +121,14 @@ class STPFReport(BaseModel):
     # H. Metadata
     metadata: Dict[str, Any] = Field(default_factory=dict)
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "kernel": {"score_1000": 850, "go_nogo": "GO"},
                 "verdict": {"grade": "S", "signal": "GO"},
             }
         }
+    }
 
 
 class STPFReportGenerator:

@@ -5,7 +5,7 @@ STPF API Router (Week 2 Hardened)
 Week 2: Bayesian + Patches + Anchors API 추가.
 """
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Path
 from pydantic import BaseModel, Field
 import logging
 
@@ -283,8 +283,8 @@ async def update_pattern_outcome(
 
 @router.get("/anchor/{variable}/{score}")
 async def get_anchor(
-    variable: str,
-    score: int = Query(..., ge=1, le=10),
+    variable: str = Path(..., description="변수명"),
+    score: int = Path(..., ge=1, le=10, description="1-10 점수"),
 ):
     """특정 변수/점수의 앵커 조회
     
@@ -396,7 +396,7 @@ async def simulate_monte_carlo(request: MonteCarloRequest):
 
 @router.get("/kelly/{score}")
 async def get_kelly_decision(
-    score: int = Query(..., ge=0, le=1000),
+    score: int = Path(..., ge=0, le=1000, description="STPF 점수"),
     time_investment_hours: float = Query(10.0, ge=1, le=100),
     expected_view_multiplier: float = Query(3.0, ge=1, le=100),
 ):
@@ -417,7 +417,7 @@ async def get_kelly_decision(
 
 
 @router.get("/grade/{score}")
-async def get_grade_info(score: int = Query(..., ge=0, le=1000)):
+async def get_grade_info(score: int = Path(..., ge=0, le=1000, description="STPF 점수")):
     """STPF 점수 등급 조회
     
     S/A/B/C 등급 및 권장 행동 반환.
