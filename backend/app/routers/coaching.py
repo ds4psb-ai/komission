@@ -117,7 +117,7 @@ async def create_session(
     DirectorPack을 기반으로 Gemini Live 세션을 준비합니다.
     P1: Control Group (10%) + Holdout (5%) 자동 할당
     """
-    from app.mcp.resources.director_pack import create_proof_pack
+    from app.services.proof_patterns import create_proof_pack
     
     session_id = generate_session_id()
     now = utcnow()
