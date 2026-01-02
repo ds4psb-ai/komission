@@ -426,6 +426,71 @@ async def run_session_timeout_monitor(session_id: str, session: dict):
 
 
 # ==================
+# CHECKPOINT EVALUATION LOOP
+# ==================
+
+# Checkpoint evaluation interval
+CHECKPOINT_EVAL_INTERVAL_SEC = 1.0
+
+
+async def run_checkpoint_evaluation_loop(session_id: str, session: dict):
+    """
+    시간 기반 체크포인트 평가 루프
+    
+    녹화 시간에 따라 get_next_command()를 호출하고 TTS 피드백 전송
+    
+    Flow:
+    1. 매 1초마다 현재 녹화 시간 계산
+    2. coach.get_next_command(current_time) 호출
+    3. 명령이 있으면 TTS 생성 후 전송
+    """
+    logger.info(f"Checkpoint evaluation loop started: {session_id}")
+    
+    try:
+        while session.get("status") == "recording":
+            await asyncio.sleep(CHECKPOINT_EVAL_INTERVAL_SEC)
+            
+            # Skip if paused
+            if session.get("status") != "recording":
+                continue
+            
+            # Get current recording time
+            current_time = session.get("recording_time", 0.0)
+            
+            # Get coaching command
+            coach: AudioCoach = session.get("coach")
+            if not coach:
+                continue
+            
+            command = coach.get_next_command(current_time)
+            
+            if command:
+                logger.info(f"⏱️ Checkpoint coaching @ {current_time:.1f}s: {command[:40]}...")
+                
+                # Update session stats
+                session["interventions_sent"] = session.get("interventions_sent", 0) + 1
+                
+                # Generate TTS and send feedback
+                audio_b64 = await generate_tts_fallback(command, lang="ko")
+                
+                await manager.send_message(session_id, {
+                    "type": "feedback",
+                    "message": command,
+                    "audio_b64": audio_b64,  # May be None if TTS failed
+                    "audio_format": "mp3" if audio_b64 else None,
+                    "checkpoint_time": current_time,
+                    "timestamp": utcnow().isoformat(),
+                })
+                
+    except asyncio.CancelledError:
+        logger.info(f"Checkpoint evaluation loop cancelled: {session_id}")
+    except Exception as e:
+        logger.error(f"Checkpoint evaluation loop error: {e}")
+    finally:
+        logger.info(f"Checkpoint evaluation loop ended: {session_id}")
+
+
+# ==================
 # H8: AUDIO SEND WITH RETRY
 # ==================
 
@@ -638,16 +703,23 @@ async def handle_control(session_id: str, session: dict, message: dict):
         )
         session["timeout_task"] = timeout_task
         
+        # 시간 기반 체크포인트 평가 루프 시작
+        checkpoint_task = asyncio.create_task(
+            run_checkpoint_evaluation_loop(session_id, session)
+        )
+        session["checkpoint_task"] = checkpoint_task
+        
         await manager.send_message(session_id, {
             "type": "session_status",
             "status": "recording",
             "gemini_connected": gemini_connected,
             "fallback_mode": not gemini_connected,
             "rules_count": len(coach._director_pack.dna_invariants) if coach._director_pack else 0,
+            "checkpoint_evaluation": True,  # Indicate checkpoint loop is active
             "timestamp": utcnow().isoformat(),
         })
         
-        logger.info(f"Recording started: {session_id}, gemini={gemini_connected}")
+        logger.info(f"Recording started: {session_id}, gemini={gemini_connected}, checkpoints=active")
     
     elif action == "pause":
         session["status"] = "paused"
@@ -674,6 +746,11 @@ async def handle_control(session_id: str, session: dict, message: dict):
         timeout_task = session.get("timeout_task")
         if timeout_task and not timeout_task.done():
             timeout_task.cancel()
+        
+        # 체크포인트 평가 루프 정리
+        checkpoint_task = session.get("checkpoint_task")
+        if checkpoint_task and not checkpoint_task.done():
+            checkpoint_task.cancel()
         
         # 세션 통계 계산
         stats = {
