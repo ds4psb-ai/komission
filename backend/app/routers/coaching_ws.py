@@ -172,9 +172,28 @@ async def coaching_websocket(
         coach = AudioCoach()
         session = manager.create_session(session_id, coach, voice_style)
         
-        # Store video/outlier IDs for DirectorPack loading
-        session["video_id"] = video_id
-        session["outlier_id"] = outlier_id
+        # Merge data from POST session (coaching.py._sessions) if exists
+        # This ensures video_id, director_pack, etc. from POST are available
+        try:
+            from app.routers.coaching import _sessions as post_sessions
+            post_session_data = post_sessions.get(session_id, {})
+            if post_session_data:
+                # Merge important fields from POST session
+                session["video_id"] = post_session_data.get("video_id") or video_id
+                session["outlier_id"] = post_session_data.get("outlier_id") or outlier_id
+                session["director_pack"] = post_session_data.get("director_pack")
+                session["pattern_id"] = post_session_data.get("pattern_id")
+                session["assignment"] = post_session_data.get("assignment", "coached")
+                session["holdout_group"] = post_session_data.get("holdout_group", False)
+                logger.info(f"Merged POST session data: video_id={session.get('video_id')}, pattern_id={session.get('pattern_id')}")
+            else:
+                # Fallback to query parameters
+                session["video_id"] = video_id
+                session["outlier_id"] = outlier_id
+                logger.info(f"No POST session found, using query params: video_id={video_id}")
+        except ImportError:
+            session["video_id"] = video_id
+            session["outlier_id"] = outlier_id
         
         # 3. Send initial status
         await manager.send_message(session_id, {
