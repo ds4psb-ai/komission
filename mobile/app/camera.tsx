@@ -57,6 +57,10 @@ import type {
     SignalPromotion,
 } from '@/hooks/useCoachingWebSocket';
 
+// Phase 1.1-1.2: DirectorPack
+import { useDirectorPack } from '@/hooks/useDirectorPack';
+import { useLocalSearchParams } from 'expo-router';
+
 export default function CameraScreen() {
     const router = useRouter();
     const cameraRef = useRef<Camera>(null);
@@ -101,6 +105,20 @@ export default function CameraScreen() {
     const [currentTextCoach, setCurrentTextCoach] = useState<TextCoach | null>(null);
     const [lastAdaptiveResponse, setLastAdaptiveResponse] = useState<AdaptiveResponse | null>(null);
     const [lastPromotion, setLastPromotion] = useState<SignalPromotion | null>(null);
+
+    // ============================================================
+    // Phase 1.2: DirectorPack with Real-time Step Tracking
+    // ============================================================
+    const { pattern: patternId } = useLocalSearchParams<{ pattern?: string }>();
+    const {
+        guideData,
+        getCurrentGuideStep,
+        getUpcomingGuideStep,
+    } = useDirectorPack(patternId || null);
+
+    // Current and upcoming steps based on recording time
+    const currentStep = isRecording ? getCurrentGuideStep(recordingTime) : null;
+    const upcomingStep = isRecording ? getUpcomingGuideStep(recordingTime) : null;
 
     // Get back camera
     const device = useCameraDevice('back');
@@ -390,10 +408,14 @@ export default function CameraScreen() {
                 compositionGuide={showCompositionGuide ? { type: 'rule_of_thirds', enabled: true } : undefined}
             />
 
-            {/* Phase 1: Graphic Overlay */}
+            {/* Phase 1: Graphic Overlay with Real-time DirectorPack Steps */}
             {isRecording && outputMode !== 'text' && outputMode !== 'audio' && (
                 <GraphicOverlay
                     guide={currentGraphicGuide}
+                    currentStep={currentStep}
+                    upcomingStep={upcomingStep}
+                    gridType={showCompositionGuide ? 'rule_of_thirds' : 'none'}
+                    recordingTime={recordingTime}
                     showGrid={showCompositionGuide}
                 />
             )}
@@ -408,7 +430,7 @@ export default function CameraScreen() {
                 <ShotlistTimeline
                     vdgData={vdgData}
                     currentTime={recordingTime}
-                    totalDuration={60}  // TODO: Get from VDG
+                    totalDuration={guideData.duration}  // From DirectorPack
                 />
             )}
 
