@@ -110,27 +110,36 @@ class DirectorCompiler:
         hook = vdg.semantic.hook_genome if vdg.semantic else None
         
         if context == "hook":
-            # 1순위: hook_script (구체적 훅 가이드)
+            # 1순위: shotlist 첫 번째 (구체적 샷 가이드)
+            if capsule and capsule.shotlist:
+                first_shot = capsule.shotlist[0]
+                if isinstance(first_shot, dict):
+                    desc = first_shot.get("description", "")
+                    if desc:
+                        logger.info(f"🎤 VDG Coach Message (Shotlist): {desc}")
+                        return f"가이드: {desc}"[:50]
+
+            # 2순위: do_not (주의사항)
+            if capsule and capsule.do_not:
+                warning = capsule.do_not[0]
+                logger.info(f"🎤 VDG Coach Message (DoNot): {warning}")
+                return f"주의: {warning}"[:50]
+
+            # 3순위: hook_script (내용 설명이라 후순위)
             if capsule and capsule.hook_script:
                 msg = capsule.hook_script
-                # 50자 제한 (실시간 코칭용)
-                if len(msg) > 50:
-                    msg = msg[:47] + "..."
-                return msg
-            
-            # 2순위: hook_genome.hook_summary
-            if hook and hook.hook_summary:
-                msg = hook.hook_summary
-                if len(msg) > 50:
-                    msg = msg[:47] + "..."
-                return msg
+                if len(msg) < 30:  # 짧으면 사용
+                    logger.info(f"🎤 VDG Coach Message (HookScript): {msg}")
+                    return msg
         
         elif context == "shot":
             # shotlist에서 첫 번째 샷 가이드 사용
             if capsule and capsule.shotlist:
                 first_shot = capsule.shotlist[0] if capsule.shotlist else None
                 if first_shot and isinstance(first_shot, dict):
-                    return first_shot.get("guide", first_shot.get("description", ""))[:50]
+                    msg = first_shot.get("guide", first_shot.get("description", ""))[:50]
+                    logger.info(f"🎤 VDG Coach Message (ShotContext): {msg}")
+                    return msg
         
         return None
 

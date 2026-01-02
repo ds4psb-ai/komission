@@ -565,7 +565,12 @@ export function CoachingSession({
     // P0: Download recorded video as file
     const downloadRecording = useCallback((blob: Blob, mimeType: string) => {
         const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
-        const filename = `coaching_${sessionId || 'session'}_${new Date().toISOString().slice(0, 10)}.${ext}`;
+        // Safe filename: remove colons and other invalid characters
+        const now = new Date();
+        const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const safeSessionId = (sessionId || 'session').replace(/[^a-zA-Z0-9-_]/g, '');
+        const filename = `coaching_${safeSessionId}_${timestamp}.${ext}`;
+
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
