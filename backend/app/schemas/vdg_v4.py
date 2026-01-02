@@ -495,7 +495,8 @@ class VisualPassResult(BaseModel):
     entity_resolutions: Dict[str, EntityResolution] = Field(default_factory=dict)
     entity_tracks: List[EntityTrack] = Field(default_factory=list)
     text_geometries: List[TextGeometry] = Field(default_factory=list)
-    analysis_results: Dict[str, AnalysisPointResult] = Field(default_factory=dict)
+    # Flexible type: can be dict or list depending on VDG version
+    analysis_results: Any = Field(default_factory=dict)
 
 
 # ====================
