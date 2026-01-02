@@ -21,7 +21,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     X, Mic, MicOff, Camera, CameraOff,
-    CheckCircle, Circle, AlertCircle, Volume2,
+    CheckCircle, Circle, AlertCircle, Volume2, VolumeX,
     Play, Square, RotateCcw, Sparkles, FlaskConical
 } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -81,6 +81,7 @@ export function CoachingSession({
     const [error, setError] = useState<string | null>(null);
     const [useRealCoaching, setUseRealCoaching] = useState(true);  // Toggle for real vs demo
     const [isSessionReady, setIsSessionReady] = useState(false);  // Prevent record before session created
+    const [voiceEnabled, setVoiceEnabled] = useState(true);  // P2: Voice coaching toggle
 
     // P1: Control Group State
     const [assignment, setAssignment] = useState<'coached' | 'control'>('coached');
@@ -102,6 +103,7 @@ export function CoachingSession({
         sendVideoFrame,  // P3: Real-time video analysis
     } = useCoachingWebSocket(sessionId, {
         voiceStyle: 'friendly',
+        voiceEnabled,  // P2: Pass voice toggle state
         onFeedback: (feedback) => {
             if (assignment === 'control') return;  // Skip for control group
             setCurrentFeedback({
@@ -786,8 +788,8 @@ export function CoachingSession({
                                     : 'bg-white/20 border border-white/30'
                                 }`}>
                                 <div className="flex items-center gap-2">
-                                    <Volume2 className="w-5 h-5 text-white animate-pulse" />
-                                    <p className="text-white font-medium">{currentFeedback.message}</p>
+                                    <Volume2 className="w-4 h-4 text-white animate-pulse" />
+                                    <p className="text-white text-sm font-medium">{currentFeedback.message}</p>
                                 </div>
                             </div>
                         </div>
@@ -917,6 +919,20 @@ export function CoachingSession({
                         ) : (
                             <Play className="w-8 h-8 text-white ml-1" />
                         )}
+                    </button>
+
+                    {/* P2: Voice Toggle */}
+                    <button
+                        onClick={() => setVoiceEnabled(!voiceEnabled)}
+                        className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all ${voiceEnabled
+                            ? 'bg-white/10 border-white/20'
+                            : 'bg-amber-500/20 border-amber-500/40'
+                            }`}
+                        title={voiceEnabled ? '음성 코칭 끄기' : '음성 코칭 켜기'}
+                    >
+                        {voiceEnabled
+                            ? <Volume2 className="w-5 h-5 text-white" />
+                            : <VolumeX className="w-5 h-5 text-amber-400" />}
                     </button>
 
                     {/* Reset */}

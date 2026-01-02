@@ -52,6 +52,7 @@ type WebSocketMessage = CoachingFeedback | RuleUpdate | SessionStatus | { type: 
 interface UseCoachingWebSocketOptions {
     language?: string;
     voiceStyle?: 'strict' | 'friendly' | 'neutral';
+    voiceEnabled?: boolean;  // P2: Toggle voice coaching on/off
     onFeedback?: (feedback: CoachingFeedback) => void;
     onRuleUpdate?: (update: RuleUpdate) => void;
     onStatusChange?: (status: SessionStatus) => void;
@@ -67,6 +68,7 @@ export function useCoachingWebSocket(
     const {
         language = 'ko',
         voiceStyle = 'friendly',
+        voiceEnabled = true,  // Default: voice enabled
         onFeedback,
         onRuleUpdate,
         onStatusChange,
@@ -124,12 +126,14 @@ export function useCoachingWebSocket(
                         const feedbackMsg = msg as CoachingFeedback;
                         setLastFeedback(feedbackMsg);
                         onFeedback?.(feedbackMsg);
-                        // Auto-play TTS if available
-                        if (feedbackMsg.audio_b64) {
-                            playAudioB64(feedbackMsg.audio_b64);
-                        } else {
-                            // Fallback to Web Speech API
-                            speakText(feedbackMsg.message);
+                        // Auto-play TTS if available AND voiceEnabled
+                        if (voiceEnabled) {
+                            if (feedbackMsg.audio_b64) {
+                                playAudioB64(feedbackMsg.audio_b64);
+                            } else {
+                                // Fallback to Web Speech API
+                                speakText(feedbackMsg.message);
+                            }
                         }
                         break;
 
