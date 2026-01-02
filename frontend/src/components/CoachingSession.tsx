@@ -170,6 +170,10 @@ export function CoachingSession({
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const frameIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+    // P0: MediaRecorder for video file recording
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const recordedChunksRef = useRef<Blob[]>([]);
+
     // Mobile detection
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -296,6 +300,12 @@ export function CoachingSession({
             timeoutRefs.current.forEach(clearTimeout);
             timeoutRefs.current = [];
         }
+        // P0: Cleanup MediaRecorder
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+            mediaRecorderRef.current = null;
+        }
+        recordedChunksRef.current = [];
         isRecordingRef.current = false;
         recordingTimeRef.current = 0;
         if (isMountedRef.current) {
@@ -412,6 +422,31 @@ export function CoachingSession({
         isRecordingRef.current = true;
         recordingTimeRef.current = 0;
 
+        // P0: Start MediaRecorder for video file recording
+        const stream = streamRef.current;
+        if (stream) {
+            recordedChunksRef.current = [];  // Clear previous chunks
+
+            // iOS Safari compatible mimeType (video/mp4 preferred, webm fallback)
+            const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')
+                ? 'video/mp4;codecs=avc1'
+                : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+                    ? 'video/webm;codecs=vp9'
+                    : 'video/webm';
+
+            try {
+                const recorder = new MediaRecorder(stream, { mimeType });
+                recorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+                };
+                recorder.start(1000);  // Capture in 1-second chunks
+                mediaRecorderRef.current = recorder;
+                console.log(`🎬 MediaRecorder started: ${mimeType}`);
+            } catch (err) {
+                console.warn('MediaRecorder failed, continuing without video file:', err);
+            }
+        }
+
         // Start timer
         timerRef.current = setInterval(() => {
             setRecordingTime(prev => {
@@ -509,6 +544,21 @@ export function CoachingSession({
         }
     }, []);
 
+    // P0: Download recorded video as file
+    const downloadRecording = useCallback((blob: Blob, mimeType: string) => {
+        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        const filename = `coaching_${sessionId || 'session'}_${new Date().toISOString().slice(0, 10)}.${ext}`;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        console.log(`📥 Video downloaded: ${filename} (${(blob.size / 1024 / 1024).toFixed(2)}MB)`);
+    }, [sessionId]);
+
     const stopRecording = useCallback(() => {
         setIsRecording(false);
         if (timerRef.current) {
@@ -522,6 +572,20 @@ export function CoachingSession({
         isRecordingRef.current = false;
         recordingTimeRef.current = 0;
 
+        // P0: Stop MediaRecorder and download video file
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state !== 'inactive') {
+            recorder.stop();
+            recorder.onstop = () => {
+                if (recordedChunksRef.current.length > 0) {
+                    const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType });
+                    downloadRecording(blob, recorder.mimeType);
+                }
+                recordedChunksRef.current = [];
+            };
+            mediaRecorderRef.current = null;
+        }
+
         // Real WebSocket mode: send stop control and disconnect
         if (useRealCoaching && wsStatus !== 'disconnected') {
             stopAudioCapture();  // Stop microphone capture
@@ -533,7 +597,7 @@ export function CoachingSession({
         if (sessionId && onComplete) {
             onComplete(sessionId);
         }
-    }, [sessionId, onComplete, useRealCoaching, wsStatus, sendControl, wsDisconnect, stopAudioCapture]);
+    }, [sessionId, onComplete, useRealCoaching, wsStatus, sendControl, wsDisconnect, stopAudioCapture, stopFrameCapture, downloadRecording]);
 
     if (!isOpen) return null;
 
