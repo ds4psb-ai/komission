@@ -41,6 +41,23 @@ router = APIRouter()
 
 
 # ==================
+# H4/H7/H8: PRODUCTION STABILITY CONSTANTS
+# ==================
+
+# H4: Gemini reconnect settings
+GEMINI_RECONNECT_MAX_ATTEMPTS = 3
+GEMINI_RECONNECT_DELAY_SEC = 2.0
+
+# H7: Session timeout settings
+SESSION_TIMEOUT_SEC = 300  # 5 minutes of inactivity
+SESSION_TIMEOUT_CHECK_INTERVAL = 30  # Check every 30 seconds
+
+# H8: Audio send retry settings
+AUDIO_SEND_MAX_RETRIES = 3
+AUDIO_SEND_RETRY_DELAY_SEC = 0.5
+
+
+# ==================
 # ACTIVE SESSIONS MANAGER
 # ==================
 
@@ -80,10 +97,11 @@ class CoachingSessionManager:
     
     def create_session(self, session_id: str, coach: AudioCoach, voice_style: str = "friendly") -> Dict[str, Any]:
         """세션 생성"""
+        now = utcnow()
         session = {
             "session_id": session_id,
             "coach": coach,
-            "started_at": utcnow(),
+            "started_at": now,
             "status": "idle",
             "recording_time": 0.0,
             "rules_evaluated": 0,
@@ -92,6 +110,14 @@ class CoachingSessionManager:
             "response_task": None,
             # H3: Voice style for TTS
             "voice_style": voice_style,
+            # H4: Gemini reconnect tracking
+            "gemini_connected": False,
+            "gemini_reconnect_attempts": 0,
+            # H7: Session timeout tracking
+            "last_activity": now,
+            "timeout_task": None,
+            # H8: Audio error tracking
+            "audio_errors_count": 0,
         }
         self.active_sessions[session_id] = session
         return session
@@ -199,6 +225,158 @@ async def coaching_websocket(
             except:
                 pass
         manager.disconnect(session_id)
+
+
+# ==================
+# H4: GEMINI RECONNECT HELPER
+# ==================
+
+async def try_reconnect_gemini(session_id: str, session: dict) -> bool:
+    """
+    H4: Gemini 연결 실패 시 재연결 시도
+    
+    Returns True if reconnected, False if all attempts failed.
+    """
+    coach: AudioCoach = session["coach"]
+    
+    for attempt in range(GEMINI_RECONNECT_MAX_ATTEMPTS):
+        try:
+            session["gemini_reconnect_attempts"] = attempt + 1
+            logger.info(f"Gemini reconnect attempt {attempt + 1}/{GEMINI_RECONNECT_MAX_ATTEMPTS}: {session_id}")
+            
+            await coach.connect()
+            session["gemini_connected"] = True
+            session["gemini_reconnect_attempts"] = 0
+            
+            # Restart response loop
+            if session.get("response_task") and not session["response_task"].done():
+                session["response_task"].cancel()
+            
+            session["response_task"] = asyncio.create_task(
+                run_audio_response_loop(session_id, session)
+            )
+            
+            await manager.send_message(session_id, {
+                "type": "session_status",
+                "status": "reconnected",
+                "gemini_connected": True,
+                "timestamp": utcnow().isoformat(),
+            })
+            
+            logger.info(f"Gemini reconnected successfully: {session_id}")
+            return True
+            
+        except Exception as e:
+            logger.warning(f"Gemini reconnect failed ({attempt + 1}): {e}")
+            if attempt < GEMINI_RECONNECT_MAX_ATTEMPTS - 1:
+                await asyncio.sleep(GEMINI_RECONNECT_DELAY_SEC * (attempt + 1))
+    
+    # All attempts failed
+    session["gemini_connected"] = False
+    await manager.send_message(session_id, {
+        "type": "session_status",
+        "status": "recording",
+        "gemini_connected": False,
+        "fallback_mode": True,
+        "message": "Gemini 연결 실패, 로컬 모드로 전환",
+        "timestamp": utcnow().isoformat(),
+    })
+    return False
+
+
+# ==================
+# H7: SESSION TIMEOUT MONITOR
+# ==================
+
+async def run_session_timeout_monitor(session_id: str, session: dict):
+    """
+    H7: 세션 타임아웃 모니터
+    
+    5분간 활동이 없으면 자동으로 세션 종료
+    """
+    try:
+        while session.get("status") in ("idle", "recording", "paused"):
+            await asyncio.sleep(SESSION_TIMEOUT_CHECK_INTERVAL)
+            
+            last_activity = session.get("last_activity")
+            if not last_activity:
+                continue
+            
+            elapsed = (utcnow() - last_activity).total_seconds()
+            
+            if elapsed > SESSION_TIMEOUT_SEC:
+                logger.warning(f"Session timeout ({elapsed:.0f}s): {session_id}")
+                
+                # Clean up
+                session["status"] = "timeout"
+                
+                response_task = session.get("response_task")
+                if response_task and not response_task.done():
+                    response_task.cancel()
+                
+                coach = session.get("coach")
+                if coach:
+                    try:
+                        await coach.disconnect()
+                    except:
+                        pass
+                
+                await manager.send_message(session_id, {
+                    "type": "session_status",
+                    "status": "timeout",
+                    "message": f"세션 타임아웃 ({SESSION_TIMEOUT_SEC // 60}분 비활성)",
+                    "timestamp": utcnow().isoformat(),
+                })
+                break
+                
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logger.error(f"Timeout monitor error: {e}")
+
+
+# ==================
+# H8: AUDIO SEND WITH RETRY
+# ==================
+
+async def send_audio_with_retry(session_id: str, session: dict, pcm_data: bytes) -> bool:
+    """
+    H8: 오디오 전송 + 재시도 로직
+    
+    Returns True if sent successfully, False otherwise.
+    """
+    coach: AudioCoach = session["coach"]
+    
+    for attempt in range(AUDIO_SEND_MAX_RETRIES):
+        try:
+            await coach.send_audio(pcm_data)
+            session["audio_errors_count"] = 0  # Reset on success
+            return True
+            
+        except RuntimeError as e:
+            # Session not connected
+            logger.warning(f"Audio send failed (not connected): {e}")
+            
+            if session.get("gemini_connected"):
+                session["gemini_connected"] = False
+                # Try to reconnect
+                if await try_reconnect_gemini(session_id, session):
+                    continue  # Retry send after reconnect
+            
+            break  # Don't retry if not connected
+            
+        except Exception as e:
+            session["audio_errors_count"] = session.get("audio_errors_count", 0) + 1
+            logger.warning(f"Audio send error ({attempt + 1}/{AUDIO_SEND_MAX_RETRIES}): {e}")
+            
+            if attempt < AUDIO_SEND_MAX_RETRIES - 1:
+                await asyncio.sleep(AUDIO_SEND_RETRY_DELAY_SEC)
+    
+    # All retries failed
+    if session["audio_errors_count"] > 10:
+        logger.error(f"Too many audio errors, consider fallback: {session_id}")
+        
+    return False
 
 
 # ==================
@@ -334,6 +512,7 @@ async def handle_control(session_id: str, session: dict, message: dict):
         try:
             await coach.connect()
             gemini_connected = True
+            session["gemini_connected"] = True  # H4: Track connection state
             logger.info(f"Gemini Live connected: {session_id}")
             
             # H1: 백그라운드 응답 수신 루프 시작
@@ -343,7 +522,14 @@ async def handle_control(session_id: str, session: dict, message: dict):
             session["response_task"] = response_task
             
         except Exception as e:
+            session["gemini_connected"] = False
             logger.warning(f"Gemini Live connection failed, using fallback: {e}")
+        
+        # H7: 세션 타임아웃 모니터 시작
+        timeout_task = asyncio.create_task(
+            run_session_timeout_monitor(session_id, session)
+        )
+        session["timeout_task"] = timeout_task
         
         await manager.send_message(session_id, {
             "type": "session_status",
@@ -377,6 +563,11 @@ async def handle_control(session_id: str, session: dict, message: dict):
                 pass
             logger.info(f"Audio response loop stopped: {session_id}")
         
+        # H7: 타임아웃 모니터 정리
+        timeout_task = session.get("timeout_task")
+        if timeout_task and not timeout_task.done():
+            timeout_task.cancel()
+        
         # 세션 통계 계산
         stats = {
             "total_time": session.get("recording_time", 0),
@@ -401,7 +592,7 @@ async def handle_control(session_id: str, session: dict, message: dict):
 
 
 async def handle_audio(session_id: str, session: dict, message: dict):
-    """Audio 청크 처리"""
+    """Audio 청크 처리 (H7: 활동 추적, H8: 재시도 로직)"""
     if session.get("status") != "recording":
         return
     
@@ -409,13 +600,17 @@ async def handle_audio(session_id: str, session: dict, message: dict):
     if not audio_b64:
         return
     
+    # H7: Update last activity
+    session["last_activity"] = utcnow()
+    
     try:
         # Base64 → PCM bytes
         pcm_data = base64.b64decode(audio_b64)
         
-        # AudioCoach에 전달
-        coach: AudioCoach = session["coach"]
-        await coach.send_audio(pcm_data)
+        # H8: AudioCoach에 전달 (재시도 로직 포함)
+        if session.get("gemini_connected"):
+            await send_audio_with_retry(session_id, session, pcm_data)
+        # Note: If not connected, audio is still tracked but not sent
         
         # 녹화 시간 업데이트 (16kHz, 16-bit mono 기준)
         duration_sec = len(pcm_data) / (16000 * 2)
