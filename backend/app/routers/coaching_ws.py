@@ -10,9 +10,15 @@ Messages IN (Client → Server):
 
 Messages OUT (Server → Client):
 - {"type": "feedback", "message": "...", "audio_b64": "...", "rule_id": "..."}
+- {"type": "audio_response", "audio_b64": "...", "format": "pcm_24khz"}
 - {"type": "rule_update", "rule_id": "...", "status": "passed"|"failed"}
 - {"type": "session_status", "status": "active"|"ended", "stats": {...}}
 - {"type": "error", "message": "..."}
+
+Hardening:
+- H1: Gemini audio response loop (background task)
+- H2: TTS fallback (Web Speech / Google Cloud)
+- H3: DirectorPack loading at session start
 """
 import asyncio
 import base64
@@ -27,6 +33,7 @@ from pydantic import BaseModel
 
 from app.services.audio_coach import AudioCoach
 from app.services.coaching_session import get_coaching_service
+from app.services.proof_patterns import create_proof_pack  # H3: DirectorPack
 from app.utils.time import utcnow
 
 logger = logging.getLogger(__name__)
@@ -71,7 +78,7 @@ class CoachingSessionManager:
         """세션 조회"""
         return self.active_sessions.get(session_id)
     
-    def create_session(self, session_id: str, coach: AudioCoach) -> Dict[str, Any]:
+    def create_session(self, session_id: str, coach: AudioCoach, voice_style: str = "friendly") -> Dict[str, Any]:
         """세션 생성"""
         session = {
             "session_id": session_id,
@@ -81,6 +88,10 @@ class CoachingSessionManager:
             "recording_time": 0.0,
             "rules_evaluated": 0,
             "interventions_sent": 0,
+            # H1: Gemini response loop task
+            "response_task": None,
+            # H3: Voice style for TTS
+            "voice_style": voice_style,
         }
         self.active_sessions[session_id] = session
         return session
@@ -179,11 +190,120 @@ async def coaching_websocket(
         # Cleanup
         session = manager.get_session(session_id)
         if session and session.get("coach"):
+            # H1: Cancel response task if running
+            response_task = session.get("response_task")
+            if response_task and not response_task.done():
+                response_task.cancel()
             try:
                 await session["coach"].disconnect()
             except:
                 pass
         manager.disconnect(session_id)
+
+
+# ==================
+# H2: TTS FALLBACK UTILITIES
+# ==================
+
+async def generate_tts_fallback(text: str, lang: str = "ko") -> Optional[str]:
+    """
+    H2: TTS Fallback using gTTS (Google Text-to-Speech)
+    
+    Returns base64-encoded MP3 audio, or None if failed.
+    Frontend will use Web Speech API if None.
+    """
+    if not text or len(text) < 2:
+        return None
+    
+    try:
+        # Try gTTS (free, no API key)
+        from gtts import gTTS
+        import io
+        
+        tts = gTTS(text=text, lang=lang, slow=False)
+        audio_buffer = io.BytesIO()
+        tts.write_to_fp(audio_buffer)
+        audio_buffer.seek(0)
+        
+        audio_b64 = base64.b64encode(audio_buffer.read()).decode()
+        logger.debug(f"TTS generated: {len(text)} chars -> {len(audio_b64)} bytes")
+        return audio_b64
+        
+    except ImportError:
+        logger.warning("gTTS not installed, falling back to Web Speech API on client")
+        return None
+    except Exception as e:
+        logger.warning(f"gTTS failed: {e}")
+        return None
+
+
+# ==================
+# H1: GEMINI AUDIO RESPONSE LOOP
+# ==================
+
+async def run_audio_response_loop(session_id: str, session: dict):
+    """
+    H1: Gemini Live 오디오 응답 수신 백그라운드 루프
+    
+    Gemini가 음성 응답을 생성하면 클라이언트로 스트리밍
+    """
+    coach: AudioCoach = session["coach"]
+    
+    if not coach._session:
+        logger.warning(f"No Gemini session for audio response loop: {session_id}")
+        return
+    
+    try:
+        while session.get("status") == "recording":
+            try:
+                # Receive from Gemini Live
+                turn = coach._session.receive()
+                async for response in turn:
+                    if session.get("status") != "recording":
+                        break
+                    
+                    # Extract audio from server response
+                    if response.server_content and response.server_content.model_turn:
+                        for part in response.server_content.model_turn.parts:
+                            if part.inline_data and isinstance(part.inline_data.data, bytes):
+                                audio_data = part.inline_data.data
+                                audio_b64 = base64.b64encode(audio_data).decode()
+                                
+                                # Send to client
+                                await manager.send_message(session_id, {
+                                    "type": "audio_response",
+                                    "audio_b64": audio_b64,
+                                    "format": "pcm_24khz",  # Gemini outputs 24kHz PCM
+                                    "size_bytes": len(audio_data),
+                                    "timestamp": utcnow().isoformat(),
+                                })
+                                
+                                session["audio_responses_sent"] = session.get("audio_responses_sent", 0) + 1
+                                
+                            # Extract text if present
+                            if hasattr(part, 'text') and part.text:
+                                await manager.send_message(session_id, {
+                                    "type": "feedback",
+                                    "message": part.text,
+                                    "timestamp": utcnow().isoformat(),
+                                })
+                    
+                    # Check for turn end
+                    if response.server_content and response.server_content.turn_complete:
+                        logger.debug(f"Gemini turn complete: {session_id}")
+                        
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.warning(f"Audio response loop iteration error: {e}")
+                await asyncio.sleep(0.1)  # Brief pause before retry
+                
+    except asyncio.CancelledError:
+        logger.info(f"Audio response loop cancelled: {session_id}")
+    except Exception as e:
+        logger.error(f"Audio response loop fatal error: {e}")
+    finally:
+        logger.info(f"Audio response loop ended: {session_id}")
 
 
 # ==================
@@ -198,30 +318,43 @@ async def handle_control(session_id: str, session: dict, message: dict):
         session["status"] = "recording"
         session["recording_started_at"] = utcnow()
         
-        # Gemini Live 연결 시도
         coach: AudioCoach = session["coach"]
+        voice_style = session.get("voice_style", "friendly")
+        
+        # H3: DirectorPack 로드 (코칭 규칙 설정)
+        try:
+            pack = create_proof_pack()  # TOP 3 proof patterns
+            coach.set_coaching_context(pack, tone=voice_style)
+            logger.info(f"DirectorPack loaded: {len(pack.dna_invariants)} rules")
+        except Exception as e:
+            logger.warning(f"DirectorPack load failed: {e}")
+        
+        # Gemini Live 연결 시도
+        gemini_connected = False
         try:
             await coach.connect()
+            gemini_connected = True
+            logger.info(f"Gemini Live connected: {session_id}")
             
-            await manager.send_message(session_id, {
-                "type": "session_status",
-                "status": "recording",
-                "gemini_connected": True,
-                "timestamp": utcnow().isoformat(),
-            })
-            
-            logger.info(f"Recording started: {session_id}")
+            # H1: 백그라운드 응답 수신 루프 시작
+            response_task = asyncio.create_task(
+                run_audio_response_loop(session_id, session)
+            )
+            session["response_task"] = response_task
             
         except Exception as e:
             logger.warning(f"Gemini Live connection failed, using fallback: {e}")
-            
-            await manager.send_message(session_id, {
-                "type": "session_status",
-                "status": "recording",
-                "gemini_connected": False,
-                "fallback_mode": True,
-                "timestamp": utcnow().isoformat(),
-            })
+        
+        await manager.send_message(session_id, {
+            "type": "session_status",
+            "status": "recording",
+            "gemini_connected": gemini_connected,
+            "fallback_mode": not gemini_connected,
+            "rules_count": len(coach._director_pack.dna_invariants) if coach._director_pack else 0,
+            "timestamp": utcnow().isoformat(),
+        })
+        
+        logger.info(f"Recording started: {session_id}, gemini={gemini_connected}")
     
     elif action == "pause":
         session["status"] = "paused"
@@ -233,6 +366,16 @@ async def handle_control(session_id: str, session: dict, message: dict):
     
     elif action == "stop":
         session["status"] = "ended"
+        
+        # H1: 응답 수신 루프 정리
+        response_task = session.get("response_task")
+        if response_task and not response_task.done():
+            response_task.cancel()
+            try:
+                await response_task
+            except asyncio.CancelledError:
+                pass
+            logger.info(f"Audio response loop stopped: {session_id}")
         
         # 세션 통계 계산
         stats = {
@@ -305,13 +448,12 @@ async def handle_metric(session_id: str, session: dict, message: dict, voice_sty
     if command:
         session["interventions_sent"] = session.get("interventions_sent", 0) + 1
         
-        # TTS 생성 (fallback: 텍스트만)
+        # H2: TTS 생성 (Gemini not available -> use fallback)
         audio_b64 = None
+        command_text = command.get("text") if isinstance(command, dict) else str(command)
+        
         try:
-            # TODO: Google Cloud TTS 또는 Gemini TTS 연동
-            # audio_bytes = await generate_tts(command["text"], voice_style)
-            # audio_b64 = base64.b64encode(audio_bytes).decode()
-            pass
+            audio_b64 = await generate_tts_fallback(command_text)
         except Exception as e:
             logger.warning(f"TTS generation failed: {e}")
         

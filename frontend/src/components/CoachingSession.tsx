@@ -495,6 +495,32 @@ export function CoachingSession({
                                 <span className="text-white font-mono text-sm">
                                     {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
                                 </span>
+
+                                {/* H5: Audio Level Meter */}
+                                {isAudioCapturing && (
+                                    <div className="flex items-center gap-1">
+                                        {[0.2, 0.4, 0.6, 0.8, 1.0].map((threshold, i) => (
+                                            <div
+                                                key={i}
+                                                className={`w-1 rounded-full transition-all ${audioLevel >= threshold
+                                                        ? isSpeaking ? 'bg-emerald-400' : 'bg-cyan-400'
+                                                        : 'bg-white/20'
+                                                    }`}
+                                                style={{ height: `${6 + i * 3}px` }}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* H6: Gemini Connection Status */}
+                                {useRealCoaching && (
+                                    <span className={`ml-2 px-2 py-0.5 text-[10px] font-bold rounded ${geminiConnected
+                                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                        }`}>
+                                        {geminiConnected ? 'AI 연결' : '로컬'}
+                                    </span>
+                                )}
                             </div>
                         )}
                     </div>
