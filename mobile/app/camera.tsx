@@ -40,6 +40,23 @@ import { QualityBadge } from '@/components/QualityBadge';
 import { DeviceStatusBar } from '@/components/DeviceStatusBar';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 
+// Phase 1-5+ Components
+import { CoachingModeSelector } from '@/components/CoachingModeSelector';
+import { GraphicOverlay } from '@/components/GraphicOverlay';
+import { TextCoachBubble } from '@/components/TextCoachBubble';
+import { ShotlistTimeline } from '@/components/ShotlistTimeline';
+import { FeedbackInput } from '@/components/FeedbackInput';
+import { SessionStatsOverlay } from '@/components/SessionStatsOverlay';
+import type {
+    OutputMode,
+    Persona,
+    GraphicGuide,
+    TextCoach,
+    VdgCoachingData,
+    AdaptiveResponse,
+    SignalPromotion,
+} from '@/hooks/useCoachingWebSocket';
+
 export default function CameraScreen() {
     const router = useRouter();
     const cameraRef = useRef<Camera>(null);
@@ -74,6 +91,17 @@ export default function CameraScreen() {
     const [textEnabled, setTextEnabled] = useState(true);
     const [showCompositionGuide, setShowCompositionGuide] = useState(false);
 
+    // Phase 1: Output Mode + Persona
+    const [outputMode, setOutputMode] = useState<OutputMode>('graphic');
+    const [persona, setPersona] = useState<Persona>('chill_guide');
+    const [showModeSelector, setShowModeSelector] = useState(false);
+
+    // Phase 1-5+ State for received messages
+    const [currentGraphicGuide, setCurrentGraphicGuide] = useState<GraphicGuide | null>(null);
+    const [currentTextCoach, setCurrentTextCoach] = useState<TextCoach | null>(null);
+    const [lastAdaptiveResponse, setLastAdaptiveResponse] = useState<AdaptiveResponse | null>(null);
+    const [lastPromotion, setLastPromotion] = useState<SignalPromotion | null>(null);
+
     // Get back camera
     const device = useCameraDevice('back');
 
@@ -97,7 +125,20 @@ export default function CameraScreen() {
         connect,
         disconnect,
         sendControl,
-    } = useCoachingWebSocket(sessionId.current, { voiceEnabled });
+        // Phase 1-5+ additions
+        vdgData,
+        sendUserFeedback,
+    } = useCoachingWebSocket(sessionId.current, {
+        voiceEnabled,
+        // Phase 1: Output Mode + Persona
+        outputMode,
+        persona,
+        // Phase 1-5+ callbacks
+        onGraphicGuide: setCurrentGraphicGuide,
+        onTextCoach: setCurrentTextCoach,
+        onAdaptiveResponse: setLastAdaptiveResponse,
+        onSignalPromotion: setLastPromotion,
+    });
 
     // ============================================================
     // Session Persistence (DB integration for RL)
@@ -336,7 +377,7 @@ export default function CameraScreen() {
                 onError={handleCameraError}
             />
 
-            {/* Coaching Overlay */}
+            {/* Coaching Overlay (Original) */}
             <CoachingOverlay
                 feedback={feedback}
                 isConnected={isConnected}
@@ -347,6 +388,43 @@ export default function CameraScreen() {
                 onVoiceToggle={setVoiceEnabled}
                 onTextToggle={setTextEnabled}
                 compositionGuide={showCompositionGuide ? { type: 'rule_of_thirds', enabled: true } : undefined}
+            />
+
+            {/* Phase 1: Graphic Overlay */}
+            {isRecording && outputMode !== 'text' && outputMode !== 'audio' && (
+                <GraphicOverlay
+                    guide={currentGraphicGuide}
+                    showGrid={showCompositionGuide}
+                />
+            )}
+
+            {/* Phase 1: Text Coach Bubble */}
+            {isRecording && (outputMode === 'text' || outputMode === 'graphic') && (
+                <TextCoachBubble coach={currentTextCoach} />
+            )}
+
+            {/* Phase 2: Shotlist Timeline */}
+            {isRecording && vdgData && (
+                <ShotlistTimeline
+                    vdgData={vdgData}
+                    currentTime={recordingTime}
+                    totalDuration={60}  // TODO: Get from VDG
+                />
+            )}
+
+            {/* Phase 3: Feedback Input */}
+            {isRecording && (
+                <FeedbackInput
+                    onSend={sendUserFeedback}
+                    lastResponse={lastAdaptiveResponse}
+                    disabled={!isConnected}
+                />
+            )}
+
+            {/* Phase 5+: Signal Promotion */}
+            <SessionStatsOverlay
+                promotion={lastPromotion}
+                onDismiss={() => setLastPromotion(null)}
             />
 
             {/* Controls Layer */}
