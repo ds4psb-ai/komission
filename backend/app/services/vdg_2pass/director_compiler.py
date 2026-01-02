@@ -143,6 +143,122 @@ class DirectorCompiler:
         
         return None
 
+    # ==================
+    # Phase 2: VDG 데이터 활용 확대
+    # ==================
+
+    @classmethod
+    def _get_entity_coach_message(cls, vdg: VDGv4, domain: str = "composition") -> Optional[str]:
+        """
+        Phase 2: entity_hints에서 피사체별 맞춤 코칭 메시지 생성
+        
+        예시:
+            "피사체를 중앙에" → "손가락에 든 립스틱을 중앙에 배치하세요"
+        """
+        entity_hints = vdg.semantic.entity_hints if vdg.semantic else {}
+        if not entity_hints:
+            return None
+        
+        # 첫 번째 entity_hint 사용 (가장 중요한 피사체)
+        for hint_key, hint in entity_hints.items():
+            label = hint.label if hasattr(hint, 'label') else str(hint)
+            if domain == "composition":
+                msg = f"{label}을(를) 중앙에 배치하세요"
+                logger.info(f"🎯 Entity Coach Message: {msg}")
+                return msg[:50]
+        
+        return None
+
+    @classmethod
+    def _get_shotlist_sequence(cls, vdg: VDGv4) -> List[Dict[str, Any]]:
+        """
+        Phase 2: shotlist 전체를 순차 가이드로 변환
+        
+        Returns:
+            [{"index": 0, "t_window": [0, 5], "guide": "클로즈업으로 제품"}, ...]
+        """
+        capsule = vdg.semantic.capsule_brief if vdg.semantic else None
+        if not capsule or not capsule.shotlist:
+            return []
+        
+        sequence = []
+        duration_sec = vdg.duration_sec or 60.0
+        shot_count = len(capsule.shotlist)
+        shot_duration = duration_sec / max(shot_count, 1)
+        
+        for i, shot in enumerate(capsule.shotlist):
+            t_start = i * shot_duration
+            t_end = (i + 1) * shot_duration
+            
+            if isinstance(shot, dict):
+                guide = shot.get("description") or shot.get("guide") or ""
+            else:
+                guide = str(shot)
+            
+            sequence.append({
+                "index": i,
+                "t_window": [t_start, t_end],
+                "guide": guide[:100],
+            })
+        
+        logger.info(f"📋 Shotlist Sequence: {len(sequence)} shots")
+        return sequence
+
+    @classmethod
+    def _get_kick_timings(cls, vdg: VDGv4) -> List[Dict[str, Any]]:
+        """
+        Phase 2: hook_genome.microbeats에서 킥 타이밍 추출
+        
+        킥 직전 (300ms 전)에 예고 코칭 가능
+        
+        Returns:
+            [{"t_sec": 2.3, "type": "punch", "message": "지금!"}, ...]
+        """
+        hook = vdg.semantic.hook_genome if vdg.semantic else None
+        if not hook or not hook.microbeats:
+            return []
+        
+        kicks = []
+        for beat in hook.microbeats:
+            if beat.role in ["punch", "end"]:  # 핵심 킥 순간
+                kicks.append({
+                    "t_sec": beat.t,
+                    "type": beat.role,
+                    "cue": beat.cue,
+                    "message": beat.note or f"{beat.role.upper()}!",
+                    "pre_alert_sec": 0.3,  # 300ms 전 알림
+                })
+        
+        logger.info(f"⚡ Kick Timings: {len(kicks)} punches")
+        return kicks
+
+    @classmethod
+    def _get_mise_en_scene_guides(cls, vdg: VDGv4) -> List[Dict[str, Any]]:
+        """
+        Phase 2: mise_en_scene_signals에서 실시간 가이드 생성
+        
+        Returns:
+            [{"element": "lighting", "guide": "역광 유지", "priority": "medium"}, ...]
+        """
+        signals = vdg.mise_en_scene_signals or []
+        guides = []
+        
+        for signal in signals:
+            if signal.sentiment == "positive" and signal.likes > 100:
+                guide = f"{signal.element}: {signal.value} 유지"
+                guides.append({
+                    "element": signal.element,
+                    "value": signal.value,
+                    "guide": guide[:50],
+                    "priority": "high" if signal.likes > 500 else "medium",
+                    "evidence": signal.source_comment[:30] if signal.source_comment else None,
+                })
+        
+        logger.info(f"🎨 Mise-en-Scene Guides: {len(guides)} elements")
+        return guides
+
+
+
     @classmethod
     def compile(
         cls,
@@ -225,6 +341,11 @@ class DirectorCompiler:
             # 6. Calculate Scoring Weights
             scoring = cls._calculate_scoring(vdg, invariants)
             
+            # Phase 2: VDG 데이터 추출 (shotlist/kicks/mise_en_scene)
+            shotlist_sequence = cls._get_shotlist_sequence(vdg)
+            kick_timings = cls._get_kick_timings(vdg)
+            mise_en_scene_guides = cls._get_mise_en_scene_guides(vdg)
+            
             # 7. Build Pack
             pack = DirectorPack(
                 pack_version=pack_version,
@@ -258,7 +379,15 @@ class DirectorCompiler:
                     cooldown_sec=4.0,
                     barge_in_handling="stop_and_ack",
                     uncertainty_policy="ask_user"
-                )
+                ),
+                # Phase 2: VDG 데이터 활용
+                extensions={
+                    "phase2_vdg_data": {
+                        "shotlist_sequence": shotlist_sequence,
+                        "kick_timings": kick_timings,
+                        "mise_en_scene_guides": mise_en_scene_guides,
+                    }
+                }
             )
             
             logger.info(f"✅ DirectorPack compiled: {pack_id[:8]}...")
@@ -311,8 +440,11 @@ class DirectorCompiler:
                 fallback="generic_tip"
             ))
         
-        # 2. Hook Composition Rule (Critical)
+        # 2. Hook Composition Rule (Critical) - Phase 2: entity_hints 활용
         if hook.strength > 0.6:
+            # Phase 2: entity 맞춤 메시지
+            entity_msg = cls._get_entity_coach_message(vdg, "composition")
+            
             invariants.append(DNAInvariant(
                 rule_id="hook_center_anchor",
                 domain="composition",
@@ -333,8 +465,14 @@ class DirectorCompiler:
                 check_hint=f"훅 구간({hook.end_sec}초) 피사체 중앙 유지",
                 coach_line_templates=CoachLineTemplates(
                     strict=cls.COACH_LINES["center_composition"]["strict"],
-                    friendly=cls.COACH_LINES["center_composition"]["friendly"],
-                    neutral=cls.COACH_LINES["center_composition"]["neutral"]
+                    # Phase 2: entity 맞춤 또는 기본 메시지
+                    friendly=entity_msg or cls.COACH_LINES["center_composition"]["friendly"],
+                    neutral=cls.COACH_LINES["center_composition"]["neutral"],
+                    # Phase 1: 페르소나별 메시지
+                    strict_pd="다시! 중앙에!",
+                    close_friend=entity_msg or "중앙으로 와~",
+                    calm_mentor=entity_msg or "구도를 중앙으로 맞춰볼까요?",
+                    energetic=entity_msg or "중앙으로! 완벽해질 거예요!",
                 ),
                 fallback="ask_user"
             ))

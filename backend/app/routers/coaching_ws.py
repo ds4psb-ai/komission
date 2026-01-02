@@ -143,24 +143,27 @@ async def coaching_websocket(
     voice_style: str = Query(default="friendly"),
     video_id: Optional[str] = Query(default=None),  # RemixNode.node_id
     outlier_id: Optional[str] = Query(default=None),  # OutlierItem.id (promoted)
+    # Phase 1: 출력 모드 + 페르소나
+    output_mode: str = Query(default="graphic"),  # graphic | text | audio | graphic_audio
+    persona: str = Query(default="calm_mentor"),  # strict_pd | close_friend | calm_mentor | energetic
 ):
     """
     실시간 오디오 코칭 WebSocket
     
     Connection:
-        ws://localhost:8000/api/v1/ws/coaching/{session_id}?video_id=123&voice_style=friendly
-        ws://localhost:8000/api/v1/ws/coaching/{session_id}?outlier_id=uuid&voice_style=friendly
+        ws://localhost:8000/api/v1/ws/coaching/{session_id}?output_mode=graphic&persona=calm_mentor
     
     Parameters:
         - video_id: RemixNode.node_id (메인에 게시된 카드)
         - outlier_id: OutlierItem.id (승격된 아웃라이어)
-        - 둘 다 없으면 기본 proof patterns 사용
+        - output_mode: graphic(디폴트) | text | audio | graphic_audio
+        - persona: strict_pd | close_friend | calm_mentor(디폴트) | energetic
     
     Flow:
         1. Connect → server sends session_status
         2. Client sends control.start → coaching begins
-        3. Client sends audio chunks → server processes
-        4. Server sends feedback → client plays TTS
+        3. Client sends audio chunks → server processes (if audio mode)
+        4. Server sends feedback → graphic/text/audio based on output_mode
         5. Client sends control.stop → session ends
     """
     # 1. Accept connection
@@ -203,6 +206,10 @@ async def coaching_websocket(
             session["video_id"] = video_id
             session["outlier_id"] = outlier_id
         
+        # Phase 1: 출력 모드 + 페르소나 저장
+        session["output_mode"] = output_mode  # graphic | text | audio | graphic_audio
+        session["persona"] = persona  # strict_pd | close_friend | calm_mentor | energetic
+        
         # 3. Send initial status
         await manager.send_message(session_id, {
             "type": "session_status",
@@ -212,6 +219,9 @@ async def coaching_websocket(
             "voice_style": voice_style,
             "video_id": video_id,
             "outlier_id": outlier_id,
+            # Phase 1: 출력 모드 + 페르소나
+            "output_mode": output_mode,
+            "persona": persona,
             "timestamp": utcnow().isoformat(),
         })
         
@@ -243,6 +253,10 @@ async def coaching_websocket(
                         "client_t": message.get("t"),  # Echo back client timestamp
                         "timestamp": utcnow().isoformat(),
                     })
+                
+                # Phase 3: 적응형 코칭 - 사용자 피드백 처리
+                elif msg_type == "user_feedback":
+                    await handle_user_feedback(session_id, session, message)
                 
                 else:
                     await manager.send_message(session_id, {
@@ -635,12 +649,290 @@ async def send_audio_with_retry(session_id: str, session: dict, pcm_data: bytes)
 
 
 # ==================
+# Phase 3: USER FEEDBACK HANDLER (적응형 코칭)
+# ==================
+
+async def handle_user_feedback(session_id: str, session: dict, message: dict):
+    """
+    Phase 3: 사용자 피드백 처리 - 적응형 코칭
+    
+    사용자가 "못해요" / "대신 이건 어때요?" 등의 피드백을 보내면
+    DNAInvariant를 검증하여 허용/거절 + 대안 제시
+    """
+    feedback_text = message.get("text", "")
+    if not feedback_text:
+        await manager.send_message(session_id, {
+            "type": "adaptive_response",
+            "error": "피드백 텍스트가 비어있습니다.",
+            "timestamp": utcnow().isoformat(),
+        })
+        return
+    
+    coach: AudioCoach = session.get("coach")
+    if not coach or not coach._director_pack:
+        # DirectorPack 없으면 모든 피드백 허용
+        await manager.send_message(session_id, {
+            "type": "adaptive_response",
+            "accepted": True,
+            "message": "네, 그렇게 해볼까요!",
+            "timestamp": utcnow().isoformat(),
+        })
+        return
+    
+    try:
+        from app.services.adaptive_coaching import AdaptiveCoachingService
+        
+        # AdaptiveCoachingService 생성/재사용 (LLM 클라이언트 연동)
+        if "adaptive_service" not in session:
+            # Gemini 클라이언트 가져오기 (코칭 세션용)
+            llm_client = None
+            try:
+                import google.generativeai as genai
+                llm_client = genai.GenerativeModel('gemini-1.5-flash')
+            except Exception as e:
+                logger.warning(f"Gemini client not available, using fallback: {e}")
+            
+            session["adaptive_service"] = AdaptiveCoachingService(
+                director_pack=coach._director_pack,
+                llm_client=llm_client,
+                use_llm=llm_client is not None,
+            )
+        
+        adaptive_service: AdaptiveCoachingService = session["adaptive_service"]
+        
+        # 피드백 처리 (LLM 비동기 호출)
+        response = await adaptive_service.process_feedback(feedback_text)
+        
+        # 응답 전송
+        response_data = {
+            "type": "adaptive_response",
+            "accepted": response.accepted,
+            "message": response.message,
+            "timestamp": utcnow().isoformat(),
+        }
+        
+        if response.alternative:
+            response_data["alternative"] = response.alternative
+        if response.affected_rule_id:
+            response_data["affected_rule_id"] = response.affected_rule_id
+        if response.reason:
+            response_data["reason"] = response.reason
+        if response.coaching_adjustment:
+            response_data["coaching_adjustment"] = response.coaching_adjustment
+        
+        await manager.send_message(session_id, response_data)
+        
+        # 출력 모드에 따라 추가 피드백
+        output_mode = session.get("output_mode", "graphic")
+        persona = session.get("persona", "calm_mentor")
+        
+        if not response.accepted and output_mode in ["audio", "graphic_audio"]:
+            # 거절 시 대안도 음성으로 안내
+            full_message = response.message
+            if response.alternative:
+                full_message += f" {response.alternative}"
+            
+            await send_coaching_feedback(
+                session_id=session_id,
+                session=session,
+                rule_id=response.affected_rule_id or "adaptive",
+                domain="adaptive",
+                priority="high",
+                message=full_message,
+            )
+        
+        # Phase 5: A→B Migration - 적응형 코칭 결과 세션에 저장
+        if "adaptive_outcomes" not in session:
+            session["adaptive_outcomes"] = []
+        
+        session["adaptive_outcomes"].append({
+            "accepted": response.accepted,
+            "domain": feedback.affected_domain,
+            "proposed_change": feedback.proposed_change,
+            "rule_id": response.affected_rule_id,
+            "timestamp": utcnow().isoformat(),
+        })
+        
+        logger.info(f"🎯 Adaptive coaching: {session_id} accepted={response.accepted}")
+        
+    except Exception as e:
+        logger.error(f"Adaptive coaching error: {e}")
+        await manager.send_message(session_id, {
+            "type": "adaptive_response",
+            "error": str(e),
+            "timestamp": utcnow().isoformat(),
+        })
+
+
+# ==================
+# Phase 5+: ADVANCED AUTO-LEARNING
+# ==================
+
+async def track_session_outcomes(session_id: str, session: dict):
+    """
+    Phase 5+: 세션 종료 시 고급 자동학습 시스템 실행
+    
+    1. CoachingIntervention/Outcome 기록 (metric_before/after)
+    2. WeightedSignal 업데이트 (3-Axis)
+    3. Canary 그룹 성과 비교
+    4. Negative Evidence 탐지
+    5. 자동 승격 체크
+    """
+    try:
+        from app.services.advanced_analyzer import get_advanced_analyzer
+        from app.services.evidence_updater import get_signal_tracker
+        
+        analyzer = get_advanced_analyzer()
+        base_tracker = get_signal_tracker()
+        
+        video_id = session.get("video_id", "unknown")
+        coach: AudioCoach = session.get("coach")
+        persona = session.get("persona", "chill_guide")
+        cluster_id = session.get("cluster_id")  # 클러스터 다양성 추적
+        
+        # 세션 할당 결정 (coached vs control)
+        assignment = analyzer.get_assignment(session_id)
+        session["assignment"] = assignment
+        
+        # 1. 코칭 개입 결과 기록 (CoachingIntervention + Outcome)
+        coaching_log = session.get("coaching_log", [])
+        
+        for entry in coaching_log:
+            # Record intervention
+            intervention = analyzer.record_intervention(
+                session_id=session_id,
+                rule_id=entry.get("rule_id", "unknown"),
+                domain=entry.get("domain", "unknown"),
+                priority=entry.get("priority", "medium"),
+                message=entry.get("message", ""),
+                t_sec=entry.get("t_sec", 0),
+                metric_id=entry.get("metric_id"),
+                metric_before=entry.get("metric_before"),
+                assignment=assignment,
+                persona=persona,
+            )
+            
+            # Record outcome
+            analyzer.record_outcome(
+                intervention_id=intervention.intervention_id,
+                user_response=entry.get("user_response", "unknown"),
+                compliance_detected=entry.get("compliance", False),
+                metric_after=entry.get("metric_after"),
+                metric_before=entry.get("metric_before"),
+                is_negative_evidence=entry.get("is_negative", False),
+                negative_reason=entry.get("negative_reason"),
+                cluster_id=cluster_id,
+                persona=persona,
+            )
+        
+        # 2. DNAInvariant 준수 결과 기록 (기존 로직 유지)
+        if coach and coach._director_pack:
+            violation_log = getattr(coach, '_violation_log', [])
+            
+            for invariant in coach._director_pack.dna_invariants:
+                domain = invariant.domain
+                rule_id = invariant.rule_id
+                was_violated = any(rule_id in str(v) for v in violation_log)
+                
+                base_tracker.track_outcome(
+                    element=domain,
+                    value=rule_id.split("_")[-1] if "_" in rule_id else rule_id,
+                    success=not was_violated,
+                    content_id=video_id,
+                    sentiment="positive" if invariant.priority in ["critical", "high"] else "neutral",
+                )
+        
+        # 3. 적응형 코칭 결과 기록
+        adaptive_outcomes = session.get("adaptive_outcomes", [])
+        for outcome in adaptive_outcomes:
+            base_tracker.track_outcome(
+                element=outcome.get("domain", "adaptive"),
+                value=outcome.get("proposed_change", "alternative")[:20] if outcome.get("proposed_change") else "accepted",
+                success=outcome.get("accepted", True),
+                content_id=video_id,
+            )
+        
+        # 4. 3-Axis 메트릭 계산
+        axis_metrics = analyzer.calculate_axis_metrics()
+        
+        # 5. 자동 승격 체크
+        promotion_ready = analyzer.check_promotions()
+        base_candidates = base_tracker.check_promotions()
+        
+        all_promotions = len(promotion_ready) + len(base_candidates)
+        
+        if all_promotions > 0:
+            logger.info(f"🎉 {all_promotions} signals ready for promotion!")
+            
+            # 승격 알림 전송
+            await manager.send_message(session_id, {
+                "type": "signal_promotion",
+                "new_candidates": all_promotions,
+                "axis_metrics": {
+                    "compliance_lift": f"{axis_metrics.compliance_lift:.1%}",
+                    "outcome_lift": f"{axis_metrics.outcome_lift:.1%}",
+                    "cluster_count": axis_metrics.cluster_count,
+                    "persona_count": axis_metrics.persona_count,
+                    "negative_rate": f"{axis_metrics.negative_evidence_rate:.1%}",
+                    "is_ready": axis_metrics.is_promotion_ready,
+                },
+                "failing_axes": axis_metrics.failing_axes,
+                "candidates": [
+                    {"signal_key": sk, "metrics": m.__dict__}
+                    for sk, m in promotion_ready
+                ],
+                "timestamp": utcnow().isoformat(),
+            })
+        
+        # 통계 세션에 저장
+        stats = analyzer.get_stats()
+        session["tracking_stats"] = {
+            "signals_tracked": stats["signals_tracked"],
+            "outcomes_recorded": stats["outcomes_recorded"],
+            "promotion_ready": stats["promotion_ready"],
+            "axis_metrics": axis_metrics.__dict__,
+            "assignment": assignment,
+        }
+        
+        logger.info(
+            f"📊 Advanced session analysis: {session_id}, "
+            f"signals={stats['signals_tracked']}, "
+            f"compliance_lift={axis_metrics.compliance_lift:.1%}, "
+            f"ready={axis_metrics.is_promotion_ready}"
+        )
+        
+    except Exception as e:
+        logger.warning(f"Failed to track session outcomes: {e}")
+        import traceback
+        logger.debug(traceback.format_exc())
+
+
+# ==================
 # H2: TTS FALLBACK UTILITIES
 # ==================
 
-async def generate_tts_fallback(text: str, lang: str = "ko") -> Optional[str]:
+# Phase 4: 페르소나별 TTS 속도 설정 (힙한 네이밍)
+PERSONA_TTS_CONFIG = {
+    "drill_sergeant": {"slow": False, "speed_multiplier": 1.2},  # 빡센 디렉터
+    "bestie": {"slow": False, "speed_multiplier": 1.0},  # 찐친
+    "chill_guide": {"slow": True, "speed_multiplier": 0.9},  # 릴렉스 가이드 (디폴트)
+    "hype_coach": {"slow": False, "speed_multiplier": 1.1},  # 하이퍼 부스터
+}
+
+
+async def generate_tts_fallback(
+    text: str,
+    lang: str = "ko",
+    persona: str = "calm_mentor",  # Phase 4: 페르소나 파라미터
+) -> Optional[str]:
     """
     H2: TTS Fallback using gTTS (Google Text-to-Speech)
+    
+    Phase 4: 페르소나별 음성 톤 지원
+    - strict_pd: 빠르고 단호
+    - close_friend: 자연스러운 속도
+    - calm_mentor: 차분하고 여유 (디폴트)
+    - energetic: 활기찬 톤
     
     Returns base64-encoded MP3 audio, or None if failed.
     Frontend will use Web Speech API if None.
@@ -648,18 +940,22 @@ async def generate_tts_fallback(text: str, lang: str = "ko") -> Optional[str]:
     if not text or len(text) < 2:
         return None
     
+    # Phase 4: 페르소나별 TTS 설정
+    persona_config = PERSONA_TTS_CONFIG.get(persona, PERSONA_TTS_CONFIG["calm_mentor"])
+    slow = persona_config.get("slow", False)
+    
     try:
         # Try gTTS (free, no API key)
         from gtts import gTTS
         import io
         
-        tts = gTTS(text=text, lang=lang, slow=False)
+        tts = gTTS(text=text, lang=lang, slow=slow)
         audio_buffer = io.BytesIO()
         tts.write_to_fp(audio_buffer)
         audio_buffer.seek(0)
         
         audio_b64 = base64.b64encode(audio_buffer.read()).decode()
-        logger.debug(f"TTS generated: {len(text)} chars -> {len(audio_b64)} bytes")
+        logger.debug(f"TTS generated ({persona}): {len(text)} chars -> {len(audio_b64)} bytes")
         return audio_b64
         
     except ImportError:
@@ -668,6 +964,126 @@ async def generate_tts_fallback(text: str, lang: str = "ko") -> Optional[str]:
     except Exception as e:
         logger.warning(f"gTTS failed: {e}")
         return None
+
+
+# ==================
+# Phase 1: GRAPHIC GUIDE GENERATION
+# ==================
+
+def generate_graphic_guide(
+    rule_id: str,
+    domain: str,
+    priority: str,
+    message: str,
+    target_position: Optional[list] = None,
+) -> dict:
+    """
+    Phase 1: 그래픽 코칭 가이드 생성
+    
+    DNAInvariant → GraphicGuide 변환
+    """
+    # 도메인별 가이드 타입 결정
+    if domain == "composition":
+        guide_type = "composition"
+        grid_type = "center"
+        arrow_direction = None
+        
+        # 타겟 위치 기반 화살표 방향 결정
+        if target_position:
+            dx = 0.5 - target_position[0]
+            dy = 0.5 - target_position[1]
+            if abs(dx) > abs(dy):
+                arrow_direction = "right" if dx > 0 else "left"
+            else:
+                arrow_direction = "down" if dy > 0 else "up"
+                
+    elif domain == "timing":
+        guide_type = "timing"
+        grid_type = None
+        arrow_direction = None
+        
+    else:
+        guide_type = "action"
+        grid_type = None
+        arrow_direction = None
+    
+    # 액션 아이콘 결정
+    action_icon = None
+    if "중앙" in message or "center" in message.lower():
+        action_icon = "look_camera"
+    elif "빨리" in message or "fast" in message.lower():
+        action_icon = "action_now"
+    elif "유지" in message or "hold" in message.lower():
+        action_icon = "hold"
+    
+    return {
+        "type": "graphic_guide",
+        "guide_type": guide_type,
+        "rule_id": rule_id,
+        "priority": priority,
+        "target_position": target_position or [0.5, 0.5],
+        "grid_type": grid_type,
+        "arrow_direction": arrow_direction,
+        "action_icon": action_icon,
+        "message": message,
+        "message_duration_ms": 3000 if priority == "critical" else 2000,
+        "timestamp": utcnow().isoformat(),
+    }
+
+
+async def send_coaching_feedback(
+    session_id: str,
+    session: dict,
+    rule_id: str,
+    domain: str,
+    priority: str,
+    message: str,
+    target_position: Optional[list] = None,
+):
+    """
+    Phase 1: 출력 모드에 따른 코칭 피드백 전송
+    
+    - graphic: GraphicGuide JSON 전송
+    - text: TextCoach JSON 전송
+    - audio: TTS 오디오 전송
+    - graphic_audio: 둘 다 전송
+    """
+    output_mode = session.get("output_mode", "graphic")
+    persona = session.get("persona", "calm_mentor")
+    
+    if output_mode in ["graphic", "graphic_audio"]:
+        # 그래픽 가이드 전송
+        guide = generate_graphic_guide(
+            rule_id=rule_id,
+            domain=domain,
+            priority=priority,
+            message=message,
+            target_position=target_position,
+        )
+        await manager.send_message(session_id, guide)
+    
+    if output_mode == "text":
+        # 텍스트 코칭 전송
+        await manager.send_message(session_id, {
+            "type": "text_coach",
+            "message": message,
+            "priority": priority,
+            "persona": persona,
+            "duration_ms": 3000 if priority == "critical" else 2000,
+            "timestamp": utcnow().isoformat(),
+        })
+    
+    if output_mode in ["audio", "graphic_audio"]:
+        # TTS 오디오 전송 (Phase 4: 페르소나별 톤)
+        audio_b64 = await generate_tts_fallback(message, persona=persona)
+        await manager.send_message(session_id, {
+            "type": "audio_feedback",
+            "text": message,
+            "audio": audio_b64,
+            "persona": persona,  # Phase 4: 페르소나 정보 전달
+            "source": "gtts_fallback",
+            "timestamp": utcnow().isoformat(),
+        })
 
 
 # ==================
@@ -843,8 +1259,25 @@ async def handle_control(session_id: str, session: dict, message: dict):
             "tier_downgraded": session.get("tier_downgraded", False),
             "rules_count": len(coach._director_pack.dna_invariants) if coach._director_pack else 0,
             "checkpoint_evaluation": True,  # Indicate checkpoint loop is active
+            # Phase 1: 출력 모드 + 페르소나
+            "output_mode": session.get("output_mode", "graphic"),
+            "persona": session.get("persona", "calm_mentor"),
             "timestamp": utcnow().isoformat(),
         })
+        
+        # Phase 2.5: VDG 데이터 전송 (shotlist, kicks, mise_en_scene)
+        if coach._director_pack:
+            extensions = getattr(coach._director_pack, 'extensions', None)
+            if extensions and "phase2_vdg_data" in extensions:
+                phase2_data = extensions["phase2_vdg_data"]
+                await manager.send_message(session_id, {
+                    "type": "vdg_coaching_data",
+                    "shotlist_sequence": phase2_data.get("shotlist_sequence", []),
+                    "kick_timings": phase2_data.get("kick_timings", []),
+                    "mise_en_scene_guides": phase2_data.get("mise_en_scene_guides", []),
+                    "timestamp": utcnow().isoformat(),
+                })
+                logger.info(f"📋 Phase 2 VDG data sent: shots={len(phase2_data.get('shotlist_sequence', []))}, kicks={len(phase2_data.get('kick_timings', []))}")
         
         logger.info(f"Recording started: {session_id}, gemini={gemini_connected}, checkpoints=active")
     
@@ -878,6 +1311,11 @@ async def handle_control(session_id: str, session: dict, message: dict):
         checkpoint_task = session.get("checkpoint_task")
         if checkpoint_task and not checkpoint_task.done():
             checkpoint_task.cancel()
+        
+        # =========================================
+        # Phase 5: A→B Migration - 코칭 결과 학습
+        # =========================================
+        await track_session_outcomes(session_id, session)
         
         # 세션 통계 계산
         stats = {

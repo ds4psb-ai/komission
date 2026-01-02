@@ -47,15 +47,104 @@ export interface SessionStats {
     res_grade: string;
 }
 
-type WebSocketMessage = CoachingFeedback | RuleUpdate | SessionStatus | { type: 'pong' | 'error'; message?: string };
+// Phase 1: 새 메시지 타입
+export interface GraphicGuide {
+    type: 'graphic_guide';
+    guide_type: 'composition' | 'timing' | 'action';
+    rule_id?: string;
+    priority?: string;
+    target_position?: [number, number];
+    grid_type?: string;
+    arrow_direction?: string;
+    action_icon?: string;
+    message?: string;
+    message_duration_ms?: number;
+    timestamp: string;
+}
+
+export interface TextCoach {
+    type: 'text_coach';
+    message: string;
+    priority?: string;
+    persona?: string;
+    duration_ms?: number;
+    timestamp: string;
+}
+
+export interface AudioFeedback {
+    type: 'audio_feedback';
+    text: string;
+    audio?: string | null;
+    source?: string;
+    timestamp: string;
+}
+
+// Phase 2.5: VDG 코칭 데이터
+export interface VdgCoachingData {
+    type: 'vdg_coaching_data';
+    shotlist_sequence: Array<{
+        index: number;
+        t_window: [number, number];
+        guide: string;
+    }>;
+    kick_timings: Array<{
+        t_sec: number;
+        type: 'punch' | 'end';
+        cue: string;
+        message: string;
+        pre_alert_sec: number;
+    }>;
+    mise_en_scene_guides: Array<{
+        element: string;
+        value: string;
+        guide: string;
+        priority: 'high' | 'medium';
+        evidence?: string;
+    }>;
+    timestamp: string;
+}
+
+// Phase 3: 적응형 코칭 응답
+export interface AdaptiveResponse {
+    type: 'adaptive_response';
+    accepted: boolean;
+    message: string;
+    alternative?: string;
+    affected_rule_id?: string;
+    reason?: string;
+    coaching_adjustment?: string;  // Phase 3.5: 허용 시 코칭 조정 내용
+    error?: string;
+    timestamp: string;
+}
+
+type WebSocketMessage =
+    | CoachingFeedback
+    | RuleUpdate
+    | SessionStatus
+    | GraphicGuide
+    | TextCoach
+    | AudioFeedback
+    | VdgCoachingData
+    | AdaptiveResponse
+    | { type: 'pong' | 'error'; message?: string };
 
 interface UseCoachingWebSocketOptions {
     language?: string;
     voiceStyle?: 'strict' | 'friendly' | 'neutral';
     voiceEnabled?: boolean;  // P2: Toggle voice coaching on/off
+    // Phase 1: 출력 모드 + 페르소나
+    outputMode?: 'graphic' | 'text' | 'audio' | 'graphic_audio';
+    persona?: 'strict_pd' | 'close_friend' | 'calm_mentor' | 'energetic';
     onFeedback?: (feedback: CoachingFeedback) => void;
     onRuleUpdate?: (update: RuleUpdate) => void;
     onStatusChange?: (status: SessionStatus) => void;
+    // Phase 1: 새 콜백
+    onGraphicGuide?: (guide: GraphicGuide) => void;
+    onTextCoach?: (coach: TextCoach) => void;
+    // Phase 2.5: VDG 데이터 콜백
+    onVdgData?: (data: VdgCoachingData) => void;
+    // Phase 3: 적응형 코칭 콜백
+    onAdaptiveResponse?: (response: AdaptiveResponse) => void;
     onError?: (error: string) => void;
 }
 
@@ -69,9 +158,19 @@ export function useCoachingWebSocket(
         language = 'ko',
         voiceStyle = 'friendly',
         voiceEnabled = true,  // Default: voice enabled
+        // Phase 1: 출력 모드 + 페르소나
+        outputMode = 'graphic',  // 디폴트: 그래픽 (잡음 방지)
+        persona = 'chill_guide',  // 힙한 네이밍: 릴렉스 가이드
         onFeedback,
         onRuleUpdate,
         onStatusChange,
+        // Phase 1: 새 콜백
+        onGraphicGuide,
+        onTextCoach,
+        // Phase 2.5: VDG 데이터 콜백
+        onVdgData,
+        // Phase 3: 적응형 코칭 콜백
+        onAdaptiveResponse,
         onError,
     } = options;
 
@@ -92,7 +191,8 @@ export function useCoachingWebSocket(
 
         setStatus('connecting');
 
-        const wsUrl = `${WS_BASE_URL}/ws/coaching/${sessionId}?language=${language}&voice_style=${voiceStyle}`;
+        // Phase 1: output_mode, persona 파라미터 추가
+        const wsUrl = `${WS_BASE_URL}/ws/coaching/${sessionId}?language=${language}&voice_style=${voiceStyle}&output_mode=${outputMode}&persona=${persona}`;
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
@@ -139,6 +239,37 @@ export function useCoachingWebSocket(
 
                     case 'rule_update':
                         onRuleUpdate?.(msg as RuleUpdate);
+                        break;
+
+                    // Phase 1: 새 메시지 타입
+                    case 'graphic_guide':
+                        onGraphicGuide?.(msg as GraphicGuide);
+                        break;
+
+                    case 'text_coach':
+                        onTextCoach?.(msg as TextCoach);
+                        break;
+
+                    case 'audio_feedback':
+                        const audioMsg = msg as AudioFeedback;
+                        if (voiceEnabled && audioMsg.audio) {
+                            playAudioB64(audioMsg.audio);
+                        } else if (voiceEnabled && audioMsg.text) {
+                            speakText(audioMsg.text);
+                        }
+                        break;
+
+                    // Phase 2.5: VDG 코칭 데이터
+                    case 'vdg_coaching_data':
+                        console.log('📋 Received VDG coaching data:', (msg as VdgCoachingData).shotlist_sequence?.length, 'shots');
+                        onVdgData?.(msg as VdgCoachingData);
+                        break;
+
+                    // Phase 3: 적응형 코칭 응답
+                    case 'adaptive_response':
+                        const adaptiveMsg = msg as AdaptiveResponse;
+                        console.log('🎯 Adaptive response:', adaptiveMsg.accepted ? '✅' : '❌', adaptiveMsg.message);
+                        onAdaptiveResponse?.(adaptiveMsg);
                         break;
 
                     case 'pong':
@@ -226,6 +357,17 @@ export function useCoachingWebSocket(
         }
     }, []);
 
+    // Phase 3: 적응형 코칭 - 사용자 피드백 전송
+    const sendUserFeedback = useCallback((text: string) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+                type: 'user_feedback',
+                text,
+            }));
+            console.log('📤 User feedback sent:', text);
+        }
+    }, []);
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -244,6 +386,7 @@ export function useCoachingWebSocket(
         sendMetric,
         sendAudio,
         sendVideoFrame,  // P3: Real-time video analysis
+        sendUserFeedback,  // Phase 3: 적응형 코칭
     };
 }
 

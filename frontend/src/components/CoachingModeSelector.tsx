@@ -1,19 +1,32 @@
 "use client";
 
 /**
- * CoachingModeSelector - 코칭 모드 선택 컴포넌트
+ * CoachingModeSelector - 코칭 설정 통합 컴포넌트
  * 
- * Basic (규칙 TTS) vs Pro (Gemini Live)
+ * Phase 1 하드닝:
+ * - Tier: Basic vs Pro
+ * - OutputMode: graphic(디폴트) | text | audio | graphic_audio
+ * - Persona: strict_pd | close_friend | calm_mentor | energetic
  */
-import { Sparkles, Zap, Crown, Check } from "lucide-react";
+import { Sparkles, Zap, Crown, Check, Eye, MessageSquare, Volume2, MonitorPlay, User } from "lucide-react";
 
 export type CoachingTier = "basic" | "pro";
+export type CoachingOutputMode = "graphic" | "text" | "audio" | "graphic_audio";
+export type CoachingPersona = "drill_sergeant" | "bestie" | "chill_guide" | "hype_coach";
+
+export interface CoachingSettings {
+    tier: CoachingTier;
+    outputMode: CoachingOutputMode;
+    persona: CoachingPersona;
+}
 
 interface CoachingModeSelectorProps {
-    tier: CoachingTier;
-    onChange: (tier: CoachingTier) => void;
+    settings: CoachingSettings;
+    onChange: (settings: CoachingSettings) => void;
     credits: number;
     disabled?: boolean;
+    /** 촬영자 ≠ 피사체 (오디오 허용) */
+    separateShooter?: boolean;
 }
 
 const TIERS = {
@@ -21,114 +34,208 @@ const TIERS = {
         name: "Basic",
         description: "규칙 기반 코칭",
         cost: 1,
-        features: [
-            "시간별 체크포인트 피드백",
-            "DirectorPack DNA 규칙",
-            "자연스러운 TTS 음성",
-        ],
         icon: Zap,
         color: "violet",
-        recommended: false,
     },
     pro: {
         name: "Pro",
         description: "AI 대화형 코칭",
         cost: 3,
-        features: [
-            "Basic 모든 기능 포함",
-            "실시간 대화형 피드백",
-            "감정/에너지 인식",
-            "스마트 끼어들기 감지",
-        ],
         icon: Crown,
         color: "amber",
         recommended: true,
     },
 };
 
+const OUTPUT_MODES = {
+    graphic: {
+        name: "그래픽",
+        description: "화면 오버레이 (잡음 X)",
+        icon: Eye,
+        default: true,
+    },
+    text: {
+        name: "텍스트",
+        description: "조용한 자막",
+        icon: MessageSquare,
+    },
+    audio: {
+        name: "음성",
+        description: "TTS 코칭",
+        icon: Volume2,
+    },
+    graphic_audio: {
+        name: "그래픽+음성",
+        description: "오버레이 + TTS",
+        icon: MonitorPlay,
+    },
+};
+
+const PERSONAS = {
+    drill_sergeant: {
+        name: "빡센 디렉터",
+        description: "날카로운 촬영 감독",
+        emoji: "🎬",
+    },
+    bestie: {
+        name: "찐친",
+        description: "옆자리 친구 바이브",
+        emoji: "✨",
+    },
+    chill_guide: {
+        name: "릴렉스 가이드",
+        description: "ASMR 급 차분함",
+        emoji: "🧘",
+        default: true,
+    },
+    hype_coach: {
+        name: "하이퍼 부스터",
+        description: "텐션 200%",
+        emoji: "⚡",
+    },
+};
+
 export function CoachingModeSelector({
-    tier,
+    settings,
     onChange,
     credits,
     disabled = false,
+    separateShooter = false,
 }: CoachingModeSelectorProps) {
     const canAffordPro = credits >= TIERS.pro.cost;
 
+    const updateSettings = (partial: Partial<CoachingSettings>) => {
+        onChange({ ...settings, ...partial });
+    };
+
     return (
-        <div className="space-y-3">
+        <div className="space-y-4">
+            {/* 크레딧 표시 */}
             <div className="text-sm text-white/60 flex items-center justify-between">
-                <span>코칭 모드 선택</span>
+                <span>코칭 설정</span>
                 <span className="flex items-center gap-1">
                     <Sparkles className="w-4 h-4 text-violet-400" />
                     <span className="font-bold text-white">{credits}</span> 크레딧
                 </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Tier 선택 */}
+            <div className="grid grid-cols-2 gap-2">
                 {(Object.keys(TIERS) as CoachingTier[]).map((tierKey) => {
                     const tierInfo = TIERS[tierKey];
                     const TierIcon = tierInfo.icon;
-                    const isSelected = tier === tierKey;
+                    const isSelected = settings.tier === tierKey;
                     const isDisabled = disabled || (tierKey === "pro" && !canAffordPro);
-                    const colorClass = tierInfo.color === "amber"
-                        ? "from-amber-500 to-orange-500 border-amber-500/30"
-                        : "from-violet-500 to-purple-500 border-violet-500/30";
 
                     return (
                         <button
                             key={tierKey}
-                            onClick={() => !isDisabled && onChange(tierKey)}
+                            onClick={() => !isDisabled && updateSettings({ tier: tierKey })}
                             disabled={isDisabled}
                             className={`
-                                relative p-4 rounded-xl border-2 transition-all text-left
+                                relative p-3 rounded-lg border transition-all text-left
                                 ${isSelected
-                                    ? `bg-gradient-to-br ${colorClass} border-opacity-100`
+                                    ? "bg-gradient-to-br from-violet-500/20 to-purple-500/20 border-violet-500/50"
                                     : "bg-white/5 border-white/10 hover:border-white/20"}
                                 ${isDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
                             `}
                         >
-                            {isSelected && (
-                                <div className="absolute top-2 right-2">
-                                    <Check className="w-4 h-4 text-white" />
-                                </div>
-                            )}
-
-                            <div className="flex items-center gap-2 mb-2">
-                                <TierIcon className={`w-5 h-5 ${isSelected ? "text-white" :
-                                    tierInfo.color === "amber" ? "text-amber-400" : "text-violet-400"
-                                    }`} />
-                                <span className="font-bold">{tierInfo.name}</span>
+                            {isSelected && <Check className="absolute top-2 right-2 w-3 h-3 text-violet-400" />}
+                            <div className="flex items-center gap-2">
+                                <TierIcon className={`w-4 h-4 ${isSelected ? "text-violet-400" : "text-white/60"}`} />
+                                <span className="font-medium text-sm">{tierInfo.name}</span>
+                                <span className="text-xs text-white/40">{tierInfo.cost}크레딧/분</span>
                             </div>
-
-                            <p className="text-xs text-white/60 mb-2">{tierInfo.description}</p>
-
-                            <div className="text-sm font-bold">
-                                {tierInfo.cost} 크레딧<span className="font-normal text-white/50">/분</span>
-                            </div>
-
-                            {tierKey === "pro" && !canAffordPro && (
-                                <div className="mt-2 text-xs text-red-400">
-                                    크레딧 부족 ({credits}/{tierInfo.cost})
-                                </div>
-                            )}
                         </button>
                     );
                 })}
             </div>
 
-            {tier === "pro" && (
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                    <div className="flex items-start gap-2">
-                        <Crown className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                        <div className="text-xs text-amber-200/80">
-                            <strong>Pro 모드</strong>: Gemini Live로 실시간 대화형 코칭을 받아요.
-                            촬영 중 질문도 할 수 있어요!
-                        </div>
-                    </div>
+            {/* 출력 모드 선택 */}
+            <div>
+                <div className="text-xs text-white/50 mb-2">출력 모드</div>
+                <div className="grid grid-cols-4 gap-1">
+                    {(Object.keys(OUTPUT_MODES) as CoachingOutputMode[]).map((modeKey) => {
+                        const mode = OUTPUT_MODES[modeKey];
+                        const ModeIcon = mode.icon;
+                        const isSelected = settings.outputMode === modeKey;
+                        // 오디오 모드는 촬영자 분리 시에만 권장
+                        const needsWarning = (modeKey === "audio" || modeKey === "graphic_audio") && !separateShooter;
+
+                        return (
+                            <button
+                                key={modeKey}
+                                onClick={() => updateSettings({ outputMode: modeKey })}
+                                disabled={disabled}
+                                title={`${mode.description}${needsWarning ? " (촬영 중 잡음 주의)" : ""}`}
+                                className={`
+                                    p-2 rounded-lg border text-center transition-all
+                                    ${isSelected
+                                        ? "bg-violet-500/20 border-violet-500/50"
+                                        : "bg-white/5 border-white/10 hover:border-white/20"}
+                                    ${disabled ? "opacity-50" : "cursor-pointer"}
+                                `}
+                            >
+                                <ModeIcon className={`w-4 h-4 mx-auto ${isSelected ? "text-violet-400" : "text-white/60"}`} />
+                                <div className="text-[10px] mt-1 text-white/60">{mode.name}</div>
+                                {needsWarning && isSelected && (
+                                    <div className="text-[8px] text-amber-400 mt-0.5">⚠️잡음</div>
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
-            )}
+            </div>
+
+            {/* 페르소나 선택 */}
+            <div>
+                <div className="text-xs text-white/50 mb-2">코칭 스타일</div>
+                <div className="grid grid-cols-4 gap-1">
+                    {(Object.keys(PERSONAS) as CoachingPersona[]).map((personaKey) => {
+                        const persona = PERSONAS[personaKey];
+                        const isSelected = settings.persona === personaKey;
+
+                        return (
+                            <button
+                                key={personaKey}
+                                onClick={() => updateSettings({ persona: personaKey })}
+                                disabled={disabled}
+                                title={persona.description}
+                                className={`
+                                    p-2 rounded-lg border text-center transition-all
+                                    ${isSelected
+                                        ? "bg-violet-500/20 border-violet-500/50"
+                                        : "bg-white/5 border-white/10 hover:border-white/20"}
+                                    ${disabled ? "opacity-50" : "cursor-pointer"}
+                                `}
+                            >
+                                <span className="text-lg">{persona.emoji}</span>
+                                <div className="text-[10px] mt-1 text-white/60 leading-tight">{persona.name}</div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* 설정 요약 */}
+            <div className="p-2 bg-white/5 rounded-lg text-xs text-white/60 flex items-center justify-between">
+                <span>
+                    {TIERS[settings.tier].name} · {OUTPUT_MODES[settings.outputMode].name} · {PERSONAS[settings.persona].emoji}
+                </span>
+                <span className="text-violet-400">
+                    {TIERS[settings.tier].cost}크레딧/분
+                </span>
+            </div>
         </div>
     );
 }
 
+/** 디폴트 설정 */
+export const DEFAULT_COACHING_SETTINGS: CoachingSettings = {
+    tier: "pro",
+    outputMode: "graphic",  // 디폴트: 그래픽 (잡음 방지)
+    persona: "chill_guide",  // 힙한 네이밍: 릴렉스 가이드
+};
+
 export default CoachingModeSelector;
+

@@ -167,6 +167,73 @@ class CoachLineTemplates(BaseModel):
     neutral: Optional[str] = None
     ko: Optional[Dict[str, str]] = None
     en: Optional[Dict[str, str]] = None
+    
+    # Phase 1: 페르소나별 대사
+    strict_pd: Optional[str] = None      # 엄격한 PD
+    close_friend: Optional[str] = None   # 친한 친구
+    calm_mentor: Optional[str] = None    # 차분한 멘토
+    energetic: Optional[str] = None      # 열정적 코치
+
+
+# ====================
+# 7.5. COACHING OUTPUT MODE (Phase 1)
+# ====================
+
+CoachingOutputMode = Literal["graphic", "text", "audio", "graphic_audio"]
+CoachingPersona = Literal["strict_pd", "close_friend", "calm_mentor", "energetic"]
+
+
+class GraphicGuide(BaseModel):
+    """
+    그래픽 코칭용 데이터 (촬영 중 잡음 방지)
+    
+    디폴트 출력 모드 = graphic (셀프 촬영 시)
+    """
+    guide_type: Literal["composition", "timing", "action"]
+    
+    # 구도 가이드
+    target_position: Optional[List[float]] = None  # [x, y] 0-1 정규화
+    current_position: Optional[List[float]] = None  # 현재 피사체 위치
+    grid_type: Optional[Literal["rule_of_thirds", "center", "golden", "custom"]] = None
+    
+    # 타이밍 가이드
+    countdown_sec: Optional[float] = None
+    
+    # 액션 가이드
+    action_icon: Optional[Literal[
+        "look_camera", "smile", "move_left", "move_right", 
+        "move_up", "move_down", "hold", "action_now"
+    ]] = None
+    arrow_direction: Optional[Literal["left", "right", "up", "down", "center"]] = None
+    
+    # 메시지 (텍스트 모드용)
+    message: Optional[str] = None
+    message_duration_ms: int = 2000
+    
+    # 규칙 참조
+    rule_id: Optional[str] = None
+    priority: Optional[Literal["critical", "high", "medium", "low"]] = None
+
+
+class CoachingSettings(BaseModel):
+    """
+    코칭 세션 설정 (사용자 선택)
+    
+    Usage:
+        settings = CoachingSettings(
+            output_mode="graphic",  # 디폴트: 그래픽 (잡음 방지)
+            persona="calm_mentor",
+        )
+    """
+    output_mode: CoachingOutputMode = "graphic"  # 디폴트: 그래픽
+    persona: CoachingPersona = "calm_mentor"
+    
+    # 촬영자 ≠ 피사체인 경우 오디오 허용
+    allow_audio: bool = False
+    
+    # 페르소나별 음성 설정 (audio 모드 시)
+    voice_speed: float = 1.0
+    voice_pitch: float = 0.0
 
 
 # ====================

@@ -197,7 +197,7 @@ export const EvidenceNode = memo(({ data }: { data: EvidenceNodeData }) => {
                 {/* Refresh Button (when nodeId exists) */}
                 {data.nodeId && (
                     <button
-                        onClick={fetchEvidence}
+                        onClick={() => fetchEvidence()}
                         disabled={loading}
                         className="w-full py-1.5 text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/60 transition-all disabled:opacity-50 flex items-center justify-center gap-1"
                     >
