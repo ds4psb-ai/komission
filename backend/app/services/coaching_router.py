@@ -65,6 +65,15 @@ class CoachingRouter:
         Returns:
             AssignmentResult with assignment and holdout_group
         """
+        import os
+        # DEV MODE: Always return coached for testing
+        if os.getenv("ENV", "development") == "development":
+            return AssignmentResult(
+                assignment="coached",
+                holdout_group=False,
+                reason="dev_mode_always_coached"
+            )
+        
         # Deterministic random based on session_id
         hash_value = self._session_hash(session_id)
         
