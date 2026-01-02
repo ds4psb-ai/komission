@@ -33,8 +33,13 @@ from pydantic import BaseModel
 
 from app.services.audio_coach import AudioCoach
 from app.services.coaching_session import get_coaching_service
-from app.services.proof_patterns import create_proof_pack  # H3: DirectorPack
+from app.services.proof_patterns import create_proof_pack  # H3: DirectorPack fallback
 from app.utils.time import utcnow
+
+# VDG DirectorPack loading
+from app.database import AsyncSessionLocal
+from app.models import OutlierItem, RemixNode
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -136,12 +141,20 @@ async def coaching_websocket(
     session_id: str,
     language: str = Query(default="ko"),
     voice_style: str = Query(default="friendly"),
+    video_id: Optional[str] = Query(default=None),  # RemixNode.node_id
+    outlier_id: Optional[str] = Query(default=None),  # OutlierItem.id (promoted)
 ):
     """
     실시간 오디오 코칭 WebSocket
     
     Connection:
-        ws://localhost:8000/api/v1/ws/coaching/{session_id}?language=ko&voice_style=friendly
+        ws://localhost:8000/api/v1/ws/coaching/{session_id}?video_id=123&voice_style=friendly
+        ws://localhost:8000/api/v1/ws/coaching/{session_id}?outlier_id=uuid&voice_style=friendly
+    
+    Parameters:
+        - video_id: RemixNode.node_id (메인에 게시된 카드)
+        - outlier_id: OutlierItem.id (승격된 아웃라이어)
+        - 둘 다 없으면 기본 proof patterns 사용
     
     Flow:
         1. Connect → server sends session_status
@@ -157,7 +170,11 @@ async def coaching_websocket(
     try:
         # 2. Initialize AudioCoach
         coach = AudioCoach()
-        session = manager.create_session(session_id, coach)
+        session = manager.create_session(session_id, coach, voice_style)
+        
+        # Store video/outlier IDs for DirectorPack loading
+        session["video_id"] = video_id
+        session["outlier_id"] = outlier_id
         
         # 3. Send initial status
         await manager.send_message(session_id, {
@@ -166,6 +183,8 @@ async def coaching_websocket(
             "status": "connected",
             "language": language,
             "voice_style": voice_style,
+            "video_id": video_id,
+            "outlier_id": outlier_id,
             "timestamp": utcnow().isoformat(),
         })
         
@@ -225,6 +244,77 @@ async def coaching_websocket(
             except:
                 pass
         manager.disconnect(session_id)
+
+
+# ==================
+# VDG DIRECTOR PACK LOADING
+# ==================
+
+async def load_director_pack_from_video(
+    video_id: Optional[str] = None,
+    outlier_id: Optional[str] = None,
+) -> Optional[Any]:
+    """
+    비디오/아웃라이어의 VDG 분석에서 DirectorPack 로드
+    
+    Args:
+        video_id: RemixNode.node_id (게시된 카드)
+        outlier_id: OutlierItem.id (승격된 아웃라이어)
+    
+    Returns:
+        DirectorPack if found, None otherwise (fallback to proof_pack)
+    """
+    from app.services.vdg_2pass.director_compiler import compile_director_pack
+    from app.schemas.vdg_v4 import VDGv4
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            node = None
+            
+            # 1. video_id로 RemixNode 조회
+            if video_id:
+                result = await db.execute(
+                    select(RemixNode).where(RemixNode.node_id == video_id)
+                )
+                node = result.scalar_one_or_none()
+                
+            # 2. outlier_id로 승격된 RemixNode 조회
+            elif outlier_id:
+                result = await db.execute(
+                    select(OutlierItem).where(OutlierItem.id == outlier_id)
+                )
+                outlier = result.scalar_one_or_none()
+                
+                if outlier and outlier.promoted_to_node_id:
+                    node_result = await db.execute(
+                        select(RemixNode).where(RemixNode.id == outlier.promoted_to_node_id)
+                    )
+                    node = node_result.scalar_one_or_none()
+            
+            # 3. VDG 분석이 있으면 DirectorPack 컴파일
+            if node and node.gemini_analysis:
+                analysis = node.gemini_analysis
+                
+                # VDG v4 필수 필드 확인
+                if "hook_genome" not in analysis and "scenes" not in analysis:
+                    logger.warning(f"VDG v4 analysis not available for node: {node.node_id}")
+                    return None
+                
+                vdg_v4 = VDGv4(
+                    content_id=node.node_id,
+                    duration_sec=analysis.get("duration_sec", 0),
+                    **{k: v for k, v in analysis.items()
+                       if k not in ["content_id", "duration_sec"]}
+                )
+                
+                pack = compile_director_pack(vdg_v4)
+                logger.info(f"DirectorPack loaded from VDG: {node.node_id}, {len(pack.dna_invariants)} rules")
+                return pack
+                
+    except Exception as e:
+        logger.error(f"Failed to load DirectorPack from video: {e}")
+    
+    return None
 
 
 # ==================
@@ -499,11 +589,28 @@ async def handle_control(session_id: str, session: dict, message: dict):
         coach: AudioCoach = session["coach"]
         voice_style = session.get("voice_style", "friendly")
         
-        # H3: DirectorPack 로드 (코칭 규칙 설정)
+        # DirectorPack 로드: VDG 우선, 없으면 기본 proof patterns
+        pack = None
+        video_id = session.get("video_id")
+        outlier_id = session.get("outlier_id")
+        
         try:
-            pack = create_proof_pack()  # TOP 3 proof patterns
+            # 1. 비디오/아웃라이어의 VDG에서 DirectorPack 로드
+            if video_id or outlier_id:
+                pack = await load_director_pack_from_video(
+                    video_id=video_id,
+                    outlier_id=outlier_id,
+                )
+            
+            # 2. VDG 없으면 기본 proof patterns 사용 (fallback)
+            if pack is None:
+                pack = create_proof_pack()
+                logger.info(f"Using fallback proof_pack: {len(pack.dna_invariants)} rules")
+            
+            # 3. AudioCoach에 컨텍스트 설정
             coach.set_coaching_context(pack, tone=voice_style)
-            logger.info(f"DirectorPack loaded: {len(pack.dna_invariants)} rules")
+            logger.info(f"DirectorPack applied: {len(pack.dna_invariants)} rules, video_id={video_id}")
+            
         except Exception as e:
             logger.warning(f"DirectorPack load failed: {e}")
         
