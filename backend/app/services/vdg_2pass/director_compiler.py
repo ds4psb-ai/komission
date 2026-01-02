@@ -408,32 +408,43 @@ class DirectorCompiler:
             return invariants  # Skip if not dict format
         
         for ap_id, result in vdg.visual.analysis_results.items():
-            # Look for low stability scores
-            if "cmp.stability_score.v1" in result.metrics:
-                metric = result.metrics["cmp.stability_score.v1"]
-                if metric.aggregated_value and metric.aggregated_value < 0.5:
-                    # This point has stability issues - create a rule
-                    invariants.append(DNAInvariant(
-                        rule_id=f"stability_{ap_id}",
-                        domain="composition",
-                        priority="high",
-                        time_scope=TimeScope(
-                            t_window=[0.0, vdg.duration_sec or 60.0],
-                            relative_to="start"
-                        ),
-                        spec=RuleSpec(
-                            metric_id="cmp.stability_score.v1",
-                            op=">=",
-                            target=0.7,
-                            required_inputs=["video_1fps"]
-                        ),
-                        check_hint=f"{ap_id} 구간 안정성 개선 필요",
-                        coach_line_templates=CoachLineTemplates(
-                            strict=cls.COACH_LINES["stability"]["strict"],
-                            friendly=cls.COACH_LINES["stability"]["friendly"],
-                            neutral=cls.COACH_LINES["stability"]["neutral"]
-                        )
-                    ))
+            try:
+                # Handle both dict and Pydantic object for result
+                metrics = result.get('metrics', {}) if isinstance(result, dict) else getattr(result, 'metrics', {})
+                if not metrics:
+                    continue
+                    
+                # Look for low stability scores
+                if "cmp.stability_score.v1" in metrics:
+                    metric_data = metrics.get("cmp.stability_score.v1") if isinstance(metrics, dict) else metrics.get("cmp.stability_score.v1")
+                    if metric_data:
+                        agg_val = metric_data.get("aggregated_value") if isinstance(metric_data, dict) else getattr(metric_data, 'aggregated_value', None)
+                        if agg_val and agg_val < 0.5:
+                            # This point has stability issues - create a rule
+                            invariants.append(DNAInvariant(
+                                rule_id=f"stability_{ap_id}",
+                                domain="composition",
+                                priority="high",
+                                time_scope=TimeScope(
+                                    t_window=[0.0, vdg.duration_sec or 60.0],
+                                    relative_to="start"
+                                ),
+                                spec=RuleSpec(
+                                    metric_id="cmp.stability_score.v1",
+                                    op=">=",
+                                    target=0.7,
+                                    required_inputs=["video_1fps"]
+                                ),
+                                check_hint=f"{ap_id} 구간 안정성 개선 필요",
+                                coach_line_templates=CoachLineTemplates(
+                                    strict=cls.COACH_LINES["stability"]["strict"],
+                                    friendly=cls.COACH_LINES["stability"]["friendly"],
+                                    neutral=cls.COACH_LINES["stability"]["neutral"]
+                                )
+                            ))
+            except (AttributeError, KeyError, TypeError) as e:
+                # Skip problematic results, don't fail entire compilation
+                continue
         
         return invariants
     
