@@ -80,6 +80,7 @@ export function CoachingSession({
     const [isMobile, setIsMobile] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [useRealCoaching, setUseRealCoaching] = useState(true);  // Toggle for real vs demo
+    const [isSessionReady, setIsSessionReady] = useState(false);  // Prevent record before session created
 
     // P1: Control Group State
     const [assignment, setAssignment] = useState<'coached' | 'control'>('coached');
@@ -208,6 +209,7 @@ export function CoachingSession({
                 if (!isMountedRef.current) return;
                 console.log('✅ Session created:', sessionData.session_id);
                 setSessionId(sessionData.session_id);
+                setIsSessionReady(true);
                 setAssignment(sessionData.assignment);
                 setHoldoutGroup(sessionData.holdout_group);
                 setRules(getDemoRules(mode));
@@ -225,6 +227,7 @@ export function CoachingSession({
                 console.warn('API failed, using demo mode:', apiErr);
                 if (!isMountedRef.current) return;
                 setSessionId(`demo-session-${Date.now()}`);
+                setIsSessionReady(true);
                 setRules(getDemoRules(mode));
             }
 
@@ -736,12 +739,17 @@ export function CoachingSession({
                     {/* Record */}
                     <button
                         onClick={isRecording ? stopRecording : startRecording}
+                        disabled={!isSessionReady && !isRecording}
                         className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${isRecording
                             ? 'bg-red-500 hover:bg-red-400'
-                            : 'bg-gradient-to-r from-cyan-500 to-emerald-500 hover:brightness-110'
+                            : isSessionReady
+                                ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 hover:brightness-110'
+                                : 'bg-gray-500 cursor-wait opacity-50'
                             }`}
                     >
-                        {isRecording ? (
+                        {!isSessionReady && !isRecording ? (
+                            <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : isRecording ? (
                             <Square className="w-8 h-8 text-white" />
                         ) : (
                             <Play className="w-8 h-8 text-white ml-1" />
