@@ -1,13 +1,14 @@
 /**
- * Coaching WebSocket Hook - Phase 2 Optimized
+ * Coaching WebSocket Hook - Phase 1-5+ Complete
  * 
  * Features:
- * - H.264 streaming instead of JPEG (50% latency reduction)
- * - Adaptive bitrate based on network conditions
- * - Frame throttling to prevent overload
- * - Round-trip latency measurement
+ * - Phase 1: Output Mode + Persona selection
+ * - Phase 2: VDG data (shotlist, kicks, mise-en-scene)
+ * - Phase 3: Adaptive coaching (LLM feedback)
+ * - Phase 4: Persona-based TTS
+ * - Phase 5+: Auto-learning with signal promotion
  * 
- * Reference: Gemini Live API Best Practices 2025
+ * Reference: MOBILE_INTEGRATION_GUIDE.md
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -54,10 +55,142 @@ export interface TierInfo {
     tierDowngraded: boolean;
 }
 
+// ============================================================
+// Phase 1: Output Mode + Persona Types
+// ============================================================
+
+export type OutputMode = 'graphic' | 'text' | 'audio' | 'graphic_audio';
+export type Persona = 'drill_sergeant' | 'bestie' | 'chill_guide' | 'hype_coach';
+
+export interface GraphicGuide {
+    type: 'graphic_guide';
+    guide_type: 'composition' | 'timing' | 'action';
+    rule_id: string;
+    priority: 'low' | 'medium' | 'high' | 'critical';
+    target_position: [number, number];  // [x, y] normalized 0-1
+    grid_type?: 'center' | 'rule_of_thirds' | 'golden_ratio';
+    arrow_direction?: 'up' | 'down' | 'left' | 'right';
+    action_icon?: 'look_camera' | 'action_now' | 'hold' | 'smile';
+    message: string;
+    message_duration_ms: number;
+    timestamp: string;
+}
+
+export interface TextCoach {
+    type: 'text_coach';
+    message: string;
+    priority: 'low' | 'medium' | 'high' | 'critical';
+    persona: Persona;
+    duration_ms: number;
+    timestamp: string;
+}
+
+// ============================================================
+// Phase 2: VDG Data Types
+// ============================================================
+
+export interface ShotGuide {
+    index: number;
+    t_window: [number, number];  // [start_sec, end_sec]
+    guide: string;
+}
+
+export interface KickTiming {
+    t_sec: number;
+    type: 'punch' | 'end';
+    cue: string;
+    message: string;
+    pre_alert_sec: number;
+}
+
+export interface MiseEnSceneGuide {
+    element: string;
+    value: string;
+    guide: string;
+    priority: 'high' | 'medium';
+    evidence?: string;
+}
+
+export interface VdgCoachingData {
+    type: 'vdg_coaching_data';
+    shotlist_sequence: ShotGuide[];
+    kick_timings: KickTiming[];
+    mise_en_scene_guides: MiseEnSceneGuide[];
+    timestamp: string;
+}
+
+// ============================================================
+// Phase 3: Adaptive Coaching Types
+// ============================================================
+
+export interface AdaptiveResponse {
+    type: 'adaptive_response';
+    accepted: boolean;
+    message: string;
+    alternative?: string;
+    affected_rule_id?: string;
+    reason?: string;
+    coaching_adjustment?: string;
+    error?: string;
+    timestamp: string;
+}
+
+// ============================================================
+// Phase 4: Audio Feedback Types
+// ============================================================
+
+export interface AudioFeedback {
+    type: 'audio_feedback';
+    text: string;
+    audio: string | null;  // base64 MP3
+    persona: Persona;
+    source: 'gemini' | 'gtts_fallback' | 'system';
+    timestamp: string;
+}
+
+// ============================================================
+// Phase 5+: Auto-Learning Types
+// ============================================================
+
+export interface AxisMetrics {
+    compliance_lift: string;
+    outcome_lift: string;
+    cluster_count: number;
+    persona_count: number;
+    negative_rate: string;
+    is_ready: boolean;
+}
+
+export interface SignalPromotion {
+    type: 'signal_promotion';
+    new_candidates: number;
+    axis_metrics: AxisMetrics;
+    failing_axes: string[];
+    candidates: Array<{
+        signal_key: string;
+        metrics: Record<string, any>;
+    }>;
+    timestamp: string;
+}
+
 export interface UseCoachingWebSocketOptions {
     enableStreaming?: boolean;
     streamConfig?: StreamConfig;
     voiceEnabled?: boolean;
+    // Phase 1: Output Mode + Persona
+    outputMode?: OutputMode;
+    persona?: Persona;
+    // Phase 2: VDG data callback
+    onVdgData?: (data: VdgCoachingData) => void;
+    // Phase 3: Adaptive coaching callbacks
+    onAdaptiveResponse?: (response: AdaptiveResponse) => void;
+    // Phase 1: Graphic/Text callbacks
+    onGraphicGuide?: (guide: GraphicGuide) => void;
+    onTextCoach?: (coach: TextCoach) => void;
+    // Phase 4: Audio feedback
+    onAudioFeedback?: (audio: AudioFeedback) => void;
+    // Phase 5+: Signal promotion
+    onSignalPromotion?: (promotion: SignalPromotion) => void;
 }
 
 export interface UseCoachingWebSocketReturn {
@@ -71,12 +204,21 @@ export interface UseCoachingWebSocketReturn {
     disconnect: () => void;
     sendFrame: (frameBase64: string, width: number, height: number) => Promise<void>;
     sendControl: (action: 'start' | 'stop' | 'pause') => void;
+    // Phase 3: Adaptive coaching
+    sendUserFeedback: (text: string) => void;
 
     // Stats (Phase 2)
     streamStats: StreamStats | null;
 
     // H9: Tier info
     tierInfo: TierInfo;
+
+    // Phase 2: VDG data
+    vdgData: VdgCoachingData | null;
+
+    // Phase 1: Current mode/persona
+    outputMode: OutputMode;
+    persona: Persona;
 }
 
 // ============================================================
@@ -100,6 +242,16 @@ export function useCoachingWebSocket(
         enableStreaming = true,
         streamConfig = getRecommendedStreamConfig(),
         voiceEnabled = true,
+        // Phase 1: Output Mode + Persona
+        outputMode: initialOutputMode = 'graphic',
+        persona: initialPersona = 'chill_guide',
+        // Phase 1-5+ callbacks
+        onVdgData,
+        onAdaptiveResponse,
+        onGraphicGuide,
+        onTextCoach,
+        onAudioFeedback,
+        onSignalPromotion,
     } = options;
 
     // WebSocket ref
@@ -129,6 +281,13 @@ export function useCoachingWebSocket(
         tierDowngraded: false,
     });
 
+    // Phase 1: Output Mode + Persona
+    const [outputMode] = useState<OutputMode>(initialOutputMode);
+    const [persona] = useState<Persona>(initialPersona);
+
+    // Phase 2: VDG Data
+    const [vdgData, setVdgData] = useState<VdgCoachingData | null>(null);
+
     // ============================================================
     // Connection Management
     // ============================================================
@@ -139,7 +298,8 @@ export function useCoachingWebSocket(
             return;
         }
 
-        const wsUrl = `${WS_BASE_URL}/api/v1/coaching/live/${sessionId}`;
+        // Phase 1: Add output_mode and persona to URL
+        const wsUrl = `${WS_BASE_URL}/api/v1/coaching/live/${sessionId}?output_mode=${outputMode}&persona=${persona}`;
         console.log('[WS] Connecting to:', wsUrl);
 
         try {
@@ -278,6 +438,47 @@ export function useCoachingWebSocket(
                     console.error('[WS] Server error:', message.message);
                     break;
 
+                // Phase 1: Graphic Guide
+                case 'graphic_guide':
+                    console.log('[WS] Graphic guide:', message.guide_type);
+                    onGraphicGuide?.(message as GraphicGuide);
+                    break;
+
+                // Phase 1: Text Coach
+                case 'text_coach':
+                    console.log('[WS] Text coach:', message.message);
+                    onTextCoach?.(message as TextCoach);
+                    break;
+
+                // Phase 2: VDG Coaching Data
+                case 'vdg_coaching_data':
+                    console.log('[WS] VDG data received:', message.shotlist_sequence?.length, 'shots');
+                    setVdgData(message as VdgCoachingData);
+                    onVdgData?.(message as VdgCoachingData);
+                    break;
+
+                // Phase 3: Adaptive Response
+                case 'adaptive_response':
+                    const adaptiveMsg = message as AdaptiveResponse;
+                    console.log('[WS] Adaptive response:', adaptiveMsg.accepted ? '✅' : '❌');
+                    onAdaptiveResponse?.(adaptiveMsg);
+                    break;
+
+                // Phase 4: Audio Feedback
+                case 'audio_feedback':
+                    console.log('[WS] Audio feedback:', message.persona);
+                    if (voiceEnabled && message.audio) {
+                        playAudio(message.audio);
+                    }
+                    onAudioFeedback?.(message as AudioFeedback);
+                    break;
+
+                // Phase 5+: Signal Promotion
+                case 'signal_promotion':
+                    console.log('[WS] Signal promotion:', message.new_candidates, 'candidates');
+                    onSignalPromotion?.(message as SignalPromotion);
+                    break;
+
                 default:
                     console.log('[WS] Unknown message type:', message.type);
             }
@@ -391,6 +592,20 @@ export function useCoachingWebSocket(
     }, [disconnect]);
 
     // ============================================================
+    // Phase 3: Adaptive Coaching
+    // ============================================================
+
+    const sendUserFeedback = useCallback((text: string) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+                type: 'user_feedback',
+                text,
+            }));
+            console.log('[WS] User feedback sent:', text);
+        }
+    }, []);
+
+    // ============================================================
     // Return
     // ============================================================
 
@@ -404,6 +619,13 @@ export function useCoachingWebSocket(
         sendControl,
         streamStats,
         tierInfo,  // H9
+        // Phase 1: Mode/Persona
+        outputMode,
+        persona,
+        // Phase 2: VDG Data
+        vdgData,
+        // Phase 3: Adaptive coaching
+        sendUserFeedback,
     };
 }
 
