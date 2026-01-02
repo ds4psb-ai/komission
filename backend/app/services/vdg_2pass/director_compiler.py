@@ -93,6 +93,46 @@ class DirectorCompiler:
         "performance": "hook_timing",
         "safety": "stability"
     }
+    
+    @classmethod
+    def _get_vdg_coach_message(cls, vdg: VDGv4, context: str = "hook") -> Optional[str]:
+        """
+        VDG capsule_brief에서 영상별 맞춤 코칭 메시지 추출
+        
+        Args:
+            vdg: VDG v4 분석 결과
+            context: "hook" | "shot" | "general"
+        
+        Returns:
+            영상별 맞춤 메시지 또는 None (fallback 필요)
+        """
+        capsule = vdg.semantic.capsule_brief if vdg.semantic else None
+        hook = vdg.semantic.hook_genome if vdg.semantic else None
+        
+        if context == "hook":
+            # 1순위: hook_script (구체적 훅 가이드)
+            if capsule and capsule.hook_script:
+                msg = capsule.hook_script
+                # 50자 제한 (실시간 코칭용)
+                if len(msg) > 50:
+                    msg = msg[:47] + "..."
+                return msg
+            
+            # 2순위: hook_genome.hook_summary
+            if hook and hook.hook_summary:
+                msg = hook.hook_summary
+                if len(msg) > 50:
+                    msg = msg[:47] + "..."
+                return msg
+        
+        elif context == "shot":
+            # shotlist에서 첫 번째 샷 가이드 사용
+            if capsule and capsule.shotlist:
+                first_shot = capsule.shotlist[0] if capsule.shotlist else None
+                if first_shot and isinstance(first_shot, dict):
+                    return first_shot.get("guide", first_shot.get("description", ""))[:50]
+        
+        return None
 
     @classmethod
     def compile(
@@ -244,9 +284,14 @@ class DirectorCompiler:
                 check_hint="0~2초 내에 훅 펀치가 완성되어야 함",
                 coach_line_templates=CoachLineTemplates(
                     strict=cls.COACH_LINES["hook_timing"]["strict"],
-                    friendly=cls.COACH_LINES["hook_timing"]["friendly"],
+                    # VDG에서 영상별 맞춤 메시지 우선, 없으면 기본 메시지
+                    friendly=cls._get_vdg_coach_message(vdg, "hook") or cls.COACH_LINES["hook_timing"]["friendly"],
                     neutral=cls.COACH_LINES["hook_timing"]["neutral"],
-                    ko={"strict": "너무 늦어요!", "friendly": "더 빨리!"}
+                    ko={
+                        "strict": "너무 늦어요!",
+                        "friendly": "더 빨리!",
+                        "custom": cls._get_vdg_coach_message(vdg, "hook")  # 영상별 맞춤
+                    }
                 ),
                 fallback="generic_tip"
             ))

@@ -428,13 +428,17 @@ class AudioCoach:
         ]
     
     def _format_command(self, rule: DNAInvariant) -> str:
-        """규칙 → 코칭 명령 포맷팅"""
+        """규칙 → 코칭 명령 포맷팅 (VDG 맞춤 메시지 우선)"""
         templates = rule.coach_line_templates
         
         if not templates:
             return rule.check_hint or f"[{rule.rule_id}] 확인하세요"
         
-        # Select by tone
+        # 1순위: VDG 영상별 맞춤 메시지 (ko.custom)
+        if templates.ko and templates.ko.get("custom"):
+            return templates.ko["custom"]
+        
+        # 2순위: 톤별 메시지
         if self._tone == "strict" and templates.strict:
             return templates.strict
         elif self._tone == "friendly" and templates.friendly:

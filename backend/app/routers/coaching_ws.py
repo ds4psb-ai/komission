@@ -205,6 +205,10 @@ async def coaching_websocket(
                 elif msg_type == "metric":
                     await handle_metric(session_id, session, message, voice_style)
                 
+                elif msg_type == "video_frame":
+                    # P3: 실시간 비디오 프레임 분석
+                    await handle_video_frame(session_id, session, message, voice_style)
+                
                 elif msg_type == "ping":
                     await manager.send_message(session_id, {
                         "type": "pong",
@@ -899,6 +903,114 @@ async def handle_metric(session_id: str, session: dict, message: dict, voice_sty
             "status": "passed",
             "t_sec": t_sec,
         })
+
+
+# ==================
+# P3: VIDEO FRAME ANALYSIS
+# ==================
+
+async def handle_video_frame(session_id: str, session: dict, message: dict, voice_style: str):
+    """
+    P3: 실시간 비디오 프레임 분석
+    
+    프론트엔드에서 1fps로 전송되는 프레임을 분석하여
+    DNAInvariant 규칙 준수 여부를 실시간으로 평가하고 피드백을 제공합니다.
+    
+    Message format:
+        {
+            "type": "video_frame",
+            "frame_b64": "base64_encoded_jpeg",
+            "t_sec": 2.5
+        }
+    """
+    from app.services.frame_analyzer import get_frame_analyzer
+    
+    frame_b64 = message.get("frame_b64")
+    t_sec = message.get("t_sec", 0.0)
+    
+    if not frame_b64:
+        await manager.send_message(session_id, {
+            "type": "error",
+            "message": "frame_b64 is required",
+        })
+        return
+    
+    session["frames_received"] = session.get("frames_received", 0) + 1
+    
+    # AudioCoach에서 현재 활성 규칙 가져오기
+    coach: AudioCoach = session["coach"]
+    pack = coach._pack
+    
+    if not pack or not hasattr(pack, 'dna_invariants'):
+        logger.debug("No DirectorPack available for frame analysis")
+        return
+    
+    # 현재 시간에 활성화된 규칙만 추출
+    active_rules = []
+    for rule in pack.dna_invariants:
+        t_window = rule.time_scope.t_window if rule.time_scope else [0, 999]
+        if t_window[0] <= t_sec <= t_window[1]:
+            active_rules.append(rule)
+    
+    if not active_rules:
+        return
+    
+    # FrameAnalyzer로 프레임 분석
+    try:
+        analyzer = get_frame_analyzer()
+        results = await analyzer.analyze_frame(
+            frame_base64=frame_b64,
+            rules=active_rules,
+            current_time=t_sec
+        )
+        
+        # 위반 규칙이 있으면 피드백 전송
+        for rule_id, result in results.items():
+            if not result.is_compliant:
+                # 해당 규칙 찾기
+                rule = next((r for r in active_rules if r.rule_id == rule_id), None)
+                if not rule:
+                    continue
+                
+                # 중복 방지 (4초 cooldown)
+                if coach._is_duplicate_command(rule_id, t_sec):
+                    continue
+                
+                # 피드백 메시지 생성
+                feedback_msg = result.message or coach._format_command(rule)
+                
+                # TTS 생성
+                audio_b64 = None
+                try:
+                    audio_b64 = await generate_tts_fallback(feedback_msg)
+                except Exception as e:
+                    logger.warning(f"TTS generation failed: {e}")
+                
+                # 피드백 전송
+                await manager.send_message(session_id, {
+                    "type": "feedback",
+                    "source": "video_analysis",
+                    "rule_id": rule_id,
+                    "message": feedback_msg,
+                    "priority": rule.priority,
+                    "confidence": result.confidence,
+                    "measured_value": result.measured_value,
+                    "audio_b64": audio_b64,
+                    "t_sec": t_sec,
+                    "timestamp": utcnow().isoformat(),
+                })
+                
+                # 위반 기록
+                coach.report_violation(rule_id, t_sec, severity="warning")
+                session["interventions_sent"] = session.get("interventions_sent", 0) + 1
+                
+                logger.info(f"Video analysis feedback: {session_id}, rule={rule_id}, conf={result.confidence:.2f}")
+                
+                # One-command policy: 한 번에 하나만
+                break
+                
+    except Exception as e:
+        logger.error(f"Frame analysis failed: {e}")
 
 
 # ==================
