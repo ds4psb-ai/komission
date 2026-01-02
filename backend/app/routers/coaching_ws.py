@@ -746,16 +746,25 @@ async def handle_control(session_id: str, session: dict, message: dict):
             if stored_pack_data:
                 from app.schemas.director_pack import DirectorPack
                 pack = DirectorPack(**stored_pack_data)
-                logger.info(f"Using stored DirectorPack from session: {pack.pattern_id}, {len(pack.dna_invariants)} rules")
+                
+                # Fallback 규칙 감지: rule_id가 "fallback_"로 시작하면 VDG에서 다시 로드
+                has_fallback_rules = any(
+                    r.rule_id.startswith("fallback_") for r in pack.dna_invariants
+                )
+                if has_fallback_rules and (video_id or outlier_id):
+                    logger.info(f"Stored pack has fallback rules, reloading from VDG...")
+                    pack = None  # VDG에서 다시 로드하도록 설정
+                else:
+                    logger.info(f"Using stored DirectorPack from session: {pack.pattern_id}, {len(pack.dna_invariants)} rules")
             
-            # 1. 저장된 pack 없으면 VDG에서 로드
+            # 1. 저장된 pack 없거나 fallback이면 VDG에서 로드
             if pack is None and (video_id or outlier_id):
                 pack = await load_director_pack_from_video(
                     video_id=video_id,
                     outlier_id=outlier_id,
                 )
                 if pack:
-                    logger.info(f"Loaded DirectorPack from VDG: {pack.pattern_id}")
+                    logger.info(f"Loaded DirectorPack from VDG: {pack.pattern_id}, {len(pack.dna_invariants)} rules")
             
             # 2. VDG 없으면 기본 proof patterns 사용 (fallback)
             if pack is None:
