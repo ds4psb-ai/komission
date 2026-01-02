@@ -206,8 +206,11 @@ export function CoachingSession({
                     voice_style: 'friendly'
                 });
 
-                if (!isMountedRef.current) return;
+                console.log('📥 API response received');
+
+                // React 18+ safely ignores state updates on unmounted components
                 console.log('✅ Session created:', sessionData.session_id);
+
                 setSessionId(sessionData.session_id);
                 setIsSessionReady(true);
                 setAssignment(sessionData.assignment);
@@ -224,8 +227,7 @@ export function CoachingSession({
 
             } catch (apiErr) {
                 // Fallback: create dummy session for demo
-                console.warn('API failed, using demo mode:', apiErr);
-                if (!isMountedRef.current) return;
+                console.error('❌ API failed:', apiErr);
                 setSessionId(`demo-session-${Date.now()}`);
                 setIsSessionReady(true);
                 setRules(getDemoRules(mode));
