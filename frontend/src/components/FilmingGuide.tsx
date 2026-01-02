@@ -400,23 +400,98 @@ export function FilmingGuide({
                                 </div>
                             </div>
 
-                            {/* Actions */}
-                            <div className="flex gap-3">
+                            {/* Actions - 사용자 워크플로우 반영 */}
+                            <div className="space-y-3">
+                                {/* Primary: 다운로드 (외부 편집용) */}
                                 <button
                                     onClick={() => {
-                                        setShowSyncUI(false);
-                                        setRecordedBlob(null);
+                                        if (!recordedBlob) {
+                                            alert('저장된 영상이 없습니다.');
+                                            return;
+                                        }
+
+                                        try {
+                                            const url = URL.createObjectURL(recordedBlob);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = `komission_${Date.now()}.webm`;
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            URL.revokeObjectURL(url);
+
+                                            // 성공 피드백 (짧게)
+                                            const toast = document.createElement('div');
+                                            toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-emerald-500 text-white rounded-full text-sm font-medium z-[100] animate-pulse';
+                                            toast.textContent = '✓ 다운로드 시작!';
+                                            document.body.appendChild(toast);
+                                            setTimeout(() => toast.remove(), 2000);
+                                        } catch (err) {
+                                            console.error('다운로드 실패:', err);
+                                            alert('다운로드에 실패했습니다.\n브라우저 설정을 확인해주세요.');
+                                        }
                                     }}
-                                    className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl text-white/60 hover:bg-white/10 transition-colors"
+                                    className="w-full py-4 bg-gradient-to-r from-violet-500 to-pink-500 rounded-xl text-white font-bold hover:shadow-lg hover:shadow-violet-500/20 transition-all flex items-center justify-center gap-2"
                                 >
-                                    다시 촬영
+                                    <span>📥</span>
+                                    <span>다운로드 (외부 편집용)</span>
                                 </button>
+                                <p className="text-[10px] text-center text-white/30 -mt-1">
+                                    CapCut, InShot 등에서 편집 후 나중에 업로드
+                                </p>
+
+                                {/* Secondary Row */}
+                                <div className="flex gap-3 pt-2">
+                                    {/* 다시 촬영 */}
+                                    <button
+                                        onClick={() => {
+                                            setShowSyncUI(false);
+                                            setRecordedBlob(null);
+                                        }}
+                                        className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl text-white/60 hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <span>🔄</span>
+                                        <span>다시 촬영</span>
+                                    </button>
+
+                                    {/* 나중에 업로드 */}
+                                    <button
+                                        onClick={() => {
+                                            // 로컬 저장소에 세션 정보 저장
+                                            if (recordedBlob) {
+                                                try {
+                                                    // patternId와 함께 저장
+                                                    const savedSession = {
+                                                        savedAt: new Date().toISOString(),
+                                                        syncOffset,
+                                                        // Blob은 localStorage에 저장 불가 - 다운로드 권장
+                                                    };
+                                                    localStorage.setItem('komission_pending_upload', JSON.stringify(savedSession));
+                                                    alert('💾 세션 정보가 저장되었습니다.\n\n영상은 다운로드하여 편집 후\nMy 페이지에서 업로드하세요.');
+                                                } catch (e) {
+                                                    console.error('Failed to save session:', e);
+                                                }
+                                            }
+                                            onClose();
+                                        }}
+                                        className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl text-white/60 hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <span>⏰</span>
+                                        <span>나중에</span>
+                                    </button>
+                                </div>
+
+                                {/* 바로 완료 (즉시 사용) */}
                                 <button
                                     onClick={finishWithSync}
-                                    className="flex-1 py-3 bg-violet-500 hover:bg-violet-400 rounded-xl text-white font-bold transition-colors"
+                                    className="w-full py-3 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-400 hover:bg-emerald-500/30 transition-colors flex items-center justify-center gap-2"
                                 >
-                                    완료 ✓
+                                    <span>✓</span>
+                                    <span>이대로 완료</span>
                                 </button>
+                                <p className="text-[10px] text-center text-white/30 -mt-1">
+                                    편집 없이 바로 사용
+                                </p>
                             </div>
                         </div>
                     </div>

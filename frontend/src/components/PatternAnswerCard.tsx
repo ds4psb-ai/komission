@@ -23,6 +23,13 @@ export interface PatternAnswerCardProps {
         recurrence_score?: number;
         origin_year?: number;
     };
+    // 신뢰 시그널 (NEW)
+    trust_signals?: {
+        analyzed_videos?: number;      // 분석된 영상 수
+        avg_views?: number;            // 평균 조회수
+        top_percentile?: number;       // 상위 N%
+        expected_filming_mins?: number; // 예상 촬영 시간
+    };
     onViewEvidence?: () => void;
     onShoot?: () => void;
     isEvidenceExpanded?: boolean;
@@ -38,6 +45,7 @@ export default function PatternAnswerCard({
     tier,
     platform,
     recurrence,
+    trust_signals,
     onViewEvidence,
     onShoot,
     isEvidenceExpanded = false,
@@ -163,6 +171,42 @@ export default function PatternAnswerCard({
                             bg="bg-pink-500/10"
                         />
                     </div>
+
+                    {/* 신뢰 시그널 배너 */}
+                    {trust_signals && (trust_signals.analyzed_videos || trust_signals.avg_views) && (
+                        <div className="mt-4 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                            <div className="flex items-center gap-2 text-emerald-400 text-xs font-medium mb-2">
+                                <span>📊</span>
+                                <span>AI 데이터 기반 분석</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                                {trust_signals.analyzed_videos && (
+                                    <div>
+                                        <span className="text-white/50">분석 영상 </span>
+                                        <span className="text-white font-bold">{trust_signals.analyzed_videos.toLocaleString()}개</span>
+                                    </div>
+                                )}
+                                {trust_signals.avg_views && (
+                                    <div>
+                                        <span className="text-white/50">평균 조회수 </span>
+                                        <span className="text-white font-bold">{(trust_signals.avg_views / 10000).toFixed(0)}만</span>
+                                    </div>
+                                )}
+                                {trust_signals.top_percentile && (
+                                    <div>
+                                        <span className="text-white/50">성과 상위 </span>
+                                        <span className="text-emerald-400 font-bold">{trust_signals.top_percentile}%</span>
+                                    </div>
+                                )}
+                                {trust_signals.expected_filming_mins && (
+                                    <div>
+                                        <span className="text-white/50">예상 촬영 </span>
+                                        <span className="text-white font-bold">~{trust_signals.expected_filming_mins}분</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Stats Bar */}

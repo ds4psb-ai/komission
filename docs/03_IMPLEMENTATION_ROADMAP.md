@@ -1,129 +1,160 @@
-# Implementation Roadmap (Phases + Micro Steps)
+# 통합 로드맵: Komission Development Roadmap
 
-**작성**: 2026-01-07
-**목표**: Evidence Loop MVP → 2개 Parent 파일럿
-
----
-
-## Phase 0: Alignment & Setup (Day 0-2)
-**목표**: 운영/데이터 기준 고정
-
-- 소스 확정: 외부 구독 사이트 목록 + 크롤링 정책
-- Drive 폴더 구조 확정: Evidence/Decision/Experiment/O2O
-- 카테고리/패턴 택소노미 고정 (beauty/meme/etc + hook/scene/audio/subtitle/pacing)
-- 영상 해석 파이프라인 범위 확정 (코드 기반 스키마 추출)
-- NotebookLM/Opal 사용 범위 확정 (Pattern Engine, DB 래핑)
-- Capsule IO 계약 정의 (입력/출력/로그)
- - Notebook Library 테이블 설계 확정 (분석 스키마/클러스터/요약)
-
-**완료 기준**
-- `.env`에 Drive/Sheet 설정 완료
-- 템플릿 IO 계약 문서화
+> **최종 수정**: 2026-01-02  
+> **상태**: 모바일 앱 Week 1 완료, 웹앱 고도화 대기  
+> **통합 대상**: 03_IMPLEMENTATION, 16_NEXT_STEP, ROADMAP_MVP_TO_PERFECT, COMPUTATIONAL_TRUTH
 
 ---
 
-## Phase 1: Ingestion + SoR (Week 1)
-**목표**: Outlier → Parent 승격까지 안정화
+## Executive Summary
 
-**마이크로 단계**
-1. ✅ Outlier 수동 입력 API 정리 (링크 기반) - `/api/v1/outliers/items`
-2. ✅ 중복 제거 규칙 확정 (URL hash) - `external_id` 기준
-3. [ ] DB → Sheet 동기화 스크립트 연결 (선택)
-4. ✅ 영상 해석(코드) + 클러스터링 → **NotebookLM(Pattern Engine)** 적재 (2025-12-25)
-   - VDG 스키마 + Gemini Pipeline
-   - microbeat sequence 유사도 점수 계산
-4.1 ✅ JSON Schema 출력 강제 (Structured Output)
-4.2 ✅ microbeat sequence 유사도 점수 계산 (DTW/sequence similarity)
-5. ✅ 후보 리스트(Parent Candidates) 자동 생성 로직 - `/outliers` 페이지
-6. ✅ Parent 승격 → RemixNode 생성 - `POST /outliers/items/{id}/promote`
-7. ✅ 분석 호출(`/remix/{node_id}/analyze`) 경로 확정
-
-**완료 기준**
-- ✅ Outlier API 구현 완료
-- ✅ Parent 승격 + 분석 결과 확보 (VDG pieline)
-- [ ] `VDG_Outlier_Raw`와 `VDG_Parent_Candidates` Sheet 생성 (선택)
-
----
-
-## Phase 2: Evidence Loop MVP (Week 2)
-**목표**: Evidence → Decision 생성 자동화
-
-**마이크로 단계**
-1. [ ] Progress CSV 입력 연결(선택) - Sheet 기반 운영
-2. ✅ Evidence 스냅샷 생성 로직 정리 - `EvidenceService.create_evidence_snapshot`
-3. ✅ Evidence Sheet 업로드 확인 - `RealDataPipeline._generate_evidence_from_progress`
-4. ✅ Opal Decision 생성 (또는 규칙 기반 대체) - `OpalEngine`
-5. ✅ Notebook Library Insights → DB 래핑 - `NotebookLibraryEntry` 모델
-6. ✅ Opal 템플릿 시드 생성 - `template_seeds.py` 라우터
-7. ✅ NotebookLM Source Pack 생성 - `build_notebook_source_pack.py`
-
-**완료 기준**
-- ✅ Evidence/Decision Sheet 생성 로직 구현
-- ✅ Evidence → Decision 데이터 흐름 검증 (`run_real_evidence_loop.py`)
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    현재 위치 (2026-01-02)                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  [완료] VDG 2-Pass ─────────────────────────────┐           │
+│  [완료] Director Pack ───────────────────────────┤           │
+│  [완료] Audio Coach ─────────────────────────────┤           │
+│  [완료] Session DB ──────────────────────────────┤           │
+│  [완료] MCP 통합 ────────────────────────────────┤           │
+│  ✅ [완료] 모바일 앱 Week 1 ─────────────────────┤           │
+│                                                  ▼           │
+│  🟡 [대기] 앱스토어 등록 ◄───────────── Week 2             │
+│  🟡 [대기] 웹앱 코칭 개선 ◄────────── 새 개발자            │
+│  🟡 [대기] 클러스터 10개 생성                               │
+│  🟡 [대기] DistillRun 주간 실행                             │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Phase 3: Capsule + Canvas (Week 3)
-**목표**: Canvas 템플릿에 Evidence/Decision 연결
+## Part 1: 완료된 작업 (2025-12 ~ 2026-01-02)
 
-**마이크로 단계**
-1. ✅ Capsule Node 계약 적용 (입력/출력/로그) - RemixNode 모델
-2. ✅ Canvas 템플릿 A/B 연결 - `/canvas` 페이지
-3. ✅ 핵심 CTA(촬영/신청) 위치 고정 - `CampaignPanel` 컴포넌트
-4. ✅ O2O 타입 게이팅(즉시/방문/배송) UI - `O2OCampaign.campaign_type`
-5. ✅ 템플릿 커스터마이징 로그 수집 시작 (2025-12-26)
-   - `template_customization.py` 라우터: `/customize`, `/customizations/{id}`, `/summary/all`
-   - RL-lite 학습용 패턴 수집
-6. ✅ Opal 템플릿 시드 → Template Node 기본값 연결
-7. ✅ **CrawlerOutlier Node** 구현 (2025-12-25)
-   - `CrawlerOutlierNode` 컴포넌트 + `CrawlerOutlierSelector` 모달
-   - 3-플랫폼 크롤러 아웃라이어 Canvas 통합
-8. ✅ Creator 행동 이벤트 로깅 (2025-12-26)
-   - `events.py` 라우터: `/track`, `/recent`, `/summary`
-   - `tracker.ts` 프론트엔드 유틸리티
-9. ✅ Taste Calibration (pairwise 5~8 선택) (2025-12-26)
-   - `/calibration` 페이지 구현
-   - `CalibrationPair` API 연동
-10. ✅ `creator_style_fingerprint` 산출 (2025-12-26)
-    - `CreatorFingerprintService` 구현
-    - `/events/fingerprint/{user_id}` API 추가
+### ✅ VDG v4.0 2-Pass Pipeline
+- Semantic Pass (Gemini 3.0 Pro)
+- Visual Pass (CV 측정)
+- Director Pack 컴파일러
 
-**완료 기준**
-- ✅ Canvas에서 Evidence/Decision 표시
-- ✅ O2O 타입에 따라 UI가 분기
+### ✅ 실시간 AI 코칭
+- WebSocket `/coaching/live/{session_id}`
+- Audio Coach (Gemini 2.5 Flash)
+- TTS 음성 피드백
 
----
+### ✅ 모바일 앱 Week 1 (2026-01-02)
 
-## Phase 4: Pilot + O2O (Week 4)
-**목표**: 2개 Parent 파일럿 + 체험단 운영 베타
+| 기능 | 상태 | 파일 |
+|------|------|------|
+| 4K/H.265 촬영 | ✅ | `recordingConfig.ts` |
+| 프레임 레이트 안정화 | ✅ | `useCameraFormat.ts` |
+| 적응형 화질 | ✅ | `useDeviceStatus.ts` |
+| H.264 스트리밍 | ✅ | `videoStreamService.ts` |
+| 음성/텍스트 토글 | ✅ | `CoachingOverlay.tsx` |
+| DB 세션 저장 | ✅ | `useSessionPersistence.ts` |
 
-**마이크로 단계**
-1. ✅ Parent 선정 UI - `/outliers` 페이지 + Promote API
-2. ✅ Depth1 실험 실행 + 14일 추적 (2025-12-26)
-   - `track_depth_experiment.py` 스크립트 구현
-3. ✅ Decision 반영 후 Depth2 시작 (2025-12-26)
-   - `depth_experiments.py` 서비스 구현
-   - `/analytics/depth-experiments/{parent_id}`, `/depth2` API 추가
-4. ✅ 체험단 캠페인 API - 등록/모집/선정/상태변경
-   - `POST /o2o/admin/campaigns`, `/applications`
-5. ✅ 배송/방문/촬영/제출 단계 - `O2OApplicationStatus` enum
-6. ✅ Bandit/탐색 정책 적용 (2025-12-26)
-   - `bandit_policy.py` Thompson Sampling 구현
-   - exploration_rate 15% 적용
-7. ✅ RL-lite 정책 업데이트 (2025-12-26)
-   - `POST /analytics/rl-update` 배치 업데이트 API
-   - 템플릿 커스터마이징 패턴 연동
-8. ✅ KPI 리포트 생성 (2025-12-26)
-   - `analytics.py` 대시보드 API
-   - `/dashboard`, `/weekly-kpi`, `/pattern-lifts`, `/experiments`
+### ✅ MCP 통합
+- `/backend/app/mcp/` 폴더 구조
+- Claude Desktop 연동
+- Resources + Tools + Prompts
 
-**완료 기준**
-- ✅ 주간 리포트 자동 생성 API
-- [ ] 성공 구조 1개 이상 도출 (데이터 필요)
+### ✅ For You UX + 댓글 통합
+- PatternAnswerCard
+- EvidenceBar
+- TikTok 댓글 추출
 
 ---
 
-## 정의된 산출물 (요약)
-- Evidence Sheet / Decision Sheet / Progress Sheet
-- Capsule 실행 로그
-- 2개 Parent 파일럿 결과
+## Part 2: 진행 중 / 대기 중
+
+### 🟡 Week 2: 앱스토어 등록
+
+```bash
+cd mobile && npm install
+npx expo prebuild --platform ios
+npx expo run:ios --device
+# → TestFlight → 앱스토어 심사
+```
+
+**예상 일정**: 2026-01-03 ~ 2026-01-07
+
+### 🟡 웹앱 코칭 개선 (새 개발자)
+
+| Phase | 목표 | 우선순위 |
+|-------|------|----------|
+| 1 | CV 메트릭 기반 실시간 코칭 | P0 |
+| 2 | 체험단 캠페인 시스템 | P1 |
+
+**참고 문서**: `22_DEVELOPER_ONBOARDING.md`
+
+### 🟡 데이터 축적
+
+| 항목 | 현재 | 목표 |
+|------|------|------|
+| 세션 로그 | 0개 | 50-100개 |
+| 클러스터 | 스키마만 | 10개 |
+| DistillRun | 미실행 | 주간 1회 |
+
+---
+
+## Part 3: Computational Truth (장기 로드맵)
+
+> 상세: `STPF_V3_ROADMAP.md` 참조
+
+### Phase 1: 제1원리 (95% 완료)
+- Invariant vs Variable 분리
+- Entropy 최소화
+- Scale Invariance
+
+### Phase 2: 비선형 변환 (70% 완료)
+- Exponential (네트워크 효과)
+- Logarithmic (한계효용 체감) ← TODO
+
+### Phase 3: 베이지안 갱신 (50% 완료)
+- PatternCalibrator ✅
+- CoachingOutcome ✅
+- 정밀 베이지안 공식 ← TODO
+
+### Phase 4: Kelly Criterion (10% 완료)
+- 최적 자원 배분 ← TODO
+- Go/No-Go 신호 ← TODO
+
+---
+
+## Part 4: 성공 지표
+
+### 기술 지표
+| 지표 | 목표 |
+|------|------|
+| VDG 품질 점수 | 0.7+ |
+| 4K 촬영 성공률 | 95%+ |
+| 코칭 지연시간 | < 300ms |
+
+### UX 지표
+| 지표 | 목표 |
+|------|------|
+| 촬영 완료율 | 50%+ |
+| 코칭 채택률 | 60%+ |
+
+---
+
+## Part 5: 문서 체계
+
+### 현행 문서 (Always Up-to-Date)
+- `ARCHITECTURE_FINAL.md` - 최종 아키텍처
+- `21_PARALLEL_DEVELOPMENT_STRATEGY.md` - 병렬 개발 현황
+- `22_DEVELOPER_ONBOARDING.md` - 온보딩
+- `CHANGELOG.md` - 개발 이력
+
+### 이론/장기 계획
+- `STPF_V3_ROADMAP.md` - Computational Truth 상세
+- `COMPUTATIONAL_TRUTH_ROADMAP.md` - 이론적 배경 (참조용)
+
+### 아카이브
+- `_archive_20260102/` - 완료된 작업 문서들
+
+---
+
+## 한 줄 요약
+
+> **"모바일 4K 앱 Week 1 완료 → Week 2 앱스토어 등록 + 웹앱 고도화 병렬 진행"**

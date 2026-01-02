@@ -34,6 +34,7 @@ from app.routers.clusters import router as clusters_router  # P2 Cluster Managem
 from app.routers.distill import router as distill_router  # P3 DistillRun Automation
 from app.routers.curation import router as curation_router  # Curation Learning (Admin)
 from app.routers.mcp_audit import router as mcp_audit_router  # MCP Audit Logging
+from app.routers.performance import router as performance_router  # Performance Tracking
 
 api_router.include_router(remix_router, prefix="/remix", tags=["Remix"])
 api_router.include_router(auth_router, prefix="/auth", tags=["Auth"])
@@ -62,4 +63,5 @@ api_router.include_router(clusters_router, tags=["Clusters"])  # P2 Cluster Mana
 api_router.include_router(distill_router, tags=["Distill"])  # P3 DistillRun Automation
 api_router.include_router(curation_router, tags=["Curation"])  # Curation Learning (Admin)
 api_router.include_router(mcp_audit_router, tags=["MCP"])  # MCP Audit Logging
+api_router.include_router(performance_router, prefix="/performance", tags=["Performance"])  # Performance Tracking
 

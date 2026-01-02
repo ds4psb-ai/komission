@@ -1,4 +1,4 @@
-# VDG v4.0 Final Architecture (2025-12-31)
+# VDG v4.0 Final Architecture (Updated 2026-01-02)
 
 > **Consulting Reference Document**  
 > AI가 발전해도 규칙은 명확하게 유지되는 구조
@@ -8,6 +8,23 @@
 ## Executive Summary
 
 ```
+                        ┌─────────────────────────────┐
+                        │        SHARED BACKEND        │
+                        │     FastAPI + PostgreSQL     │
+                        └──────────────┬───────────────┘
+                                       │
+         ┌─────────────────────────────┴─────────────────────────────┐
+         ▼                                                           ▼
+┌─────────────────────┐                                 ┌─────────────────────┐
+│   MOBILE APP (NEW)  │                                 │      WEB APP        │
+│   /mobile           │                                 │    /frontend        │
+├─────────────────────┤                                 ├─────────────────────┤
+│ ✅ 4K + H.265/H.264 │                                 │ • 아웃라이어 분석   │
+│ ✅ 실시간 코칭      │                                 │ • 체험단 캠페인     │
+│ ✅ 음성/텍스트 토글 │                                 │ • 캔버스 스튜디오   │
+│ ✅ 적응형 스트리밍  │                                 │ • 대시보드          │
+└─────────────────────┘                                 └─────────────────────┘
+
 영상 + 댓글
      ↓
 ┌─────────────────────────────────────┐
@@ -27,12 +44,16 @@
                  ↓
 ┌─────────────────────────────────────┐
 │  Audio Coach (Gemini 2.5 Flash)     │
-│  └─ Real-time coaching              │
+│  ├─ WebSocket: /coaching/live       │
+│  ├─ frame_ack RTT 측정 (Phase 2)    │
+│  └─ H.264 스트리밍 지원             │
 └────────────────┬────────────────────┘
                  ↓
 ┌─────────────────────────────────────┐
-│  Evidence Loop                      │
-│  └─ RL-ready intervention/outcome   │
+│  Evidence Loop + RL                 │
+│  ├─ CoachingSession → Intervention  │
+│  ├─ → Outcome → Upload 성과 연결    │
+│  └─ 재귀개선 + 강화학습 준비        │
 └─────────────────────────────────────┘
 ```
 
@@ -47,6 +68,7 @@
 | **Metric Registry** | 메트릭 드리프트 방지 (domain.name.v1) |
 | **Deterministic IDs** | RL 조인키 안정성 (ap_id, evidence_id) |
 | **A→B Migration** | 데이터 축적 시 Signal → Invariant 자동 승격 |
+| **Platform Parity** | 모바일 + 웹 동일 백엔드 API 사용 |
 
 ---
 
@@ -64,6 +86,17 @@
 9. ✅ Compiler fallback warnings
 10. ✅ VisualPass metric validation
 
+### Mobile App Hardening (2026-01-02) ⭐ NEW
+- ✅ H.265 (HEVC) 코덱 지원 + H.264 자동 폴백
+- ✅ 프레임 레이트 안정화 (`useCameraFormat.ts`)
+- ✅ 배터리/네트워크/저장공간 적응형 화질
+- ✅ Phase 2: H.264 스트리밍 최적화 (50% 지연시간 감소)
+- ✅ FrameThrottler + AdaptiveBitrateController
+- ✅ frame_ack RTT 측정 (`coaching_ws.py`)
+- ✅ 음성/텍스트 코칭 토글 UI
+- ✅ 구도/빛/미장센 확장 슬롯 준비
+- ✅ `useSessionPersistence.ts` DB 연동
+
 ### Flywheel Hardenings
 - ✅ `DistillRun` schema (NotebookLM-ready)
 - ✅ `SignalPerformance` tracking
@@ -75,36 +108,17 @@
 - ✅ `ClusterSignature` for similarity
 
 ### RL Data Schema
+- ✅ `CoachingSession` (session_id, pattern_id, pack_id)
 - ✅ `CoachingIntervention` (rule_id, ap_id, evidence_id)
-- ✅ `CoachingOutcome` (compliance, metric_before/after, **upload_outcome**)
+- ✅ `CoachingOutcome` (compliance, metric_before/after, upload_outcome)
 - ✅ `SessionContext` (persona, environment, device)
 - ✅ `compliance_unknown_reason` for RL data quality
 
-### Expert Feedback Hardenings (2024-12-30)
-- ✅ `PackMeta` versioning (prompt_version, model_version, parent_pack_id)
-- ✅ `evidence_id_utils.py` (comment/asr/ocr/metric ID generators)
-- ✅ Two-stage Outcome (compliance + upload outcome)
-- ✅ Promotion Safety (canary, cluster diversity, rollback)
-
-### Evening Session Hardenings (2024-12-30)
-- ✅ **Duplicate Prevention**: `video_url` UNIQUE constraint + API-level check
-- ✅ **Campaign Eligible**: `outlier_items.campaign_eligible` for O2O integration
-- ✅ **Outlier Component Unification**: `/components/outlier/` directory
-
----
-
-## Key Git Commits
-
-```
-24b9cd8  feat: Add CoachingSession component + Card Detail integration
-b2166d0  feat: Final Comprehensive Hardening (6 Phases Complete)
-3757b7b  feat: A→B Migration Architecture (Signal auto-promotion)
-64dea27  feat: Flywheel Hardening (Evidence ID + Metric Validation)
-1dbe068  feat: Expert Consensus Final Hardening (H5, H-1, H9)
-84d25d7  feat: P0-2 Visual Pass Frame Extraction
-98cb8de  feat: Expert Review Final Hardening (H1-H4)
-c864ab2  feat: VDG v4.0 2-pass protocol and Director Pack v1.0
-```
+### MCP Integration (2025-12-31)
+- ✅ `/backend/app/mcp/` 디렉토리 구조
+- ✅ `tools/`: smart_pattern_analysis, ai_batch_analysis 등
+- ✅ `resources/`: 데이터 리소스
+- ✅ Claude Desktop 연동 지원
 
 ---
 
@@ -113,83 +127,141 @@ c864ab2  feat: VDG v4.0 2-pass protocol and Director Pack v1.0
 ### Backend (`/backend/app`)
 
 ```
-schemas/
-├── vdg_v4.py              # VDG v4.0 schemas (881 lines)
-├── vdg_unified_pass.py    # Unified Pass output schema (333 lines)
-├── director_pack.py       # Director Pack schemas (355 lines)
-├── metric_registry.py     # Metric SSoT (180 lines)
+routers/                           # 33 files
+├── coaching_ws.py                 # ⭐ 실시간 코칭 WebSocket (1124 lines)
+│   ├─ coaching_websocket()        # 메인 WS 엔드포인트
+│   ├─ load_director_pack_from_video()
+│   ├─ try_reconnect_gemini()      # H4: Gemini 재연결
+│   ├─ run_checkpoint_evaluation_loop()
+│   └─ generate_tts_fallback()     # H2: TTS 폴백
+├── coaching.py                    # REST API (586 lines)
+│   ├─ POST /coaching/sessions
+│   ├─ GET /coaching/sessions/{id}
+│   ├─ POST /coaching/sessions/{id}/events/intervention
+│   ├─ POST /coaching/sessions/{id}/events/outcome
+│   └─ GET /coaching/sessions/{id}/summary
+├── outliers.py                    # 아웃라이어 CRUD (106KB)
+├── agent.py                       # Chat Agent
+├── auth.py                        # Firebase Auth
+├── for_you.py                     # For You 페이지
+├── o2o.py                         # O2O 체험단
+├── remix.py                       # Remix 노드
+└── stpf.py                        # STPF 스코어링
 
-services/
-├── gemini_pipeline.py     # Main pipeline
-├── genai_client.py        # google-genai SDK client (130 lines)
-├── audio_coach.py         # Gemini 2.5 Flash Live
-├── evidence_updater.py    # RL weight adjustment + SignalTracker
+schemas/                           # 17 files
+├── vdg_v4.py                      # VDG v4.0 (38KB)
+├── vdg_unified_pass.py            # Unified Pass (15KB)
+├── director_pack.py               # Director Pack (11KB)
+├── metric_registry.py             # Metric SSoT (8KB)
+├── session_log.py                 # 세션 로깅 (10KB)
+└── session_events.py              # 이벤트 스키마
 
-services/vdg_2pass/
-├── unified_pass.py        # Pass 1: Pro LLM (의미/인과/Plan) - 433 lines
-├── cv_measurement_pass.py # Pass 2: CV 결정론적 측정 - 510 lines
-├── vdg_unified_pipeline.py # 오케스트레이터 - 380 lines
-├── director_compiler.py   # VDG → Pack 컴파일러 - 810 lines
-├── frame_extractor.py     # Plan-based frame extraction
-├── prompts/               # 프롬프트 템플릿
-│   ├── unified_prompt.py  # Pro 1-Pass 프롬프트
-│   ├── semantic_prompt.py # (legacy)
-│   └── visual_prompt.py   # (legacy)
+services/                          # 50+ files
+├── audio_coach.py                 # Gemini 2.5 Flash Live (30KB)
+├── genai_client.py                # google-genai SDK (15KB)
+├── coaching_repository.py         # 코칭 DB 레포지토리 (33KB)
+├── coaching_session.py            # 세션 관리 (13KB)
+├── frame_analyzer.py              # CV 프레임 분석 (10KB)
+├── pattern_calibrator.py          # 베이지안 보정 (8KB)
+├── comment_extractor.py           # TikTok 댓글 (43KB)
+└── tiktok_extractor.py            # TikTok 메타데이터 (24KB)
 
-routers/
-├── outliers.py            # Outlier CRUD + Duplicate Prevention
+services/vdg_2pass/                # 16 files
+├── unified_pass.py                # Pass 1: Pro LLM
+├── cv_measurement_pass.py         # Pass 2: CV 측정
+├── vdg_unified_pipeline.py        # 오케스트레이터
+├── director_compiler.py           # VDG → Pack 컴파일러
+
+mcp/                               # MCP 서버
+├── tools/                         # 6 analysis tools
+├── resources/                     # 5 data resources
+├── prompts/                       # 4 prompt templates
+└── server.py
+```
+
+### Mobile (`/mobile`) ⭐ NEW
+
+```
+mobile/
+├── app.json                       # Expo 설정
+├── package.json
+├── tsconfig.json
+│
+├── app/                           # expo-router
+│   ├── _layout.tsx                # 루트 레이아웃
+│   ├── index.tsx                  # 홈 화면
+│   └── camera.tsx                 # ⭐ 4K 촬영 화면 (550+ lines)
+│
+└── src/
+    ├── config/
+    │   └── recordingConfig.ts     # H.265/H.264 코덱 (236 lines)
+    │
+    ├── hooks/                     # 4 hooks
+    │   ├── useCoachingWebSocket.ts   # Phase 2 스트리밍 (13KB)
+    │   ├── useCameraFormat.ts        # 프레임 레이트 안정화 (7KB)
+    │   ├── useDeviceStatus.ts        # 배터리/네트워크 (8KB)
+    │   └── useSessionPersistence.ts  # DB 연동 (10KB)
+    │
+    ├── services/
+    │   └── videoStreamService.ts     # H.264 + AdaptiveBitrate
+    │
+    └── components/                # 4 components
+        ├── CoachingOverlay.tsx       # ⭐ 음성/텍스트 토글 (14KB)
+        ├── RecordButton.tsx          # 녹화 버튼 애니메이션
+        ├── QualityBadge.tsx          # 4K/HEVC 배지
+        └── DeviceStatusBar.tsx       # 디바이스 상태 표시
 ```
 
 ### Frontend (`/frontend/src`)
 
 ```
-components/
-├── CoachingSession.tsx    # Real-time AI coaching (350 lines)
-├── FilmingGuide.tsx       # Ghost overlay filming
-├── ViralGuideCard.tsx     # Guide display
-├── UnifiedOutlierCard.tsx # Unified card component
+components/                        # 29 files + 7 subdirs
+├── CoachingSession.tsx            # ⭐ 실시간 코칭 (45KB, 979 lines)
+│   └─ voiceEnabled 토글 지원
+├── FilmingGuide.tsx               # Ghost overlay (19KB)
+├── ViralGuideCard.tsx             # 가이드 카드 (11KB)
+├── UnifiedOutlierCard.tsx         # 통합 카드
+├── PatternAnswerCard.tsx          # For You 카드
+├── EvidenceBar.tsx                # 증거 바
 
-components/outlier/        # [NEW 2024-12-30] 공용 컴포넌트
-├── index.ts               # Unified exports
-├── TikTokPlayer.tsx       # TikTok embed (postMessage unmute)
-├── TierBadge.tsx          # S/A/B/C tier badges
-├── OutlierMetrics.tsx     # View/like/share metrics
-├── PipelineStatus.tsx     # Pipeline stage badges
-├── FilmingGuide.tsx       # VDG-based filming guide
-└── OutlierDetailModal.tsx # Integrated detail modal
+hooks/
+└── useCoachingWebSocket.ts        # 웹 버전 WS 훅
 
-app/video/[id]/
-└── page.tsx               # Card detail + coaching integration
+components/outlier/                # 9 files
+├── TikTokPlayer.tsx
+├── TierBadge.tsx
+├── OutlierMetrics.tsx
+└── OutlierDetailModal.tsx
 ```
 
 ---
 
 ## API Endpoints
 
+### Coaching WebSocket
+```
+ws://localhost:8000/api/v1/coaching/live/{session_id}
+
+Messages (Server → Client):
+- feedback: { message, audio_b64, rule_id, priority }
+- frame_ack: { frame_t, codec } ← Phase 2 NEW
+- pong: { client_t, timestamp }
+
+Messages (Client → Server):
+- video_frame: { frame_b64, t_sec, t_ms, codec, quality_hint }
+- control: { action: start|stop|pause }
+- ping: { t }
+```
+
+### REST API
 | Endpoint | Method | Description |
 |----------|--------|-------------|
+| `/coaching/sessions` | POST | Create session |
+| `/coaching/sessions/{id}/events/intervention` | POST | Log intervention |
+| `/coaching/sessions/{id}/events/outcome` | POST | Log outcome |
+| `/coaching/sessions/{id}/end` | POST | End session |
 | `/outliers/items/{id}` | GET | Card detail with VDG |
 | `/outliers/items/{id}/guide` | GET | Director Pack guide |
-| `/coaching/sessions` | POST | Create coaching session |
-| `/coaching/sessions/{id}` | GET | Session status |
-| `/coaching/sessions/{id}/feedback` | POST | Submit feedback |
-
----
-
-## UX Flow
-
-```
-[Card List] → [Card Detail] → [🎬 촬영 시작] → [Mode Select]
-                                                    ↓
-                                        ├─ 오마쥬 (DNA Lock)
-                                        ├─ 변주 (Mutation Slot)
-                                        └─ 체험단 (Campaign)
-                                                    ↓
-                                        [CoachingSession]
-                                        ├─ Camera preview
-                                        ├─ 🎙️ Audio feedback
-                                        └─ Rule checklist
-```
 
 ---
 
@@ -203,30 +275,28 @@ Phase B: InvariantCandidate (Distill 검증 대기)
 Phase C: DNA Invariant (Pack 불변 규칙)
 ```
 
-**Auto-promotion**: 코드 변경 없이 데이터(Intervention Outcome)만 쌓이면 자동 승격
-
-### Promotion Criteria (Snapshot)
-- **Slot → Candidate**: 신호 포착 (최소 10회, 7할 승률)
-- **Candidate → DNA**: 법칙 확정 (최소 50회, 8할 승률, 교차증명)
-
 ---
 
-## Remaining Work
+## Current Status (2026-01-02)
 
 | Priority | Item | Status |
 |----------|------|--------|
-| 🟡 | Cluster 10개 생성 (Parent-Kids) | Pending |
+| ✅ | Mobile 4K App (Week 1) | **Complete** |
+| ✅ | H.265/H.264 Codec | **Complete** |
+| ✅ | Phase 2 Streaming | **Complete** |
+| ✅ | Voice/Text Toggle | **Complete** |
+| ✅ | DB Session Persistence | **Complete** |
+| 🟡 | Cluster 10개 생성 | Pending |
 | 🟡 | DistillRun 주간 실행 | Pending |
-| 🟡 | google.genai migration | Deferred |
-| 🟢 | Real coaching API integration | Ready |
-| 🟢 | WebSocket live feedback | Ready |
+| 🟡 | 앱스토어 등록 | Week 2 |
+| 🟢 | 웹앱 고도화 | 새 개발자 담당 |
 
 ---
 
 ## Conclusion
 
-> **현재 상태: NotebookLM-ready + MVP 실행 가능**
+> **현재 상태: 모바일 앱 Week 1 하드닝 완료 + NotebookLM-ready**
 >
-> 다음 단계: Cluster 적재 → Distill 실행 → NotebookLM-integrated
+> 다음 단계: TestFlight → 앱스토어 등록 → 웹앱 고도화
 
 **→ "모델이 발전해도 Pack의 가치가 더 비싸지는" 구조 완성 ✅**

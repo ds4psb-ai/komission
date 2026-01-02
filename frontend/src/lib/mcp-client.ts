@@ -75,6 +75,35 @@ export interface SearchResponse {
     results: PatternResult[];
 }
 
+// 소스팩 소스 타입
+export interface PackSource {
+    id: string;
+    title: string;
+    platform: string;
+    category: string;
+    tier?: string;
+    score: number;
+    views: number;
+    growth_rate?: string;
+    video_url: string;
+    comments?: Array<{ text: string; likes?: number }>;
+    vdg?: {
+        quality_score?: number;
+        quality_valid?: boolean;
+        analysis_status?: string;
+    };
+}
+
+// 소스팩 생성 결과 타입
+export interface SourcePackResult {
+    name: string;
+    created_at: string;
+    outlier_count: number;
+    sources: PackSource[];
+    // markdown 형식일 경우 문자열로 반환
+    markdown?: string;
+}
+
 /**
  * MCP HTTP Client
  * FastMCP 2.14+ Streamable HTTP 엔드포인트와 통신
@@ -305,6 +334,47 @@ export class MCPClient {
      */
     async getDirectorPack(outlierId: string): Promise<ToolCallResult<string>> {
         return this.readResource(`komission://director-pack/${outlierId}`);
+    }
+
+    // ========================================
+    // Source Pack 도구
+    // ========================================
+
+    /**
+     * 소스팩 생성 결과 타입
+     */
+
+
+    /**
+     * NotebookLM 소스팩 생성
+     * 
+     * @param outlierIds - 포함할 아웃라이어 ID 목록
+     * @param packName - 소스팩 이름
+     * @param options - 추가 옵션 (include_comments, include_vdg, output_format)
+     * @returns 소스팩 데이터 (markdown 또는 JSON)
+     */
+    async generateSourcePack(
+        outlierIds: string[],
+        packName: string,
+        options: {
+            includeComments?: boolean;
+            includeVdg?: boolean;
+            outputFormat?: 'markdown' | 'json';
+        } = {}
+    ): Promise<ToolCallResult<SourcePackResult>> {
+        const {
+            includeComments = true,
+            includeVdg = true,
+            outputFormat = 'markdown'
+        } = options;
+
+        return this.callTool<SourcePackResult>('generate_source_pack', {
+            outlier_ids: outlierIds,
+            pack_name: packName,
+            include_comments: includeComments,
+            include_vdg: includeVdg,
+            output_format: outputFormat,
+        });
     }
 
     /**

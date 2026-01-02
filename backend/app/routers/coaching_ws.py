@@ -229,8 +229,10 @@ async def coaching_websocket(
                     await handle_video_frame(session_id, session, message, voice_style)
                 
                 elif msg_type == "ping":
+                    # Phase 2: Include client timestamp for latency measurement
                     await manager.send_message(session_id, {
                         "type": "pong",
+                        "client_t": message.get("t"),  # Echo back client timestamp
                         "timestamp": utcnow().isoformat(),
                     })
                 
@@ -987,6 +989,9 @@ async def handle_video_frame(session_id: str, session: dict, message: dict, voic
     
     frame_b64 = message.get("frame_b64")
     t_sec = message.get("t_sec", 0.0)
+    t_ms = message.get("t_ms")  # Phase 2: Client timestamp for latency tracking
+    codec = message.get("codec", "jpeg")  # Phase 2: H.264 or JPEG
+    quality_hint = message.get("quality_hint")  # Phase 2: low/medium/high
     
     if not frame_b64:
         await manager.send_message(session_id, {
@@ -996,6 +1001,15 @@ async def handle_video_frame(session_id: str, session: dict, message: dict, voic
         return
     
     session["frames_received"] = session.get("frames_received", 0) + 1
+    
+    # Phase 2: Send frame_ack for latency measurement
+    if t_ms:
+        await manager.send_message(session_id, {
+            "type": "frame_ack",
+            "frame_t": t_ms,
+            "codec": codec,
+            "timestamp": utcnow().isoformat(),
+        })
     
     # AudioCoach에서 현재 활성 규칙 가져오기
     coach: AudioCoach = session["coach"]

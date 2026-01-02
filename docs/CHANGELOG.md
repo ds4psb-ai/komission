@@ -4,6 +4,67 @@
 
 ---
 
+## 2026-01-02 (모바일 앱 하드닝 완료)
+
+### 🎯 전략적 결정: 모바일 4K 앱 + 웹앱 고도화 병렬 개발
+
+**핵심 결정**:
+- 촬영 기능만 네이티브 앱으로 분리 (4K 화질 확보)
+- 나머지 기능(틱톡 재생, 분석, 체험단)은 웹앱 유지
+- 앱스토어 정책 리스크 최소화 (TikTok API 승인 불필요)
+
+### 📱 모바일 앱 구현 완료 (Phase 1 + Phase 2)
+
+**Phase 1: 4K 촬영 하드닝**
+- ✅ H.265 (HEVC) 코덱 지원 - `recordingConfig.ts`
+- ✅ H.264 자동 폴백 (구형 기기)
+- ✅ 프레임 레이트 안정화 - `useCameraFormat.ts`
+- ✅ 배터리/네트워크/저장공간 모니터링 - `useDeviceStatus.ts`
+- ✅ 적응형 화질 조정 (4K → 1080p → 720p)
+
+**Phase 2: 스트리밍 최적화**
+- ✅ H.264 비디오 스트리밍 (JPEG → H.264)
+- ✅ 50% 지연시간 감소 (400-600ms → 200-300ms)
+- ✅ FrameThrottler: 2fps 제한
+- ✅ AdaptiveBitrateController: 네트워크 품질 기반 조정
+- ✅ frame_ack RTT 측정 - `coaching_ws.py`
+
+**UI/UX 개선**
+- ✅ 음성 코칭 ON/OFF 토글
+- ✅ 텍스트 코칭 ON/OFF 토글
+- ✅ 글래스모피즘 설정 패널
+- ✅ 비방해 피드백 UI (하단 중앙, 4초 fade)
+
+**확장 슬롯 준비** (Phase 2+)
+- ⬜ `compositionGuide`: 구도 가이드 (삼분법, 황금비)
+- ⬜ `lightingRecommendation`: 조명 추천
+- ⬜ `miseEnSceneHint`: 미장센 추천
+
+**DB/RL 통합**
+- ✅ `useSessionPersistence.ts` - 세션 저장 훅
+- ✅ CoachingSession 모델 연동 (intervention, outcome 로깅)
+- ✅ 재귀개선/강화학습 데이터 수집 준비
+
+### 🌐 웹앱 고도화 (새 개발자 대기)
+- **Phase 1**: CV 메트릭 기반 코칭 품질 향상
+- **Phase 2**: 체험단 캠페인 시스템 고도화
+
+### 📚 문서 업데이트
+- `docs/21_PARALLEL_DEVELOPMENT_STRATEGY.md` - 구현 완료 반영
+- `docs/22_DEVELOPER_ONBOARDING.md` - 새 개발자 온보딩
+- `docs/CHANGELOG.md` - 하드닝 완료 기록
+
+### 🔧 백엔드 개선
+- `coaching_ws.py`: frame_ack 응답, H.264 코덱 지원
+- `coaching_ws.py`: client_t 에코 (RTT 측정)
+
+### Git Commits (오늘)
+- Phase 2 H.264 streaming optimization
+- Final mobile hardening - coaching toggles, extensibility, DB/RL integration
+
+---
+
+
 ## 2026-01-01 (STPF v3.1 + Cleanup)
 
 ### 🚀 STPF v3.1 Computational Truth Architecture

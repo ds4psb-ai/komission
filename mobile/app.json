@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Komission",
+    "slug": "komission-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "komission",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.komission.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "코칭 영상 촬영을 위해 카메라 접근이 필요합니다.",
+        "NSMicrophoneUsageDescription": "영상 촬영 시 오디오 녹음을 위해 마이크 접근이 필요합니다."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.komission.app",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "코칭 영상 촬영을 위해 카메라 접근이 필요합니다.",
+          "enableMicrophonePermission": true,
+          "microphonePermissionText": "영상 촬영 시 오디오 녹음을 위해 마이크 접근이 필요합니다."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

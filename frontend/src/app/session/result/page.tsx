@@ -12,11 +12,12 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from '@/contexts/SessionContext';
 import { useConsent } from '@/contexts/ConsentContext';
-import { ArrowLeft, Sparkles, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, FileText, Loader2, Download, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PatternAnswerCard from '@/components/PatternAnswerCard';
-import EvidenceBar, { BestComment, RiskTag, RecurrenceEvidence } from '@/components/EvidenceBar';
+import EvidenceBar, { BestComment, RiskTag } from '@/components/EvidenceBar';
 import FeedbackWidget, { FeedbackData } from '@/components/FeedbackWidget';
+import { mcpClient, SourcePackResult } from '@/lib/mcp-client';
 
 // Mock data (fallback)
 const MOCK_COMMENTS: BestComment[] = [
@@ -143,6 +144,9 @@ function SessionResultContent() {
         router.push('/session/shoot');
     };
 
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [packResult, setPackResult] = useState<SourcePackResult | null>(null);
+
     const handleGenerateSourcePack = async () => {
         if (!patternId) return;
 
@@ -157,15 +161,78 @@ function SessionResultContent() {
 
             if (!consented) return;
 
-            console.log('소스팩 생성 중...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // 오프라인 체크
+            if (!navigator.onLine) {
+                alert('인터넷 연결을 확인해주세요.');
+                return;
+            }
 
-            console.log('소스팩 생성 완료');
-            alert('소스팩이 생성되었습니다! (NotebookLM에서 확인 가능)');
+            setIsGenerating(true);
+            setPackResult(null);
+
+            // 실제 MCP API 호출 (재시도 로직 포함)
+            let lastError: string | undefined;
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                const result = await mcpClient.generateSourcePack(
+                    [patternId],
+                    `Pattern_${patternId.slice(0, 8)}`,
+                    {
+                        includeComments: true,
+                        includeVdg: true,
+                        outputFormat: 'json',
+                    }
+                );
+
+                if (result.success && result.data) {
+                    setPackResult(result.data);
+                    console.log('✅ 소스팩 생성 완료:', result.data);
+                    return;
+                }
+
+                lastError = result.error;
+                console.warn(`소스팩 생성 시도 ${attempt} 실패:`, result.error);
+
+                if (attempt < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+
+            // 모든 시도 실패
+            let userMessage = '소스팩 생성에 실패했습니다.';
+            if (lastError?.includes('network') || lastError?.includes('fetch')) {
+                userMessage = 'MCP 서버에 연결할 수 없습니다.\n서버가 실행 중인지 확인해주세요.';
+            } else if (lastError?.includes('timeout')) {
+                userMessage = '서버 응답 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
+            } else if (lastError) {
+                userMessage = `생성 실패: ${lastError}`;
+            }
+            alert(userMessage);
         } catch (err) {
             console.error('소스팩 생성 실패:', err);
-            alert('생성 중 오류가 발생했습니다.');
+
+            let message = '생성 중 오류가 발생했습니다.';
+            if (err instanceof Error) {
+                if (err.message.includes('network') || err.message.includes('Failed to fetch')) {
+                    message = 'MCP 서버에 연결할 수 없습니다.';
+                }
+            }
+            alert(message);
+        } finally {
+            setIsGenerating(false);
         }
+    };
+
+    const handleDownloadPack = () => {
+        if (!packResult) return;
+
+        const json = JSON.stringify(packResult, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${packResult.name || 'source_pack'}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     const handleFeedback = (feedback: FeedbackData) => {
@@ -249,7 +316,7 @@ function SessionResultContent() {
                         >
                             <EvidenceBar
                                 // Use fetched evidence if available, else mock
-                                best_comments={(pattern as any).evidence?.best_comments || MOCK_COMMENTS}
+                                best_comments={'evidence' in pattern && (pattern as { evidence?: { best_comments?: BestComment[] } }).evidence?.best_comments || MOCK_COMMENTS}
                                 recurrence={pattern.recurrence ? {
                                     ancestor_cluster_id: pattern.recurrence.ancestor_cluster_id,
                                     recurrence_score: pattern.recurrence.recurrence_score,
@@ -263,23 +330,64 @@ function SessionResultContent() {
 
                             {/* MCP Action: Generate Source Pack */}
                             <div className="mt-6 pt-4 border-t border-white/5">
-                                <button
-                                    onClick={handleGenerateSourcePack}
-                                    disabled={isPending}
-                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 transition-colors border border-violet-500/20"
-                                >
-                                    {isPending ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <FileText className="w-4 h-4" />
-                                    )}
-                                    <span className="text-sm font-medium">
-                                        NotebookLM 소스팩 생성
-                                    </span>
-                                </button>
-                                <p className="text-[10px] text-center text-white/30 mt-2">
-                                    심층 분석을 위해 소스 데이터를 NotebookLM으로 전송합니다.
-                                </p>
+                                {!packResult ? (
+                                    <>
+                                        <button
+                                            onClick={handleGenerateSourcePack}
+                                            disabled={isPending || isGenerating}
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 transition-colors border border-violet-500/20 disabled:opacity-50"
+                                        >
+                                            {isGenerating ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    <span className="text-sm font-medium">생성 중...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FileText className="w-4 h-4" />
+                                                    <span className="text-sm font-medium">
+                                                        NotebookLM 소스팩 생성
+                                                    </span>
+                                                </>
+                                            )}
+                                        </button>
+                                        <p className="text-[10px] text-center text-white/30 mt-2">
+                                            심층 분석을 위해 소스 데이터를 NotebookLM으로 전송합니다.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {/* 성공 메시지 */}
+                                        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                            <span className="text-sm text-emerald-300">
+                                                소스팩 생성 완료! ({packResult.outlier_count}개 소스)
+                                            </span>
+                                        </div>
+
+                                        {/* 다운로드 버튼 */}
+                                        <button
+                                            onClick={handleDownloadPack}
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-violet-500 hover:bg-violet-400 text-white transition-colors"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            <span className="text-sm font-medium">
+                                                JSON 다운로드
+                                            </span>
+                                        </button>
+                                        <p className="text-[10px] text-center text-white/30">
+                                            NotebookLM에서 &ldquo;소스 추가&rdquo; → &ldquo;파일 업로드&rdquo;로 사용하세요.
+                                        </p>
+
+                                        {/* 다시 생성 */}
+                                        <button
+                                            onClick={() => setPackResult(null)}
+                                            className="w-full text-xs text-white/40 hover:text-white/60 transition-colors"
+                                        >
+                                            다시 생성하기
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </PatternAnswerCard>
 

@@ -31,6 +31,10 @@ from app.schemas.vdg_v4 import CoachingIntervention, CoachingOutcome
 from app.services.audio_coach import AudioCoach
 from app.services.coaching_router import get_coaching_router
 from app.services.session_logger import get_session_logger
+from app.services.credit_service import (
+    get_user_credits, check_sufficient_credits, 
+    CoachingCreditManager, COACHING_COSTS
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/coaching", tags=["coaching"])
@@ -42,6 +46,9 @@ router = APIRouter(prefix="/coaching", tags=["coaching"])
 
 class CreateSessionRequest(BaseModel):
     """세션 생성 요청"""
+    # User identification
+    user_id: Optional[str] = None  # 크레딧 차감용
+    
     # Optional: Complete DirectorPack if client has it 
     director_pack: Optional[DirectorPack] = None
     
@@ -51,6 +58,9 @@ class CreateSessionRequest(BaseModel):
     
     language: str = "ko"
     voice_style: Literal["strict", "friendly", "neutral"] = "friendly"
+    
+    # Coaching tier (크레딧 비용 결정)
+    coaching_tier: Literal["basic", "pro"] = "basic"
 
 
 class SessionResponse(BaseModel):
@@ -66,6 +76,11 @@ class SessionResponse(BaseModel):
     # P1: Control Group info
     assignment: str = "coached"  # "coached" | "control"
     holdout_group: bool = False
+    
+    # Credits info
+    coaching_tier: Literal["basic", "pro"] = "basic"
+    credits_balance: Optional[int] = None
+    credits_cost_per_min: Optional[int] = None
 
 
 class SessionListResponse(BaseModel):
@@ -129,6 +144,21 @@ async def create_session(
     now = utcnow()
     expires_at = now + timedelta(hours=1)  # 1시간 후 만료
     
+    # 크레딧 검증 (user_id가 있는 경우)
+    user_id = request.user_id or "anonymous"
+    coaching_tier = request.coaching_tier
+    credits_balance = None
+    
+    if user_id != "anonymous":
+        credits_balance = get_user_credits(user_id)
+        # Pro 모드는 최소 3크레딧 필요 (1분)
+        min_credits = COACHING_COSTS.get(coaching_tier, 1)
+        if not check_sufficient_credits(user_id, coaching_tier, 60):
+            raise HTTPException(
+                status_code=402,
+                detail=f"크레딧이 부족합니다. 현재: {credits_balance}, 필요: {min_credits}/분"
+            )
+    
     # DirectorPack 결정: 3단계 우선순위
     pack = request.director_pack
     pack_source = "provided"
@@ -184,6 +214,9 @@ async def create_session(
         # P1: Control group fields
         "assignment": assignment_result.assignment,
         "holdout_group": assignment_result.holdout_group,
+        # Credits
+        "user_id": user_id,
+        "coaching_tier": coaching_tier,
     }
     
     logger.info(
@@ -204,6 +237,9 @@ async def create_session(
         goal=pack.goal,
         assignment=assignment_result.assignment,
         holdout_group=assignment_result.holdout_group,
+        coaching_tier=coaching_tier,
+        credits_balance=credits_balance,
+        credits_cost_per_min=COACHING_COSTS.get(coaching_tier, 1),
     )
 
 
@@ -224,14 +260,38 @@ async def get_session_status(session_id: str):
 
 
 @router.delete("/sessions/{session_id}")
-async def end_session(session_id: str):
-    """세션 종료"""
+async def end_session(
+    session_id: str,
+    duration_sec: float = 0,  # 코칭 시간 (초)
+):
+    """세션 종료 및 크레딧 차감"""
+    from app.services.credit_service import deduct_coaching_credits
+    
     session = get_session(session_id)
     session["status"] = "ended"
+    session["duration_sec"] = duration_sec
     
-    logger.info(f"Ended coaching session: {session_id}")
+    # 크레딧 차감
+    credits_deducted = 0
+    user_id = session.get("user_id", "anonymous")
+    coaching_tier = session.get("coaching_tier", "basic")
     
-    return {"ended": True, "session_id": session_id}
+    if user_id != "anonymous" and duration_sec > 0:
+        from app.services.credit_service import calculate_coaching_cost
+        credits_deducted = calculate_coaching_cost(coaching_tier, duration_sec)
+        deduct_coaching_credits(user_id, coaching_tier, duration_sec, session_id)
+        logger.info(f"Deducted {credits_deducted} credits for session {session_id}")
+    
+    logger.info(f"Ended coaching session: {session_id}, duration={duration_sec}s")
+    
+    return {
+        "ended": True,
+        "session_id": session_id,
+        "duration_sec": duration_sec,
+        "credits_deducted": credits_deducted,
+        "coaching_tier": coaching_tier,
+    }
+
 
 
 @router.post("/sessions/{session_id}/feedback", response_model=FeedbackResponse)
@@ -583,3 +643,104 @@ def build_system_prompt(pack: DirectorPack, voice_style: str = "friendly") -> st
     ])
     
     return "\n".join(lines)
+
+
+# ====================
+# CREDITS API
+# ====================
+
+@router.get("/credits/{user_id}")
+async def get_credits_balance(user_id: str):
+    """사용자 크레딧 잔액 조회"""
+    balance = get_user_credits(user_id)
+    
+    return {
+        "user_id": user_id,
+        "balance": balance,
+        "costs": COACHING_COSTS,
+    }
+
+
+@router.post("/credits/{user_id}/add")
+async def add_credits(
+    user_id: str,
+    amount: int,
+    reason: str = "purchase",
+):
+    """크레딧 추가 (구매, 보너스 등)"""
+    from app.services.credit_service import add_credits as add_user_credits
+    
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    
+    success = add_user_credits(user_id, amount, reason)
+    balance = get_user_credits(user_id)
+    
+    return {
+        "success": success,
+        "user_id": user_id,
+        "added": amount,
+        "balance": balance,
+    }
+
+
+@router.get("/credits/{user_id}/transactions")
+async def get_credits_transactions(user_id: str, limit: int = 20):
+    """사용자 크레딧 트랜잭션 내역"""
+    from app.services.credit_service import get_user_transactions
+    
+    transactions = get_user_transactions(user_id, limit)
+    balance = get_user_credits(user_id)
+    
+    return {
+        "user_id": user_id,
+        "balance": balance,
+        "transactions": transactions,
+    }
+
+
+# ====================
+# CAMPAIGN CREDIT GRANT (체험단)
+# ====================
+
+class CampaignCreditGrantRequest(BaseModel):
+    """체험단 크레딧 지원 요청"""
+    creator_id: str
+    amount: int
+    granted_by: Optional[str] = None
+
+
+@router.post("/campaigns/{campaign_id}/grant-credits")
+async def grant_campaign_credits_to_creator(
+    campaign_id: str,
+    request: CampaignCreditGrantRequest,
+):
+    """
+    체험단 캠페인에서 크리에이터에게 크레딧 지원
+    
+    브랜드가 선정된 크리에이터에게 Pro 코칭 비용 지원
+    """
+    from app.services.credit_service import grant_campaign_credits
+    
+    if request.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    
+    success = grant_campaign_credits(
+        user_id=request.creator_id,
+        campaign_id=campaign_id,
+        amount=request.amount,
+        granted_by=request.granted_by,
+    )
+    
+    balance = get_user_credits(request.creator_id)
+    
+    logger.info(f"Campaign {campaign_id} granted {request.amount} credits to {request.creator_id[:8]}...")
+    
+    return {
+        "success": success,
+        "campaign_id": campaign_id,
+        "creator_id": request.creator_id,
+        "granted": request.amount,
+        "balance": balance,
+    }
+
