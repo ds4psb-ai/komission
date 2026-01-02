@@ -47,6 +47,13 @@ export interface StreamStats {
     qualityTier: 'low' | 'medium' | 'high';
 }
 
+// H9: Tier info for credit calculation
+export interface TierInfo {
+    coachingTier: 'basic' | 'pro';
+    effectiveTier: 'basic' | 'pro';
+    tierDowngraded: boolean;
+}
+
 export interface UseCoachingWebSocketOptions {
     enableStreaming?: boolean;
     streamConfig?: StreamConfig;
@@ -67,6 +74,9 @@ export interface UseCoachingWebSocketReturn {
 
     // Stats (Phase 2)
     streamStats: StreamStats | null;
+
+    // H9: Tier info
+    tierInfo: TierInfo;
 }
 
 // ============================================================
@@ -111,6 +121,13 @@ export function useCoachingWebSocket(
     const [feedback, setFeedback] = useState<CoachingFeedback | null>(null);
     const [feedbackHistory, setFeedbackHistory] = useState<CoachingFeedback[]>([]);
     const [streamStats, setStreamStats] = useState<StreamStats | null>(null);
+
+    // H9: Tier info for credit calculation
+    const [tierInfo, setTierInfo] = useState<TierInfo>({
+        coachingTier: 'pro',
+        effectiveTier: 'pro',
+        tierDowngraded: false,
+    });
 
     // ============================================================
     // Connection Management
@@ -243,6 +260,20 @@ export function useCoachingWebSocket(
                     console.log('[WS] Status:', message.status);
                     break;
 
+                case 'session_status':
+                    // H9: Handle tier downgrade info
+                    if (message.effective_tier !== undefined) {
+                        setTierInfo({
+                            coachingTier: message.coaching_tier || 'pro',
+                            effectiveTier: message.effective_tier || 'pro',
+                            tierDowngraded: message.tier_downgraded || false,
+                        });
+                        if (message.tier_downgraded) {
+                            console.log('[WS] H9: Tier downgraded to basic (Gemini fallback)');
+                        }
+                    }
+                    break;
+
                 case 'error':
                     console.error('[WS] Server error:', message.message);
                     break;
@@ -372,6 +403,7 @@ export function useCoachingWebSocket(
         sendFrame,
         sendControl,
         streamStats,
+        tierInfo,  // H9
     };
 }
 

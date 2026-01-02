@@ -5,7 +5,6 @@
  * 
  * Basic (규칙 TTS) vs Pro (Gemini Live)
  */
-import { useState } from "react";
 import { Sparkles, Zap, Crown, Check } from "lucide-react";
 
 export type CoachingTier = "basic" | "pro";
@@ -29,6 +28,7 @@ const TIERS = {
         ],
         icon: Zap,
         color: "violet",
+        recommended: false,
     },
     pro: {
         name: "Pro",
@@ -42,6 +42,7 @@ const TIERS = {
         ],
         icon: Crown,
         color: "amber",
+        recommended: true,
     },
 };
 
@@ -94,7 +95,7 @@ export function CoachingModeSelector({
 
                             <div className="flex items-center gap-2 mb-2">
                                 <TierIcon className={`w-5 h-5 ${isSelected ? "text-white" :
-                                        tierInfo.color === "amber" ? "text-amber-400" : "text-violet-400"
+                                    tierInfo.color === "amber" ? "text-amber-400" : "text-violet-400"
                                     }`} />
                                 <span className="font-bold">{tierInfo.name}</span>
                             </div>

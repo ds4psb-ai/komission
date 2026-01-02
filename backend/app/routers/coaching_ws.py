@@ -185,11 +185,19 @@ async def coaching_websocket(
                 session["pattern_id"] = post_session_data.get("pattern_id")
                 session["assignment"] = post_session_data.get("assignment", "coached")
                 session["holdout_group"] = post_session_data.get("holdout_group", False)
-                logger.info(f"Merged POST session data: video_id={session.get('video_id')}, pattern_id={session.get('pattern_id')}")
+                # H9: 크레딧 관련 필드
+                session["user_id"] = post_session_data.get("user_id", "anonymous")
+                session["coaching_tier"] = post_session_data.get("coaching_tier", "pro")
+                session["effective_tier"] = session["coaching_tier"]  # 초기값
+                session["tier_downgraded"] = False
+                logger.info(f"Merged POST session data: video_id={session.get('video_id')}, tier={session.get('coaching_tier')}")
             else:
                 # Fallback to query parameters
                 session["video_id"] = video_id
                 session["outlier_id"] = outlier_id
+                session["coaching_tier"] = "pro"  # 디폴트 Pro
+                session["effective_tier"] = "pro"
+                session["tier_downgraded"] = False
                 logger.info(f"No POST session found, using query params: video_id={video_id}")
         except ImportError:
             session["video_id"] = video_id
@@ -421,6 +429,12 @@ async def try_reconnect_gemini(session_id: str, session: dict) -> bool:
             session["gemini_connected"] = True
             session["gemini_reconnect_attempts"] = 0
             
+            # H9: 재연결 성공 시 tier 복원
+            if session.get("tier_downgraded"):
+                session["effective_tier"] = session.get("coaching_tier", "pro")
+                session["tier_downgraded"] = False
+                logger.info(f"H9: Tier restored to {session['effective_tier']}: {session_id}")
+            
             # Restart response loop
             if session.get("response_task") and not session["response_task"].done():
                 session["response_task"].cancel()
@@ -433,6 +447,9 @@ async def try_reconnect_gemini(session_id: str, session: dict) -> bool:
                 "type": "session_status",
                 "status": "reconnected",
                 "gemini_connected": True,
+                # H9: tier 정보
+                "effective_tier": session.get("effective_tier", "pro"),
+                "tier_downgraded": False,
                 "timestamp": utcnow().isoformat(),
             })
             
@@ -796,6 +813,11 @@ async def handle_control(session_id: str, session: dict, message: dict):
             
         except Exception as e:
             session["gemini_connected"] = False
+            # H9: Pro 모드인데 Gemini 실패 시 Basic으로 다운그레이드 (비용 절감)
+            if session.get("coaching_tier") == "pro":
+                session["effective_tier"] = "basic"
+                session["tier_downgraded"] = True
+                logger.warning(f"H9: Gemini failed, tier downgraded to basic: {session_id}")
             logger.warning(f"Gemini Live connection failed, using fallback: {e}")
         
         # H7: 세션 타임아웃 모니터 시작
@@ -815,6 +837,10 @@ async def handle_control(session_id: str, session: dict, message: dict):
             "status": "recording",
             "gemini_connected": gemini_connected,
             "fallback_mode": not gemini_connected,
+            # H9: 크레딧 관련 정보
+            "coaching_tier": session.get("coaching_tier", "pro"),
+            "effective_tier": session.get("effective_tier", "pro"),
+            "tier_downgraded": session.get("tier_downgraded", False),
             "rules_count": len(coach._director_pack.dna_invariants) if coach._director_pack else 0,
             "checkpoint_evaluation": True,  # Indicate checkpoint loop is active
             "timestamp": utcnow().isoformat(),

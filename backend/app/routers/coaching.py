@@ -59,8 +59,8 @@ class CreateSessionRequest(BaseModel):
     language: str = "ko"
     voice_style: Literal["strict", "friendly", "neutral"] = "friendly"
     
-    # Coaching tier (크레딧 비용 결정)
-    coaching_tier: Literal["basic", "pro"] = "basic"
+    # Coaching tier (크레딧 비용 결정) - 기본값 Pro (Gemini Live)
+    coaching_tier: Literal["basic", "pro"] = "pro"
 
 
 class SessionResponse(BaseModel):
@@ -271,16 +271,23 @@ async def end_session(
     session["status"] = "ended"
     session["duration_sec"] = duration_sec
     
-    # 크레딧 차감
+    # H9: effective_tier로 비용 계산 (Gemini 실패 시 basic 비용)
     credits_deducted = 0
     user_id = session.get("user_id", "anonymous")
-    coaching_tier = session.get("coaching_tier", "basic")
+    coaching_tier = session.get("coaching_tier", "pro")
+    effective_tier = session.get("effective_tier", coaching_tier)  # H9
+    tier_downgraded = session.get("tier_downgraded", False)
     
     if user_id != "anonymous" and duration_sec > 0:
         from app.services.credit_service import calculate_coaching_cost
-        credits_deducted = calculate_coaching_cost(coaching_tier, duration_sec)
-        deduct_coaching_credits(user_id, coaching_tier, duration_sec, session_id)
-        logger.info(f"Deducted {credits_deducted} credits for session {session_id}")
+        # H9: effective_tier로 비용 계산
+        credits_deducted = calculate_coaching_cost(effective_tier, duration_sec)
+        deduct_coaching_credits(user_id, effective_tier, duration_sec, session_id)
+        
+        if tier_downgraded:
+            logger.info(f"H9: Tier downgraded, deducted {credits_deducted} credits (basic rate) for session {session_id}")
+        else:
+            logger.info(f"Deducted {credits_deducted} credits for session {session_id}")
     
     logger.info(f"Ended coaching session: {session_id}, duration={duration_sec}s")
     
@@ -290,6 +297,8 @@ async def end_session(
         "duration_sec": duration_sec,
         "credits_deducted": credits_deducted,
         "coaching_tier": coaching_tier,
+        "effective_tier": effective_tier,
+        "tier_downgraded": tier_downgraded,
     }
 
 

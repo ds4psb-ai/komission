@@ -35,6 +35,13 @@ export interface CoachingFeedback {
     rule_id?: string;
 }
 
+// H9: Tier info for credit calculation
+export interface TierInfo {
+    coachingTier: 'basic' | 'pro';
+    effectiveTier: 'basic' | 'pro';
+    tierDowngraded: boolean;
+}
+
 export interface CompositionGuide {
     type: 'rule_of_thirds' | 'golden_ratio' | 'center' | 'custom';
     enabled: boolean;
@@ -59,6 +66,9 @@ export interface CoachingOverlayProps {
     onVoiceToggle: (enabled: boolean) => void;
     onTextToggle: (enabled: boolean) => void;
 
+    // H9: Tier info
+    tierInfo?: TierInfo;
+
     // Future enhancement slots (Phase 2+)
     compositionGuide?: CompositionGuide;
     lightingRecommendation?: LightingRecommendation;
@@ -78,6 +88,7 @@ export function CoachingOverlay({
     textEnabled,
     onVoiceToggle,
     onTextToggle,
+    tierInfo,
     compositionGuide,
     lightingRecommendation,
     miseEnSceneHint,
@@ -148,6 +159,13 @@ export function CoachingOverlay({
                         <Text style={styles.statusText}>
                             {isConnected ? 'AI 코칭' : '연결 중...'}
                         </Text>
+
+                        {/* H9: Tier Downgrade Badge */}
+                        {tierInfo?.tierDowngraded && (
+                            <View style={styles.tierBadge}>
+                                <Text style={styles.tierBadgeText}>⚡ Basic</Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* Settings Toggle */}
@@ -441,5 +459,19 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         borderRadius: 10,
         fontStyle: 'italic',
+    },
+
+    // H9: Tier Downgrade Badge
+    tierBadge: {
+        backgroundColor: 'rgba(245, 158, 11, 0.8)',
+        paddingVertical: 2,
+        paddingHorizontal: 6,
+        borderRadius: 4,
+        marginLeft: 8,
+    },
+    tierBadgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: '600',
     },
 });
