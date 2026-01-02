@@ -397,6 +397,10 @@ class DirectorCompiler:
         if not vdg.visual or not vdg.visual.analysis_results:
             return invariants
         
+        # Handle both dict and list formats (VDG version compatibility)
+        if not isinstance(vdg.visual.analysis_results, dict):
+            return invariants  # Skip if not dict format
+        
         for ap_id, result in vdg.visual.analysis_results.items():
             # Look for low stability scores
             if "cmp.stability_score.v1" in result.metrics:
