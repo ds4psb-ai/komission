@@ -174,6 +174,9 @@ export function CoachingSession({
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordedChunksRef = useRef<Blob[]>([]);
 
+    // P1: Wake Lock for mobile (prevent screen sleep during recording)
+    const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
     // Mobile detection
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -306,6 +309,11 @@ export function CoachingSession({
             mediaRecorderRef.current = null;
         }
         recordedChunksRef.current = [];
+        // P1: Release Wake Lock on cleanup
+        if (wakeLockRef.current) {
+            wakeLockRef.current.release().catch(() => { });
+            wakeLockRef.current = null;
+        }
         isRecordingRef.current = false;
         recordingTimeRef.current = 0;
         if (isMountedRef.current) {
@@ -447,6 +455,16 @@ export function CoachingSession({
             }
         }
 
+        // P1: Request Wake Lock to prevent screen sleep during recording (mobile)
+        if ('wakeLock' in navigator) {
+            navigator.wakeLock.request('screen')
+                .then(lock => {
+                    wakeLockRef.current = lock;
+                    console.log('🔆 Wake Lock acquired (screen will stay on)');
+                })
+                .catch(err => console.warn('Wake Lock failed:', err));
+        }
+
         // Start timer
         timerRef.current = setInterval(() => {
             setRecordingTime(prev => {
@@ -584,6 +602,14 @@ export function CoachingSession({
                 recordedChunksRef.current = [];
             };
             mediaRecorderRef.current = null;
+        }
+
+        // P1: Release Wake Lock when stopping recording
+        if (wakeLockRef.current) {
+            wakeLockRef.current.release()
+                .then(() => console.log('🔅 Wake Lock released'))
+                .catch(() => { });  // Ignore already-released errors
+            wakeLockRef.current = null;
         }
 
         // Real WebSocket mode: send stop control and disconnect
