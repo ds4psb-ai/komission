@@ -282,6 +282,29 @@ async def load_director_pack_from_video(
                 )
                 node = result.scalar_one_or_none()
                 
+                # Fallback: video_id가 UUID 형식이면 OutlierItem 확인
+                if not node:
+                    from uuid import UUID
+                    try:
+                        uuid_val = UUID(video_id)
+                        outlier_result = await db.execute(
+                            select(OutlierItem).where(OutlierItem.id == uuid_val)
+                        )
+                        outlier = outlier_result.scalar_one_or_none()
+                        
+                        if outlier:
+                            logger.info(f"🔍 Found OutlierItem: {outlier.id}, promoted={outlier.promoted_to_node_id is not None}")
+                            if outlier.promoted_to_node_id:
+                                node_result = await db.execute(
+                                    select(RemixNode).where(RemixNode.id == outlier.promoted_to_node_id)
+                                )
+                                node = node_result.scalar_one_or_none()
+                            else:
+                                # OutlierItem은 있지만 승격되지 않았음 - VDG 없음
+                                logger.warning(f"⚠️ OutlierItem {video_id} not promoted, no VDG analysis available")
+                    except (ValueError, TypeError):
+                        pass  # Not a valid UUID, skip
+                
             # 2. outlier_id로 승격된 RemixNode 조회
             elif outlier_id:
                 result = await db.execute(
