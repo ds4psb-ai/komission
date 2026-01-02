@@ -716,18 +716,27 @@ async def handle_control(session_id: str, session: dict, message: dict):
         coach: AudioCoach = session["coach"]
         voice_style = session.get("voice_style", "friendly")
         
-        # DirectorPack 로드: VDG 우선, 없으면 기본 proof patterns
+        # DirectorPack 로드: 세션에 저장된 pack 우선, 없으면 VDG/fallback
         pack = None
         video_id = session.get("video_id")
         outlier_id = session.get("outlier_id")
         
         try:
-            # 1. 비디오/아웃라이어의 VDG에서 DirectorPack 로드
-            if video_id or outlier_id:
+            # 0. 세션에 이미 저장된 DirectorPack 사용 (POST에서 로드됨)
+            stored_pack_data = session.get("director_pack")
+            if stored_pack_data:
+                from app.schemas.director_pack import DirectorPack
+                pack = DirectorPack(**stored_pack_data)
+                logger.info(f"Using stored DirectorPack from session: {pack.pattern_id}, {len(pack.dna_invariants)} rules")
+            
+            # 1. 저장된 pack 없으면 VDG에서 로드
+            if pack is None and (video_id or outlier_id):
                 pack = await load_director_pack_from_video(
                     video_id=video_id,
                     outlier_id=outlier_id,
                 )
+                if pack:
+                    logger.info(f"Loaded DirectorPack from VDG: {pack.pattern_id}")
             
             # 2. VDG 없으면 기본 proof patterns 사용 (fallback)
             if pack is None:

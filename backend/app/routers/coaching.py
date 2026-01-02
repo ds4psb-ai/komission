@@ -179,6 +179,8 @@ async def create_session(
         "pattern_id": pack.pattern_id,
         "goal": pack.goal,
         "feedbacks": [],
+        # P0: video_id for WebSocket DirectorPack reload
+        "video_id": request.video_id,
         # P1: Control group fields
         "assignment": assignment_result.assignment,
         "holdout_group": assignment_result.holdout_group,
