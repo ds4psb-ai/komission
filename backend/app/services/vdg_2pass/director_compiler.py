@@ -177,13 +177,19 @@ class DirectorCompiler:
             
             # 1. Extract DNA Invariants - CONTRACT FIRST
             candidates = vdg.contract_candidates
-            if candidates:
+            # Check if candidates actually have data (not just empty object)
+            has_candidate_data = (
+                candidates and 
+                candidates.dna_invariants_candidates and 
+                len(candidates.dna_invariants_candidates) > 0
+            )
+            if has_candidate_data:
                 invariants = cls._extract_from_contract_candidates(candidates)
-                logger.info(f"   └─ Using contract_candidates as primary source")
+                logger.info(f"   └─ Using contract_candidates as primary source ({len(invariants)} rules)")
             else:
                 # Fallback to heuristic extraction if no candidates
                 invariants = cls._extract_dna_invariants(vdg)
-                logger.warning(f"   └─ No contract_candidates, using heuristic fallback")
+                logger.info(f"   └─ No contract_candidates data, using heuristic extraction ({len(invariants)} rules)")
                 compiler_warnings.append("heuristic_fallback_used")
             
             # 2. Dedupe invariants by rule_id
