@@ -437,17 +437,33 @@ export function CoachingSession({
         if (stream) {
             recordedChunksRef.current = [];  // Clear previous chunks
 
-            // iOS Safari compatible mimeType (video/mp4 preferred, webm fallback)
-            const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')
-                ? 'video/mp4;codecs=avc1'
-                : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-                    ? 'video/webm;codecs=vp9'
-                    : 'video/webm';
+            // Cross-browser compatible mimeType detection
+            // iOS (Safari/Chrome both use WebKit): MP4 with H.264+AAC required
+            // Android Chrome/Desktop Chrome: WebM with VP9 preferred
+            // Desktop Safari: MP4 preferred
+            const mimeTypes = [
+                // iOS Safari/Chrome (WebKit) - full codec string for maximum compatibility
+                'video/mp4;codecs=avc1.42E01E,mp4a.40.2',  // H.264 Baseline + AAC-LC
+                'video/mp4;codecs=avc1.424028,mp4a.40.2',  // H.264 Constrained Baseline L4
+                'video/mp4;codecs=avc1',                   // H.264 simple
+                'video/mp4',                               // MP4 without specific codec
+                // Desktop Chrome/Edge/Firefox - WebM preferred
+                'video/webm;codecs=vp9,opus',              // VP9 + Opus audio
+                'video/webm;codecs=vp8,opus',              // VP8 + Opus audio
+                'video/webm;codecs=vp9',                   // VP9 only
+                'video/webm',                              // WebM fallback
+            ];
+
+            const mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || 'video/webm';
+            console.log(`📹 Selected mimeType: ${mimeType} (iOS Chrome/Safari uses MP4)`);
 
             try {
                 const recorder = new MediaRecorder(stream, { mimeType });
                 recorder.ondataavailable = (e) => {
                     if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+                };
+                recorder.onerror = (e) => {
+                    console.error('🎬 MediaRecorder error:', e);
                 };
                 recorder.start(1000);  // Capture in 1-second chunks
                 mediaRecorderRef.current = recorder;
