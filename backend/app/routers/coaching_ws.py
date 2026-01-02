@@ -973,8 +973,11 @@ async def handle_video_frame(session_id: str, session: dict, message: dict, voic
                     continue
                 
                 # 중복 방지 (4초 cooldown)
-                if coach._is_duplicate_command(rule_id, t_sec):
+                import time
+                now = time.time()
+                if now - coach._last_command_time < coach._cooldown_sec:
                     continue
+                coach._last_command_time = now
                 
                 # 피드백 메시지 생성
                 feedback_msg = result.message or coach._format_command(rule)
