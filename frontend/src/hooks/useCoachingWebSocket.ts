@@ -211,6 +211,17 @@ export function useCoachingWebSocket(
         }
     }, []);
 
+    // P3: Send video frame for real-time analysis (1fps)
+    const sendVideoFrame = useCallback((frameB64: string, tSec: number) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+                type: 'video_frame',
+                frame_b64: frameB64,
+                t_sec: tSec,
+            }));
+        }
+    }, []);
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -228,6 +239,7 @@ export function useCoachingWebSocket(
         sendControl,
         sendMetric,
         sendAudio,
+        sendVideoFrame,  // P3: Real-time video analysis
     };
 }
 

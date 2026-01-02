@@ -99,6 +99,7 @@ export function CoachingSession({
         sendControl,
         sendMetric,
         sendAudio,
+        sendVideoFrame,  // P3: Real-time video analysis
     } = useCoachingWebSocket(sessionId, {
         voiceStyle: 'friendly',
         onFeedback: (feedback) => {
@@ -164,6 +165,10 @@ export function CoachingSession({
     const isRecordingRef = useRef(false);
     const recordingTimeRef = useRef(0);
     const isMountedRef = useRef(true);
+
+    // P3: Video frame capture refs
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const frameIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Mobile detection
     useEffect(() => {
@@ -436,6 +441,9 @@ export function CoachingSession({
                 sendControl('start');
                 startAudioCapture();  // Start streaming microphone to server
                 console.log('🎙️ Real-time coaching started with audio capture');
+
+                // P3: Start video frame capture at 1fps
+                startFrameCapture();
             }, 500);
         } else {
             // Fallback: Simulate coaching feedback (demo mode)
@@ -443,6 +451,63 @@ export function CoachingSession({
             simulateCoaching();
         }
     }, [useRealCoaching, sessionId, wsConnect, sendControl, sendMetric, wsStatus, simulateCoaching, startAudioCapture]);
+
+    // P3: Capture video frame and send to WebSocket
+    const captureAndSendFrame = useCallback(() => {
+        const video = videoRef.current;
+        if (!video || video.paused || video.ended) return;
+
+        // Create canvas if not exists
+        if (!canvasRef.current) {
+            canvasRef.current = document.createElement('canvas');
+        }
+        const canvas = canvasRef.current;
+
+        // Set canvas size to match video (scaled down for efficiency)
+        const scale = 0.5;  // 50% size for bandwidth efficiency
+        canvas.width = video.videoWidth * scale || 320;
+        canvas.height = video.videoHeight * scale || 240;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Draw video frame to canvas
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Convert to base64 JPEG (quality 0.6 for bandwidth)
+        const frameB64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+
+        // Send to WebSocket
+        const tSec = recordingTimeRef.current;
+        sendVideoFrame(frameB64, tSec);
+        console.log(`📸 Frame captured and sent: t=${tSec}s`);
+    }, [sendVideoFrame]);
+
+    // P3: Start 1fps video frame capture
+    const startFrameCapture = useCallback(() => {
+        console.log('📹 Starting video frame capture at 1fps');
+
+        // Clear existing interval if any
+        if (frameIntervalRef.current) {
+            clearInterval(frameIntervalRef.current);
+        }
+
+        // Capture frame every 1000ms (1fps)
+        frameIntervalRef.current = setInterval(() => {
+            if (isRecordingRef.current) {
+                captureAndSendFrame();
+            }
+        }, 1000);
+    }, [captureAndSendFrame]);
+
+    // P3: Stop video frame capture
+    const stopFrameCapture = useCallback(() => {
+        if (frameIntervalRef.current) {
+            clearInterval(frameIntervalRef.current);
+            frameIntervalRef.current = null;
+            console.log('📹 Stopped video frame capture');
+        }
+    }, []);
 
     const stopRecording = useCallback(() => {
         setIsRecording(false);
@@ -460,6 +525,7 @@ export function CoachingSession({
         // Real WebSocket mode: send stop control and disconnect
         if (useRealCoaching && wsStatus !== 'disconnected') {
             stopAudioCapture();  // Stop microphone capture
+            stopFrameCapture();  // P3: Stop video frame capture
             sendControl('stop');
             setTimeout(() => wsDisconnect(), 500);
         }
