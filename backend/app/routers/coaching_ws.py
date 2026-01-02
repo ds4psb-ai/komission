@@ -939,7 +939,7 @@ async def handle_video_frame(session_id: str, session: dict, message: dict, voic
     
     # AudioCoach에서 현재 활성 규칙 가져오기
     coach: AudioCoach = session["coach"]
-    pack = coach._pack
+    pack = coach._director_pack  # Fixed: correct attribute name
     
     if not pack or not hasattr(pack, 'dna_invariants'):
         logger.debug("No DirectorPack available for frame analysis")
