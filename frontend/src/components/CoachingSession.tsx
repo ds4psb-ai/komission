@@ -503,8 +503,8 @@ export function CoachingSession({
                                             <div
                                                 key={i}
                                                 className={`w-1 rounded-full transition-all ${audioLevel >= threshold
-                                                        ? isSpeaking ? 'bg-emerald-400' : 'bg-cyan-400'
-                                                        : 'bg-white/20'
+                                                    ? isSpeaking ? 'bg-emerald-400' : 'bg-cyan-400'
+                                                    : 'bg-white/20'
                                                     }`}
                                                 style={{ height: `${6 + i * 3}px` }}
                                             />
@@ -515,8 +515,8 @@ export function CoachingSession({
                                 {/* H6: Gemini Connection Status */}
                                 {useRealCoaching && (
                                     <span className={`ml-2 px-2 py-0.5 text-[10px] font-bold rounded ${geminiConnected
-                                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                         }`}>
                                         {geminiConnected ? 'AI 연결' : '로컬'}
                                     </span>
@@ -538,76 +538,172 @@ export function CoachingSession({
                 </div>
             </div>
 
-            {/* Camera Preview */}
-            <div className="flex-1 relative">
-                <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="absolute inset-0 w-full h-full object-cover"
-                    style={{ transform: 'scaleX(-1)' }}
-                />
+            {/* Main Content Area: Desktop = 3-column, Mobile = fullscreen */}
+            <div className={`flex-1 relative ${!isMobile ? 'flex items-center justify-center gap-4 px-4' : ''}`}>
 
-                {/* Audio Feedback Display (hidden for control group) */}
-                {currentFeedback && assignment !== 'control' && (
-                    <div className="absolute top-24 left-4 right-4">
-                        <div className={`p-4 rounded-xl backdrop-blur-lg ${currentFeedback.type === 'praise'
-                            ? 'bg-emerald-500/30 border border-emerald-500/50'
-                            : currentFeedback.type === 'warning'
-                                ? 'bg-red-500/30 border border-red-500/50'
-                                : 'bg-white/20 border border-white/30'
-                            }`}>
-                            <div className="flex items-center gap-2">
-                                <Volume2 className="w-5 h-5 text-white animate-pulse" />
-                                <p className="text-white font-medium">{currentFeedback.message}</p>
+                {/* LEFT SIDE PANEL - Desktop Only: Coaching Feedback */}
+                {!isMobile && (
+                    <div className="w-64 h-full max-h-[70vh] flex flex-col gap-4">
+                        {/* Current Coaching Command */}
+                        <div className="flex-1 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-y-auto">
+                            <div className="text-xs text-cyan-400 mb-3 flex items-center gap-1">
+                                <Volume2 className="w-3 h-3" />
+                                현재 코칭
                             </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Control Group: Silent evaluation notice */}
-                {assignment === 'control' && isRecording && (
-                    <div className="absolute top-24 left-4 right-4">
-                        <div className="p-4 rounded-xl backdrop-blur-lg bg-amber-500/20 border border-amber-500/30">
-                            <div className="flex items-center gap-2">
-                                <FlaskConical className="w-5 h-5 text-amber-300" />
-                                <p className="text-amber-200 font-medium text-sm">
-                                    🔬 인과 추론용 대조군 촬영 중
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Rule Checklist (bottom overlay) */}
-                <div className="absolute bottom-32 left-4 right-4">
-                    <div className="p-3 bg-black/60 backdrop-blur-lg rounded-xl border border-white/10">
-                        <div className="text-xs text-white/60 mb-2 flex items-center gap-1">
-                            <Sparkles className="w-3 h-3" />
-                            체크리스트
-                        </div>
-                        <div className="space-y-2">
-                            {rules.slice(0, 4).map((rule) => (
-                                <div key={rule.rule_id} className="flex items-center gap-2">
-                                    {rule.status === 'passed' ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-400" />
-                                    ) : rule.status === 'failed' ? (
-                                        <AlertCircle className="w-4 h-4 text-red-400" />
-                                    ) : (
-                                        <Circle className="w-4 h-4 text-white/40" />
-                                    )}
-                                    <span className={`text-xs ${rule.status === 'passed' ? 'text-emerald-300' :
-                                        rule.status === 'failed' ? 'text-red-300' :
-                                            'text-white/70'
-                                        }`}>
-                                        {rule.description}
-                                    </span>
+                            {currentFeedback && assignment !== 'control' ? (
+                                <div className={`p-3 rounded-xl ${currentFeedback.type === 'praise' ? 'bg-emerald-500/20 border border-emerald-500/30' :
+                                    currentFeedback.type === 'warning' ? 'bg-red-500/20 border border-red-500/30' :
+                                        'bg-white/10 border border-white/20'
+                                    }`}>
+                                    <p className="text-sm text-white">{currentFeedback.message}</p>
                                 </div>
-                            ))}
+                            ) : (
+                                <p className="text-white/40 text-sm">대기 중...</p>
+                            )}
+                        </div>
+
+                        {/* Feedback History */}
+                        <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 max-h-48 overflow-y-auto">
+                            <div className="text-xs text-white/60 mb-2">피드백 히스토리</div>
+                            {feedbackHistory.length > 0 ? (
+                                <div className="space-y-2">
+                                    {feedbackHistory.slice(-5).map((fb, i) => (
+                                        <div key={i} className="text-xs text-white/50 p-2 bg-white/5 rounded-lg">
+                                            {fb.message}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-white/30 text-xs">아직 피드백이 없습니다</p>
+                            )}
                         </div>
                     </div>
+                )}
+
+                {/* CENTER: Camera Preview (9:16 on desktop, fullscreen on mobile) */}
+                <div className={`relative ${!isMobile
+                    ? 'aspect-[9/16] h-full max-h-[70vh] rounded-2xl overflow-hidden border border-white/20'
+                    : 'absolute inset-0'
+                    }`}>
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={{ transform: 'scaleX(-1)' }}
+                    />
+
+                    {/* Audio Feedback Display - DESKTOP ONLY (mobile = TTS only) */}
+                    {currentFeedback && assignment !== 'control' && !isMobile && (
+                        <div className="absolute top-24 left-4 right-4">
+                            <div className={`p-4 rounded-xl backdrop-blur-lg ${currentFeedback.type === 'praise'
+                                ? 'bg-emerald-500/30 border border-emerald-500/50'
+                                : currentFeedback.type === 'warning'
+                                    ? 'bg-red-500/30 border border-red-500/50'
+                                    : 'bg-white/20 border border-white/30'
+                                }`}>
+                                <div className="flex items-center gap-2">
+                                    <Volume2 className="w-5 h-5 text-white animate-pulse" />
+                                    <p className="text-white font-medium">{currentFeedback.message}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Control Group: Silent evaluation notice */}
+                    {assignment === 'control' && isRecording && (
+                        <div className="absolute top-24 left-4 right-4">
+                            <div className="p-4 rounded-xl backdrop-blur-lg bg-amber-500/20 border border-amber-500/30">
+                                <div className="flex items-center gap-2">
+                                    <FlaskConical className="w-5 h-5 text-amber-300" />
+                                    <p className="text-amber-200 font-medium text-sm">
+                                        🔬 인과 추론용 대조군 촬영 중
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Rule Checklist - Mobile ONLY (bottom overlay) */}
+                    {isMobile && (
+                        <div className="absolute bottom-32 left-4 right-4">
+                            <div className="p-3 bg-black/60 backdrop-blur-lg rounded-xl border border-white/10">
+                                <div className="text-xs text-white/60 mb-2 flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3" />
+                                    체크리스트
+                                </div>
+                                <div className="space-y-2">
+                                    {rules.slice(0, 4).map((rule) => (
+                                        <div key={rule.rule_id} className="flex items-center gap-2">
+                                            {rule.status === 'passed' ? (
+                                                <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                            ) : rule.status === 'failed' ? (
+                                                <AlertCircle className="w-4 h-4 text-red-400" />
+                                            ) : (
+                                                <Circle className="w-4 h-4 text-white/40" />
+                                            )}
+                                            <span className={`text-xs ${rule.status === 'passed' ? 'text-emerald-300' :
+                                                rule.status === 'failed' ? 'text-red-300' :
+                                                    'text-white/70'
+                                                }`}>
+                                                {rule.description}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
+
+                {/* RIGHT SIDE PANEL - Desktop Only: Rules Checklist */}
+                {!isMobile && (
+                    <div className="w-64 h-full max-h-[70vh] flex flex-col gap-4">
+                        {/* Rules Checklist */}
+                        <div className="flex-1 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-y-auto">
+                            <div className="text-xs text-white/60 mb-3 flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" />
+                                코칭 체크리스트
+                            </div>
+                            <div className="space-y-3">
+                                {rules.map((rule) => (
+                                    <div key={rule.rule_id} className="flex items-start gap-2">
+                                        {rule.status === 'passed' ? (
+                                            <CheckCircle className="w-4 h-4 text-emerald-400 mt-0.5" />
+                                        ) : rule.status === 'failed' ? (
+                                            <AlertCircle className="w-4 h-4 text-red-400 mt-0.5" />
+                                        ) : (
+                                            <Circle className="w-4 h-4 text-white/40 mt-0.5" />
+                                        )}
+                                        <span className={`text-xs ${rule.status === 'passed' ? 'text-emerald-300' :
+                                            rule.status === 'failed' ? 'text-red-300' : 'text-white/70'
+                                            }`}>
+                                            {rule.description}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Session Stats */}
+                        <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
+                            <div className="text-xs text-white/60 mb-2">세션 통계</div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="p-2 bg-white/5 rounded-lg">
+                                    <div className="text-white/40">녹화시간</div>
+                                    <div className="text-white font-mono">
+                                        {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                                    </div>
+                                </div>
+                                <div className="p-2 bg-white/5 rounded-lg">
+                                    <div className="text-white/40">진행률</div>
+                                    <div className="text-cyan-400 font-mono">{progress}%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Bottom Controls */}
