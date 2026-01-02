@@ -66,7 +66,12 @@ export const EvidenceNode = memo(({ data }: { data: EvidenceNodeData }) => {
             return;
         }
         setEvidence(data.evidence);
-        setPeriod(data.evidence.period || '4w');
+        // Type-safe period assignment with validation
+        const validPeriods = ['4w', '12w', '1y'] as const;
+        const newPeriod = validPeriods.includes(data.evidence.period as typeof validPeriods[number])
+            ? (data.evidence.period as '4w' | '12w' | '1y')
+            : '4w';
+        setPeriod(newPeriod);
     }, [data.evidence]);
 
     // Transform depth1 to flat stats
