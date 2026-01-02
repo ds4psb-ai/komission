@@ -292,24 +292,59 @@ async def load_director_pack_from_video(
                     node = node_result.scalar_one_or_none()
             
             # 3. VDG 분석이 있으면 DirectorPack 컴파일
+            logger.info(f"🔍 VDG Load: node={node is not None}, video_id={video_id}")
+            
             if node and node.gemini_analysis:
                 analysis = node.gemini_analysis
+                logger.info(f"🔍 VDG Load: gemini_analysis keys={list(analysis.keys())[:5]}...")
                 
-                # VDG v4 필수 필드 확인
-                if "hook_genome" not in analysis and "scenes" not in analysis:
-                    logger.warning(f"VDG v4 analysis not available for node: {node.node_id}")
+                # VDG v4 필수 필드 확인 (flat 또는 nested 구조)
+                has_hook = "hook_genome" in analysis or analysis.get("semantic", {}).get("hook_genome")
+                has_scenes = "scenes" in analysis or analysis.get("semantic", {}).get("scenes")
+                
+                if not has_hook and not has_scenes:
+                    logger.warning(f"VDG analysis not available for node: {node.node_id}")
                     return None
                 
-                vdg_v4 = VDGv4(
-                    content_id=node.node_id,
-                    duration_sec=analysis.get("duration_sec", 0),
-                    **{k: v for k, v in analysis.items()
-                       if k not in ["content_id", "duration_sec"]}
-                )
+                # Legacy Flat → VDGv4 Nested 변환
+                if "semantic" not in analysis:
+                    # 기존 flat 데이터를 VDGv4 구조로 변환
+                    semantic_fields = ["scenes", "hook_genome", "intent_layer", "asr_transcript", 
+                                       "ocr_text", "audience_reaction", "capsule_brief", "commerce"]
+                    semantic = {}
+                    for field in semantic_fields:
+                        if field in analysis:
+                            semantic[field] = analysis[field]
+                    analysis["semantic"] = semantic
+                    logger.info(f"Converted flat VDG to nested structure for: {node.node_id}")
                 
-                pack = compile_director_pack(vdg_v4)
-                logger.info(f"DirectorPack loaded from VDG: {node.node_id}, {len(pack.dna_invariants)} rules")
-                return pack
+                # Fix: visual.analysis_results List → Dict 변환
+                if "visual" in analysis and "analysis_results" in analysis.get("visual", {}):
+                    ar = analysis["visual"]["analysis_results"]
+                    if isinstance(ar, list):
+                        # Convert list to dict with ap_id as key
+                        analysis["visual"]["analysis_results"] = {
+                            item.get("ap_id", f"ap_{i}"): item 
+                            for i, item in enumerate(ar)
+                        }
+                        logger.info(f"Converted analysis_results list→dict for: {node.node_id}")
+                
+                try:
+                    vdg_v4 = VDGv4(
+                        content_id=node.node_id,
+                        duration_sec=analysis.get("duration_sec", 0),
+                        **{k: v for k, v in analysis.items()
+                           if k not in ["content_id", "duration_sec"]}
+                    )
+                    
+                    pack = compile_director_pack(vdg_v4)
+                    logger.info(f"DirectorPack loaded from VDG: {node.node_id}, {len(pack.dna_invariants)} rules")
+                    return pack
+                except Exception as compile_err:
+                    logger.warning(f"DirectorPack compile failed: {compile_err}")
+                    import traceback
+                    logger.debug(f"Compile error details: {traceback.format_exc()}")
+                    return None
                 
     except Exception as e:
         logger.error(f"Failed to load DirectorPack from video: {e}")

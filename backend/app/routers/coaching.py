@@ -116,24 +116,43 @@ async def create_session(
     
     DirectorPack을 기반으로 Gemini Live 세션을 준비합니다.
     P1: Control Group (10%) + Holdout (5%) 자동 할당
+    
+    DirectorPack 로딩 우선순위:
+    1. request.director_pack (프론트엔드 제공)
+    2. VDG 분석 기반 (video_id → compile_director_pack)
+    3. Fallback: create_proof_pack (TOP 3 proof patterns)
     """
     from app.services.proof_patterns import create_proof_pack
+    from app.routers.coaching_ws import load_director_pack_from_video
     
     session_id = generate_session_id()
     now = utcnow()
     expires_at = now + timedelta(hours=1)  # 1시간 후 만료
     
-    # DirectorPack 결정: 제공된 pack 또는 fallback
+    # DirectorPack 결정: 3단계 우선순위
     pack = request.director_pack
+    pack_source = "provided"
     
     if pack is None:
-        # Fallback: create_proof_pack (TOP 3 proof patterns)
-        try:
-            pack = create_proof_pack()
-            logger.info(f"Using fallback proof_pack: {pack.pattern_id}")
-        except Exception as e:
-            logger.warning(f"Failed to create proof_pack: {e}")
-            raise HTTPException(status_code=500, detail="Failed to create DirectorPack")
+        # 2. VDG 분석 기반 DirectorPack 시도
+        if request.video_id:
+            try:
+                pack = await load_director_pack_from_video(video_id=request.video_id)
+                if pack:
+                    pack_source = "vdg_analysis"
+                    logger.info(f"✅ VDG DirectorPack loaded: {pack.pattern_id}, {len(pack.dna_invariants)} rules")
+            except Exception as e:
+                logger.warning(f"VDG pack load failed: {e}")
+        
+        # 3. Fallback: create_proof_pack (TOP 3 proof patterns)
+        if pack is None:
+            try:
+                pack = create_proof_pack()
+                pack_source = "proof_pack_fallback"
+                logger.info(f"Using fallback proof_pack: {pack.pattern_id}")
+            except Exception as e:
+                logger.warning(f"Failed to create proof_pack: {e}")
+                raise HTTPException(status_code=500, detail="Failed to create DirectorPack")
     
     # P1: Control Group 할당 (10% control, 5% holdout)
     coaching_router = get_coaching_router()
