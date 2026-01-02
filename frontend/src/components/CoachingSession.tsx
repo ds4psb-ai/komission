@@ -207,7 +207,7 @@ export function CoachingSession({
             // 2. Create coaching session with P1 control group assignment
             try {
                 const sessionData = await api.createCoachingSession({
-                    director_pack: { pattern_id: videoId, pack_meta: { pack_id: packId } },
+                    video_id: videoId,  // Server-side DirectorPack loading
                     language: 'ko',
                     voice_style: 'friendly'
                 });

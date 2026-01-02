@@ -1711,7 +1711,8 @@ export interface GenerateTemplateSeedResponse {
 // ==================
 
 export interface CreateCoachingSessionInput {
-    director_pack: any;  // DirectorPack JSON
+    director_pack?: any;  // Optional: Complete DirectorPack JSON
+    video_id?: string;    // Or: Just video ID for server-side loading
     language?: string;
     voice_style?: 'strict' | 'friendly' | 'neutral';
 }
