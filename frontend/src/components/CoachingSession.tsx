@@ -193,19 +193,12 @@ export function CoachingSession({
     }, []);
 
     const initSession = async () => {
-        try {
-            // 1. Start camera
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 1080 }, height: { ideal: 1920 } },
-                audio: true
-            });
-            streamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
+        console.log('🚀 initSession started');
 
-            // 2. Create coaching session with P1 control group assignment
+        try {
+            // 1. Create coaching session FIRST (doesn't need camera)
             try {
+                console.log('📡 Creating coaching session...');
                 const sessionData = await api.createCoachingSession({
                     video_id: videoId,  // Server-side DirectorPack loading
                     language: 'ko',
@@ -213,6 +206,7 @@ export function CoachingSession({
                 });
 
                 if (!isMountedRef.current) return;
+                console.log('✅ Session created:', sessionData.session_id);
                 setSessionId(sessionData.session_id);
                 setAssignment(sessionData.assignment);
                 setHoldoutGroup(sessionData.holdout_group);
@@ -234,10 +228,27 @@ export function CoachingSession({
                 setRules(getDemoRules(mode));
             }
 
+            // 2. Start camera (can fail without breaking session)
+            try {
+                console.log('📷 Requesting camera...');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 1080 }, height: { ideal: 1920 } },
+                    audio: true
+                });
+                streamRef.current = stream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+                console.log('✅ Camera ready');
+            } catch (cameraErr) {
+                console.warn('⚠️ Camera access denied, coaching will work without preview:', cameraErr);
+                // Coaching still works, just no camera preview
+            }
+
         } catch (err) {
             console.error('Failed to init session:', err);
             if (isMountedRef.current) {
-                setError('카메라 접근이 거부되었습니다.');
+                setError('세션 초기화 실패');
             }
         }
     };
@@ -408,17 +419,22 @@ export function CoachingSession({
         }, 1000);
 
         // Real WebSocket mode vs Demo mode
+        console.log(`🎬 startRecording: sessionId=${sessionId}, useRealCoaching=${useRealCoaching}, wsStatus=${wsStatus}`);
+
         if (useRealCoaching && sessionId) {
             // Connect and start real-time coaching
+            console.log('🔌 Calling wsConnect()...');
             wsConnect();
             // Give WebSocket time to connect, then send start control + start audio capture
             setTimeout(() => {
+                console.log(`📤 Sending control.start, wsStatus=${wsStatus}`);
                 sendControl('start');
                 startAudioCapture();  // Start streaming microphone to server
                 console.log('🎙️ Real-time coaching started with audio capture');
             }, 500);
         } else {
             // Fallback: Simulate coaching feedback (demo mode)
+            console.log('⚠️ Demo mode: sessionId missing or useRealCoaching=false');
             simulateCoaching();
         }
     }, [useRealCoaching, sessionId, wsConnect, sendControl, sendMetric, wsStatus, simulateCoaching, startAudioCapture]);
