@@ -375,6 +375,13 @@ export function useCoachingWebSocket(
         };
     }, [disconnect]);
 
+    // Send recording timing update
+    const sendTiming = useCallback((tSec: number) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'timing', t_sec: tSec }));
+        }
+    }, []);
+
     return {
         status,
         lastFeedback,
@@ -387,6 +394,7 @@ export function useCoachingWebSocket(
         sendAudio,
         sendVideoFrame,  // P3: Real-time video analysis
         sendUserFeedback,  // Phase 3: 적응형 코칭
+        sendTiming,  // NEW: 녹화 시간 동기화
     };
 }
 

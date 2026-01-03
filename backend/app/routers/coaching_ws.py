@@ -254,6 +254,11 @@ async def coaching_websocket(
                         "timestamp": utcnow().isoformat(),
                     })
                 
+                # NEW: timing 메시지 - 클라이언트에서 녹화 시간 동기화
+                elif msg_type == "timing":
+                    t_sec = message.get("t_sec", 0)
+                    session["recording_time"] = t_sec
+                
                 # Phase 3: 적응형 코칭 - 사용자 피드백 처리
                 elif msg_type == "user_feedback":
                     await handle_user_feedback(session_id, session, message)
@@ -917,6 +922,11 @@ PERSONA_TTS_CONFIG = {
     "bestie": {"slow": False, "speed_multiplier": 1.0},  # 찐친
     "chill_guide": {"slow": True, "speed_multiplier": 0.9},  # 릴렉스 가이드 (디폴트)
     "hype_coach": {"slow": False, "speed_multiplier": 1.1},  # 하이퍼 부스터
+    # 레거시 호환성
+    "calm_mentor": {"slow": True, "speed_multiplier": 0.9},  # = chill_guide
+    "strict_pd": {"slow": False, "speed_multiplier": 1.2},  # = drill_sergeant
+    "close_friend": {"slow": False, "speed_multiplier": 1.0},  # = bestie
+    "energetic": {"slow": False, "speed_multiplier": 1.1},  # = hype_coach
 }
 
 

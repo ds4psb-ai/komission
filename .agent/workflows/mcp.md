@@ -1,64 +1,74 @@
-# Komission MCP 개발 워크플로우
-# 사용법: /mcp 명령으로 이 워크플로우를 실행합니다.
-
+# Komission MCP 점검 워크플로우
 ---
 description: MCP 서버 상태 점검 및 테스트
 ---
 
-## MCP 개발 워크플로우
+// turbo-all
 
-### 1. 상태 점검
-// turbo
+## 1. MCP 서버 Quick Health Check
 ```bash
-cd /Users/ted/komission/backend
-PYTHONPATH=/Users/ted/komission/backend /Users/ted/komission/backend/venv/bin/python tests/test_mcp_hardening.py
+cd /Users/ted/komission/backend && curl -s http://localhost:8000/health | head -3
 ```
 
-### 2. 자동화 테스트 실행
-// turbo
+## 2. MCP 구성 확인 (자동 생성)
 ```bash
-cd /Users/ted/komission/backend
-PYTHONPATH=/Users/ted/komission/backend /Users/ted/komission/backend/venv/bin/pytest tests/test_mcp_integration.py -v --tb=short
+cd /Users/ted/komission/backend && cat app/mcp/server.json | head -50
 ```
 
-### 3. MCP 서버 재시작
+## 3. MCP 하드닝 테스트 실행
 ```bash
-cd /Users/ted/komission/backend
-python -m app.mcp_server
+cd /Users/ted/komission/backend && PYTHONPATH=. /Users/ted/komission/backend/venv/bin/python tests/test_mcp_hardening.py 2>&1 | tail -20
 ```
 
-### 4. HTTP 서버 단독 실행 (선택)
+## 4. MCP 통합 테스트 (pytest)
 ```bash
-cd /Users/ted/komission/backend
-python -m app.mcp.http_server
+cd /Users/ted/komission/backend && PYTHONPATH=. /Users/ted/komission/backend/venv/bin/pytest tests/test_mcp_integration.py -v --tb=short 2>&1 | tail -30
 ```
 
-## MCP 구성 요약
+---
 
-| 구분 | 개수 | 위치 |
-|------|------|------|
-| Resources | 6개 | `app/mcp/resources/` |
-| Tools | 5개 | `app/mcp/tools/` |
-| Prompts | 3개 | `app/mcp/prompts/` |
+## MCP 구성 요약 (2026-01-03 업데이트)
 
-## 도구 목록
-
-| 도구 | 설명 |
+### Tools (5개)
+| 파일 | 도구 |
 |------|------|
-| `search_patterns` | 패턴 검색 |
-| `generate_source_pack` | NotebookLM 소스팩 |
-| `reanalyze_vdg` | VDG 재분석 |
-| `smart_pattern_analysis` | AI 패턴 분석 (LLM Sampling) |
-| `ai_batch_analysis` | AI 배치 트렌드 분석 |
+| `search.py` | 패턴 검색 |
+| `pack_generator.py` | NotebookLM 소스팩 생성 |
+| `vdg_tools.py` | VDG 재분석 |
+| `smart_analysis.py` | AI 패턴 분석 (LLM Sampling) |
+| `stpf_tools.py` | STPF 도구 모음 |
 
-## 테스트 파일
+### Resources (4개)
+| 파일 | 리소스 |
+|------|--------|
+| `patterns.py` | 패턴 라이브러리 |
+| `outliers.py` | 아웃라이어 조회 |
+| `director_pack.py` | DirectorPack 조회 |
+| `stpf.py` | STPF 리소스 |
 
-- **하드닝 테스트**: `tests/test_mcp_hardening.py` (수동 실행용)
-- **통합 테스트**: `tests/test_mcp_integration.py` (pytest, CI 자동)
+### Prompts (3개)
+| 파일 | 프롬프트 |
+|------|---------|
+| `recommendation.py` | 추천 |
+| `risk.py` | 리스크 분석 |
+| `shooting.py` | 촬영 가이드 |
+
+### 테스트 파일 (7개)
+| 파일 | 용도 |
+|------|------|
+| `test_mcp_hardening.py` | 하드닝 체크 |
+| `test_mcp_integration.py` | 통합 테스트 |
+| `test_mcp_e2e.py` | E2E 테스트 |
+| `test_mcp_audit.py` | 감사 테스트 |
+| `test_mcp_server.py` | 서버 테스트 |
+| `test_mcp_smart_analysis.py` | 스마트 분석 |
+| `test_mcp_tools.py` | 도구 테스트 |
+
+---
 
 ## 에러 발생 시 체크리스트
 
-1. **Import 실패**: `app/mcp/__init__.py` 확인
-2. **도구 미등록**: 각 도구 모듈의 `@mcp.tool()` 데코레이터 확인
-3. **FastAPI 마운트 실패**: `app/main.py`의 `app.mount("/mcp", ...)` 확인
-4. **Pydantic 에러**: `app/mcp/schemas/` 스키마 정의 확인
+1. **서버 안 켜짐**: `/server` 워크플로우로 서버 시작
+2. **Import 실패**: `app/mcp/__init__.py` 확인
+3. **도구 미등록**: `@mcp.tool()` 데코레이터 확인
+4. **FastAPI 마운트**: `app/main.py`의 `/mcp` 마운트 확인

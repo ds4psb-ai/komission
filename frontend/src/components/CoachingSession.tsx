@@ -101,6 +101,7 @@ export function CoachingSession({
         sendMetric,
         sendAudio,
         sendVideoFrame,  // P3: Real-time video analysis
+        sendTiming,       // NEW: 녹화 시간 동기화
     } = useCoachingWebSocket(sessionId, {
         voiceStyle: 'friendly',
         voiceEnabled,  // P2: Pass voice toggle state
@@ -489,8 +490,10 @@ export function CoachingSession({
                 const next = prev + 1;
                 recordingTimeRef.current = next;
 
-                // Real-time WebSocket: Send periodic metric updates
+                // Real-time WebSocket: Send periodic time sync + metric updates
                 if (useRealCoaching && wsStatus === 'recording') {
+                    // NEW: Send timing sync every second
+                    sendTiming(next);
                     // Example: send current recording time as a metric
                     sendMetric('recording_progress', next / 60, next);
                 }

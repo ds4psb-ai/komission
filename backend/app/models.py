@@ -2033,3 +2033,95 @@ class CommentEvidence(Base):
     # Relationships
     node: Mapped["RemixNode"] = relationship("RemixNode", backref="comment_evidences")
 
+
+# ==================
+# PHASE A: AUTO-LEARNING DB SCHEMAS (기술부채 방지)
+# ==================
+
+class SignalPerformanceDB(Base):
+    """
+    신호 성능 추적 테이블 (Phase A)
+    
+    인메모리 SignalPerformance를 DB에 영속화하기 위한 스키마.
+    실제 전환 로직은 데이터 축적 후 구현 예정.
+    """
+    __tablename__ = "signal_performances"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    signal_key: Mapped[str] = mapped_column(String(200), unique=True, index=True)  # domain.value
+    
+    # 원본 정보
+    element: Mapped[str] = mapped_column(String(100))  # domain (e.g., "composition", "lighting")
+    value: Mapped[str] = mapped_column(String(200))    # 신호 값
+    sentiment: Mapped[str] = mapped_column(String(20), default="positive")
+    
+    # 추적 통계
+    sessions_applied: Mapped[int] = mapped_column(Integer, default=0)
+    success_count: Mapped[int] = mapped_column(Integer, default=0)
+    violation_count: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # 다양성 추적
+    distinct_content_ids: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    
+    # 신뢰도
+    confidence_tier: Mapped[str] = mapped_column(String(20), default="low")  # low, medium, high
+    
+    # 메타
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class InvariantCandidateDB(Base):
+    """
+    승격 후보 테이블 (Phase A)
+    
+    Signal → Candidate 승격된 항목 저장.
+    Candidate → DNA 승격 로직은 데이터 축적 후 구현 예정.
+    """
+    __tablename__ = "invariant_candidates"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    candidate_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    
+    # 원본 신호 정보
+    signal_key: Mapped[str] = mapped_column(String(200), index=True)
+    element: Mapped[str] = mapped_column(String(100))
+    value: Mapped[str] = mapped_column(String(200))
+    sentiment: Mapped[str] = mapped_column(String(20), default="positive")
+    
+    # Evidence 참조
+    source_content_ids: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    performance_summary: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    
+    # 제안된 규칙
+    proposed_domain: Mapped[str] = mapped_column(String(50), default="composition")
+    proposed_priority: Mapped[str] = mapped_column(String(20), default="medium")
+    
+    # 상태
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    # pending | canary | approved | promoted | rejected | rolled_back
+    
+    # Canary 배포 (Phase B에서 연결)
+    canary_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    canary_session_ratio: Mapped[float] = mapped_column(Float, default=0.1)
+    canary_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    canary_sessions_count: Mapped[int] = mapped_column(Integer, default=0)
+    canary_success_rate: Mapped[float] = mapped_column(Float, default=0.0)
+    
+    # 클러스터 다양성 (Phase C에서 활용)
+    cluster_ids_verified: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    min_clusters_required: Mapped[int] = mapped_column(Integer, default=2)
+    
+    # DistillRun 검증 (Phase C에서 활용)
+    distill_validated: Mapped[bool] = mapped_column(Boolean, default=False)
+    distill_run_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    
+    # 롤백
+    rollback_eligible: Mapped[bool] = mapped_column(Boolean, default=True)
+    promoted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    rolled_back_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    rollback_reason: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    
+    # 메타
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)

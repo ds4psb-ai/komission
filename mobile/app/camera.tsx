@@ -146,6 +146,7 @@ export default function CameraScreen() {
         // Phase 1-5+ additions
         vdgData,
         sendUserFeedback,
+        sendTiming,  // NEW: 녹화 시간 동기화
     } = useCoachingWebSocket(sessionId.current, {
         voiceEnabled,
         // Phase 1: Output Mode + Persona
@@ -193,13 +194,20 @@ export default function CameraScreen() {
         let interval: NodeJS.Timeout;
         if (isRecording) {
             interval = setInterval(() => {
-                setRecordingTime((prev) => prev + 1);
+                setRecordingTime((prev) => {
+                    const next = prev + 1;
+                    // NEW: 백엔드에 녹화 시간 동기화 (세션 통계/자동학습용)
+                    if (isConnected) {
+                        sendTiming(next);
+                    }
+                    return next;
+                });
             }, 1000);
         } else {
             setRecordingTime(0);
         }
         return () => clearInterval(interval);
-    }, [isRecording]);
+    }, [isRecording, isConnected, sendTiming]);
 
     // ============================================================
     // Camera Error Handler

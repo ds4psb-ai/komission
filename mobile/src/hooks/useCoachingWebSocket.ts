@@ -258,6 +258,7 @@ export interface UseCoachingWebSocketReturn {
     sendMetric: (ruleId: string, value: number, tSec: number) => void;
     sendAudio: (audioB64: string) => void;
     sendVideoFrame: (frameB64: string, tSec: number) => void;
+    sendTiming: (tSec: number) => void;  // NEW: 녹화 시간 동기화
 
     // Phase 3: Adaptive coaching
     sendUserFeedback: (text: string) => void;
@@ -748,6 +749,13 @@ export function useCoachingWebSocket(
         }
     }, []);
 
+    // NEW: 녹화 시간 동기화 (세션 통계/자동학습용)
+    const sendTiming = useCallback((tSec: number) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'timing', t_sec: tSec }));
+        }
+    }, []);
+
     // ============================================================
     // Return
     // ============================================================
@@ -770,6 +778,7 @@ export function useCoachingWebSocket(
         sendMetric,
         sendAudio,
         sendVideoFrame,
+        sendTiming,  // NEW
         // Phase 3: Adaptive coaching
         sendUserFeedback,
         // Stats
