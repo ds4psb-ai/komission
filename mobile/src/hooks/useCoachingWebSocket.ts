@@ -56,6 +56,40 @@ export interface TierInfo {
 }
 
 // ============================================================
+// Web Parity Types (H1 Hardening)
+// ============================================================
+
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'recording' | 'error';
+export type VoiceStyle = 'strict' | 'friendly' | 'neutral';
+
+export interface RuleUpdate {
+    type: 'rule_update';
+    rule_id: string;
+    status: 'pending' | 'passed' | 'failed';
+    t_sec: number;
+}
+
+export interface SessionStatus {
+    type: 'session_status';
+    session_id?: string;
+    status: 'connected' | 'recording' | 'paused' | 'ended';
+    gemini_connected?: boolean;
+    fallback_mode?: boolean;
+    stats?: SessionStats;
+    timestamp: string;
+}
+
+export interface SessionStats {
+    total_time: number;
+    rules_evaluated: number;
+    interventions_sent: number;
+    commands_delivered: number;
+    violations_detected: number;
+    res_score: number;
+    res_grade: string;
+}
+
+// ============================================================
 // Phase 1: Output Mode + Persona Types
 // ============================================================
 
@@ -177,9 +211,21 @@ export interface UseCoachingWebSocketOptions {
     enableStreaming?: boolean;
     streamConfig?: StreamConfig;
     voiceEnabled?: boolean;
+
+    // H1: Web parity params
+    language?: string;
+    voiceStyle?: VoiceStyle;
+
     // Phase 1: Output Mode + Persona
     outputMode?: OutputMode;
     persona?: Persona;
+
+    // H2: Callbacks for web parity
+    onFeedback?: (feedback: CoachingFeedback) => void;
+    onRuleUpdate?: (update: RuleUpdate) => void;
+    onStatusChange?: (status: SessionStatus) => void;
+    onError?: (error: string) => void;
+
     // Phase 2: VDG data callback
     onVdgData?: (data: VdgCoachingData) => void;
     // Phase 3: Adaptive coaching callbacks
@@ -194,16 +240,25 @@ export interface UseCoachingWebSocketOptions {
 }
 
 export interface UseCoachingWebSocketReturn {
-    // State
+    // State (H1: Web parity)
+    status: ConnectionStatus;
     feedback: CoachingFeedback | null;
     feedbackHistory: CoachingFeedback[];
     isConnected: boolean;
+    geminiConnected: boolean;
+    stats: SessionStats | null;
 
     // Actions
     connect: () => void;
     disconnect: () => void;
     sendFrame: (frameBase64: string, width: number, height: number) => Promise<void>;
     sendControl: (action: 'start' | 'stop' | 'pause') => void;
+
+    // H1: Web parity actions
+    sendMetric: (ruleId: string, value: number, tSec: number) => void;
+    sendAudio: (audioB64: string) => void;
+    sendVideoFrame: (frameB64: string, tSec: number) => void;
+
     // Phase 3: Adaptive coaching
     sendUserFeedback: (text: string) => void;
 
@@ -242,9 +297,17 @@ export function useCoachingWebSocket(
         enableStreaming = true,
         streamConfig = getRecommendedStreamConfig(),
         voiceEnabled = true,
+        // H1: Web parity params
+        language = 'ko',
+        voiceStyle = 'friendly',
         // Phase 1: Output Mode + Persona
         outputMode: initialOutputMode = 'graphic',
         persona: initialPersona = 'chill_guide',
+        // H2: Callbacks
+        onFeedback,
+        onRuleUpdate,
+        onStatusChange,
+        onError,
         // Phase 1-5+ callbacks
         onVdgData,
         onAdaptiveResponse,
@@ -274,6 +337,11 @@ export function useCoachingWebSocket(
     const [feedbackHistory, setFeedbackHistory] = useState<CoachingFeedback[]>([]);
     const [streamStats, setStreamStats] = useState<StreamStats | null>(null);
 
+    // H1: Web parity state
+    const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+    const [geminiConnected, setGeminiConnected] = useState(false);
+    const [stats, setStats] = useState<SessionStats | null>(null);
+
     // H9: Tier info for credit calculation
     const [tierInfo, setTierInfo] = useState<TierInfo>({
         coachingTier: 'pro',
@@ -298,8 +366,10 @@ export function useCoachingWebSocket(
             return;
         }
 
-        // Phase 1: Add output_mode and persona to URL
-        const wsUrl = `${WS_BASE_URL}/api/v1/coaching/live/${sessionId}?output_mode=${outputMode}&persona=${persona}`;
+        setStatus('connecting');  // H1: Update status
+
+        // H1: Add language, voice_style, output_mode, persona to URL
+        const wsUrl = `${WS_BASE_URL}/api/v1/coaching/live/${sessionId}?language=${language}&voice_style=${voiceStyle}&output_mode=${outputMode}&persona=${persona}`;
         console.log('[WS] Connecting to:', wsUrl);
 
         try {
@@ -309,6 +379,7 @@ export function useCoachingWebSocket(
             ws.onopen = () => {
                 console.log('[WS] Connected');
                 setIsConnected(true);
+                setStatus('connected');  // H1: Update status
                 reconnectAttemptsRef.current = 0;
 
                 // Send initial config
@@ -336,18 +407,22 @@ export function useCoachingWebSocket(
 
             ws.onerror = (error) => {
                 console.error('[WS] Error:', error);
+                setStatus('error');  // H1: Update status
+                onError?.('WebSocket connection error');
             };
 
             ws.onclose = (event) => {
                 console.log('[WS] Closed:', event.code, event.reason);
                 setIsConnected(false);
+                setStatus('disconnected');  // H1: Update status
                 cleanup();
 
-                // Auto-reconnect if not intentional close
+                // H1: Exponential backoff for reconnect (1s, 2s, 3s)
                 if (event.code !== 1000 && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
                     reconnectAttemptsRef.current++;
-                    console.log(`[WS] Reconnecting (attempt ${reconnectAttemptsRef.current})...`);
-                    setTimeout(connect, RECONNECT_DELAY_MS);
+                    const backoffDelay = reconnectAttemptsRef.current * 1000;  // 1s, 2s, 3s
+                    console.log(`[WS] Reconnecting (attempt ${reconnectAttemptsRef.current}) in ${backoffDelay}ms...`);
+                    setTimeout(connect, backoffDelay);
                 }
             };
         } catch (error) {
@@ -420,22 +495,51 @@ export function useCoachingWebSocket(
                     console.log('[WS] Status:', message.status);
                     break;
 
-                case 'session_status':
-                    // H9: Handle tier downgrade info
-                    if (message.effective_tier !== undefined) {
+                case 'session_status': {
+                    // H1: Full session_status parsing for web parity
+                    const statusMsg = message as SessionStatus;
+
+                    // Update connection status
+                    if (statusMsg.status === 'recording') {
+                        setStatus('recording');
+                    } else if (statusMsg.status === 'connected' || statusMsg.status === 'paused') {
+                        setStatus('connected');
+                    }
+
+                    // Update gemini connected state
+                    setGeminiConnected(statusMsg.gemini_connected ?? false);
+
+                    // Update session stats
+                    if (statusMsg.stats) {
+                        setStats(statusMsg.stats);
+                    }
+
+                    // H9: Handle tier downgrade info (legacy support)
+                    if ((message as any).effective_tier !== undefined) {
                         setTierInfo({
-                            coachingTier: message.coaching_tier || 'pro',
-                            effectiveTier: message.effective_tier || 'pro',
-                            tierDowngraded: message.tier_downgraded || false,
+                            coachingTier: (message as any).coaching_tier || 'pro',
+                            effectiveTier: (message as any).effective_tier || 'pro',
+                            tierDowngraded: (message as any).tier_downgraded || false,
                         });
-                        if (message.tier_downgraded) {
+                        if ((message as any).tier_downgraded) {
                             console.log('[WS] H9: Tier downgraded to basic (Gemini fallback)');
                         }
                     }
+
+                    // H2: Callback
+                    onStatusChange?.(statusMsg);
+                    break;
+                }
+
+                // H1: Rule Update handler
+                case 'rule_update':
+                    console.log('[WS] Rule update:', message.rule_id, message.status);
+                    onRuleUpdate?.(message as RuleUpdate);
                     break;
 
                 case 'error':
                     console.error('[WS] Server error:', message.message);
+                    onError?.(message.message || 'Unknown error');
                     break;
 
                 // Phase 1: Graphic Guide
@@ -500,11 +604,19 @@ export function useCoachingWebSocket(
         setFeedback(feedbackData);
         setFeedbackHistory((prev: CoachingFeedback[]) => [...prev.slice(-9), feedbackData]);
 
-        // Play audio if enabled
-        if (voiceEnabled && feedbackData.audio_b64) {
-            playAudio(feedbackData.audio_b64);
+        // H2: Fire callback
+        onFeedback?.(feedbackData);
+
+        // H3: Audio playback with TTS fallback
+        if (voiceEnabled) {
+            if (feedbackData.audio_b64) {
+                playAudio(feedbackData.audio_b64);
+            } else if (feedbackData.message) {
+                // Fallback to TTS
+                speakText(feedbackData.message);
+            }
         }
-    }, [voiceEnabled]);
+    }, [voiceEnabled, onFeedback]);
 
     const recordLatency = useCallback((latency: number) => {
         latenciesRef.current.push(latency);
@@ -606,17 +718,61 @@ export function useCoachingWebSocket(
     }, []);
 
     // ============================================================
+    // H1: Web Parity Send Functions
+    // ============================================================
+
+    const sendMetric = useCallback((ruleId: string, value: number, tSec: number) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+                type: 'metric',
+                rule_id: ruleId,
+                value,
+                t_sec: tSec,
+            }));
+        }
+    }, []);
+
+    const sendAudio = useCallback((audioB64: string) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'audio', data: audioB64 }));
+        }
+    }, []);
+
+    const sendVideoFrame = useCallback((frameB64: string, tSec: number) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+                type: 'video_frame',
+                frame_b64: frameB64,
+                t_sec: tSec,
+            }));
+        }
+    }, []);
+
+    // ============================================================
     // Return
     // ============================================================
 
     return {
+        // H1: Web parity state
+        status,
+        geminiConnected,
+        stats,
+        // Core state
         feedback,
         feedbackHistory,
         isConnected,
+        // Core actions
         connect,
         disconnect,
         sendFrame,
         sendControl,
+        // H1: Web parity actions
+        sendMetric,
+        sendAudio,
+        sendVideoFrame,
+        // Phase 3: Adaptive coaching
+        sendUserFeedback,
+        // Stats
         streamStats,
         tierInfo,  // H9
         // Phase 1: Mode/Persona
@@ -624,8 +780,6 @@ export function useCoachingWebSocket(
         persona,
         // Phase 2: VDG Data
         vdgData,
-        // Phase 3: Adaptive coaching
-        sendUserFeedback,
     };
 }
 

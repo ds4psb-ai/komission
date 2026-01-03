@@ -159,6 +159,13 @@ class DirectorPack(BaseModel):
 - ✅ `keyframe_evidences` (14 columns): 프레임 증거 테이블
 - ✅ `comment_evidences` (8 columns): 댓글 증거 테이블
 
+### Coaching System Phase 1-5+ (Added 2026-01-03) ⭐ NEW
+- ✅ 출력 모드 4종: graphic | text | audio | graphic_audio
+- ✅ 페르소나 4종: drill_sergeant | bestie | chill_guide | hype_coach
+- ✅ LLM 기반 적응형 코칭 (`AdaptiveCoachingService`)
+- ✅ VDG 데이터 활용 (shotlist, kicks, mise_en_scene)
+- ✅ 고급 자동학습 (`AdvancedSessionAnalyzer`, `WeightedSignal`, `LiveAxisMetrics`)
+
 ---
 
 ## 5) File Structure (Updated 2026-01-01)

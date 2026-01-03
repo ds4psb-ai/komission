@@ -4,6 +4,85 @@
 
 ---
 
+## 2026-01-03 (코칭 시스템 Phase 1-5+ 완료) ⭐ MAJOR
+
+### 🎯 코칭 시스템 대규모 고도화
+
+**Phase 1+1.5: 출력 모드 + 페르소나**
+- ✅ 출력 모드 4종: `graphic` | `text` | `audio` | `graphic_audio`
+- ✅ 페르소나 4종: `drill_sergeant` | `bestie` | `chill_guide` | `hype_coach`
+- ✅ WebSocket 파라미터: `output_mode`, `persona` 쿼리 지원
+- ✅ Frontend: `CoachingModeSelector.tsx`, `CompositionGuide.tsx`, `TextCoachBubble.tsx`
+- ✅ Backend: `coaching_ws.py` - generate_graphic_guide() 추가
+
+**Phase 2+2.5: VDG 데이터 활용**
+- ✅ `director_compiler.py` 헬퍼 함수 4개:
+  - `_get_entity_coach_message()` - 엔티티 맞춤 코칭
+  - `_get_shotlist_sequence()` - 샷리스트 순서 추출
+  - `_get_kick_timings()` - 훅 타이밍 추출
+  - `_get_mise_en_scene_guides()` - 미장센 가이드
+- ✅ `vdg_coaching_data` WebSocket 메시지 타입 추가
+- ✅ Frontend: `useCoachingWebSocket.ts` - `onVdgData` 콜백
+
+**Phase 3: LLM 기반 적응형 코칭**
+- ✅ **NEW**: `adaptive_coaching.py` (448줄)
+  - `AdaptiveCoachingService` - LLM 기반 피드백 파싱
+  - DNAInvariant/MutationSlot JSON 시스템 프롬프트 주입
+  - 키워드 기반 폴백 유지 (LLM 실패 시)
+- ✅ `user_feedback` / `adaptive_response` WebSocket 메시지
+- ✅ critical/high priority 규칙 보호 + 대안 제시
+
+**Phase 4: 페르소나별 TTS**
+- ✅ `PERSONA_TTS_CONFIG` (속도/톤 설정)
+- ✅ 힙한 페르소나 네이밍:
+  - drill_sergeant (빡센 디렉터 🎬)
+  - bestie (찐친 ✨)
+  - chill_guide (릴렉스 가이드 🧘) - 디폴트
+  - hype_coach (하이퍼 부스터 ⚡)
+
+**Phase 5+: 고급 자동학습**
+- ✅ **NEW**: `advanced_analyzer.py` (450줄)
+  - `AdvancedSessionAnalyzer` - 고급 세션 분석기
+  - `WeightedSignal` - metric 기반 가중 신호
+  - `LiveAxisMetrics` - 3-Axis 실시간 평가
+- ✅ Canary 그룹 자동 분류 (10% control)
+- ✅ 3-Axis 승격 기준:
+  - Compliance Lift ≥ 15%
+  - Outcome Lift ≥ 0%
+  - Cluster Count ≥ 2, Persona Count ≥ 2
+  - Negative Evidence Rate < 20%
+- ✅ `signal_promotion` WebSocket 알림
+
+### 📱 모바일 앱 통합 문서
+- ✅ **NEW**: `MOBILE_INTEGRATION_GUIDE.md` (400줄)
+  - WebSocket 연결 (Swift/Kotlin 예시)
+  - Phase 1-5+ 전체 메시지 타입 레퍼런스
+  - 통합 체크리스트 + FAQ
+
+### 🔧 신규/수정 파일
+
+| 파일 | 변경 | 라인 |
+|------|------|------|
+| `adaptive_coaching.py` | **NEW** | ~450 |
+| `advanced_analyzer.py` | **NEW** | ~450 |
+| `coaching_ws.py` | 대규모 수정 | +300 |
+| `director_compiler.py` | VDG 헬퍼 추가 | +200 |
+| `CoachingModeSelector.tsx` | **NEW** | ~135 |
+| `CompositionGuide.tsx` | **NEW** | ~157 |
+| `TextCoachBubble.tsx` | **NEW** | ~156 |
+| `useCoachingWebSocket.ts` | 대규모 수정 | +100 |
+| `MOBILE_INTEGRATION_GUIDE.md` | **NEW** | ~400 |
+
+### Git Commits
+- feat: Coaching Phase 1 - Output Modes + Personas
+- feat: Coaching Phase 2 - VDG Data Utilization
+- feat: Coaching Phase 3 - LLM-based Adaptive Coaching
+- feat: Coaching Phase 4 - Persona TTS Integration
+- feat: Coaching Phase 5+ - Advanced Auto-Learning System
+- docs: Mobile Integration Guide
+
+---
+
 ## 2026-01-02 (모바일 앱 하드닝 완료)
 
 ### 🎯 전략적 결정: 모바일 4K 앱 + 웹앱 고도화 병렬 개발

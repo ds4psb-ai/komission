@@ -120,6 +120,39 @@
 - ✅ `resources/`: 데이터 리소스
 - ✅ Claude Desktop 연동 지원
 
+### Coaching System Phase 1-5+ (2026-01-03) ⭐ NEW
+
+**Phase 1+1.5: 출력 모드 + 페르소나**
+- ✅ 출력 모드 4종: graphic(디폴트) | text | audio | graphic_audio
+- ✅ 페르소나 4종: drill_sergeant | bestie | chill_guide | hype_coach
+- ✅ WebSocket 파라미터 + Frontend 컴포넌트 (`CoachingModeSelector.tsx`)
+- ✅ 그래픽 오버레이 (`CompositionGuide.tsx`, `TextCoachBubble.tsx`)
+
+**Phase 2+2.5: VDG 데이터 활용**
+- ✅ `_get_entity_coach_message()` - 엔티티 맞춤 코칭
+- ✅ `_get_shotlist_sequence()` - 샷리스트 순서 추출
+- ✅ `_get_kick_timings()` - 훅 타이밍 추출
+- ✅ `_get_mise_en_scene_guides()` - 미장센 가이드
+- ✅ `vdg_coaching_data` WebSocket 메시지
+
+**Phase 3: LLM 기반 적응형 코칭**
+- ✅ `AdaptiveCoachingService` (`adaptive_coaching.py`)
+- ✅ LLM 시스템 프롬프트에 DNAInvariant 동적 주입
+- ✅ `user_feedback` / `adaptive_response` WebSocket 메시지
+- ✅ critical/high priority 규칙 보호 + 대안 제시
+
+**Phase 4: 페르소나별 TTS**
+- ✅ `PERSONA_TTS_CONFIG` (속도/톤 설정)
+- ✅ 힙한 페르소나 네이밍 (빡센 디렉터, 찐친, 릴렉스 가이드, 하이퍼 부스터)
+
+**Phase 5+: 고급 자동학습**
+- ✅ `AdvancedSessionAnalyzer` (`advanced_analyzer.py`)
+- ✅ `WeightedSignal` (metric 기반 가중 신호)
+- ✅ `LiveAxisMetrics` (3-Axis 실시간 평가)
+- ✅ Canary 그룹 자동 분류 (10% control)
+- ✅ Compliance Lift ≥ 15%, Outcome Lift ≥ 0%, Negative Rate < 20%
+- ✅ `signal_promotion` WebSocket 알림
+
 ---
 
 ## File Structure
