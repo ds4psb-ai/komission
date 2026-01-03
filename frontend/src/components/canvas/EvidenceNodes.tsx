@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { memo, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Handle, Position } from '@xyflow/react';

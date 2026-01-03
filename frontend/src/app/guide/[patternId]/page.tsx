@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 /**
  * Creator Guide Page - Simple Pattern Guidance View
  * 

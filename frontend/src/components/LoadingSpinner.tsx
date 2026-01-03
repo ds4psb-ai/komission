@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * LoadingSpinner - 로딩 표시 컴포넌트 (PEGL v1.0)

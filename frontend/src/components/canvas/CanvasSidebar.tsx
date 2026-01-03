@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 /**
  * CanvasSidebar - Canvas Page Sidebar Component

@@ -7,6 +7,8 @@ import { AppHeader } from '@/components/AppHeader';
 import { api, RemixNode, RoyaltySummary, UserStats, GenealogyResponse } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useRealTimeMetrics } from '@/hooks/useRealTimeMetrics';
+import { ArrowRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface TreeNode {
     id: string;
@@ -63,6 +65,7 @@ function TreeNodeCard({ node, onSelect, selectedId }: { node: TreeNode; onSelect
 export default function MyPage() {
     const router = useRouter();
     const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+    const t = useTranslations('pages.myPage');
 
     const [nodes, setNodes] = useState<RemixNode[]>([]);
     const [loading, setLoading] = useState(true);
@@ -224,27 +227,26 @@ export default function MyPage() {
             <AppHeader />
 
             <main className="max-w-7xl mx-auto px-6 py-20">
-                {/* Header - Cinematic */}
+                {/* Header - Cinematic Electric */}
                 <div className="mb-16 relative">
-                    <div className="absolute -top-20 -left-20 w-64 h-64 bg-violet-600/10 blur-[100px] pointer-events-none" />
-                    <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+                    <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#c1ff00]/10 blur-[120px] pointer-events-none" />
+                    <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
                         <div>
-                            <h1 className="text-5xl font-black mb-4 tracking-tight">
-                                <span className="bg-gradient-to-r from-white via-white to-white/50 bg-clip-text text-transparent">나의 바이럴</span>
-                                <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-pink-400 to-orange-400 animate-text-shimmer">대시보드</span>
+                            <h1 className="text-6xl font-black mb-6 tracking-tighter leading-none italic uppercase">
+                                <span className="text-white block">MY VIRAL</span>
+                                <span className="text-[#c1ff00] block drop-shadow-[0_0_15px_rgba(193,255,0,0.5)]">DASHBOARD</span>
                             </h1>
                             <div className="flex items-center gap-4">
-                                <p className="text-xl text-white/40 max-w-2xl">
-                                    AI 리믹스 성과와 확산 계보를 실시간으로 추적하세요.
+                                <p className="text-lg text-white/60 max-w-xl font-medium">
+                                    Track your AI remix performance and viral genealogy in real-time.
                                 </p>
                                 {/* 🔴 Real-time Connection Indicator */}
-                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${wsConnected
-                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider ${wsConnected
+                                    ? 'bg-[#c1ff00]/10 text-[#c1ff00] border border-[#c1ff00]/30 shadow-[0_0_10px_rgba(193,255,0,0.2)]'
                                     : 'bg-white/5 text-white/30 border border-white/10'
                                     }`}>
-                                    <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-emerald-400 animate-pulse' : 'bg-white/30'}`}></span>
-                                    {wsConnected ? 'LIVE' : 'Offline'}
+                                    <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-[#c1ff00] animate-pulse' : 'bg-white/30'}`}></span>
+                                    {wsConnected ? 'LIVE SYSTEM' : 'OFFLINE'}
                                 </div>
                             </div>
                         </div>
@@ -252,15 +254,16 @@ export default function MyPage() {
                         {/* 🆕 Expert Recommendation: Big CTA - Next Remix */}
                         <Link
                             href="/"
-                            className="flex-shrink-0 group relative p-[2px] rounded-2xl bg-gradient-to-r from-violet-500 via-pink-500 to-orange-500 shadow-[0_0_30px_rgba(139,92,246,0.3)] hover:shadow-[0_0_50px_rgba(139,92,246,0.5)] transition-all"
+                            className="flex-shrink-0 group relative"
                         >
-                            <div className="px-8 py-4 bg-black rounded-[14px] flex items-center gap-3 group-hover:bg-black/80 transition-colors">
-                                <span className="text-2xl group-hover:rotate-12 transition-transform duration-300">🚀</span>
+                            <div className="absolute -inset-1 bg-gradient-to-r from-[#c1ff00] to-white rounded-2xl blur opacity-20 group-hover:opacity-60 transition duration-500" />
+                            <div className="relative px-8 py-5 bg-black rounded-xl border border-white/10 flex items-center gap-4 group-hover:bg-white/5 transition-colors">
+                                <span className="text-3xl group-hover:rotate-12 transition-transform duration-300">⚡</span>
                                 <div>
-                                    <div className="font-bold text-white">다음 리믹스 찾기</div>
-                                    <div className="text-xs text-white/50">평균 +89% 성장하는 노드들 보기</div>
+                                    <div className="font-black text-xl text-white italic uppercase tracking-tighter">FIND NEXT REMIX</div>
+                                    <div className="text-xs text-[#c1ff00] font-bold uppercase tracking-wider">Avg. +89% Growth Potential</div>
                                 </div>
-                                <span className="text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all">→</span>
+                                <ArrowRight className="w-5 h-5 text-white/40 group-hover:text-[#c1ff00] group-hover:translate-x-2 transition-all" />
                             </div>
                         </Link>
                     </div>
@@ -289,16 +292,17 @@ export default function MyPage() {
                         </div>
                     </Link>
 
-                    <div className="p-8 bg-black/40 backdrop-blur-xl border border-violet-500/20 rounded-3xl relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-violet-500/5 group-hover:bg-violet-500/10 transition-colors" />
+                    <div className="p-8 bg-black/40 backdrop-blur-xl border border-[#c1ff00]/20 rounded-3xl relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-[#c1ff00]/5 group-hover:bg-[#c1ff00]/10 transition-colors" />
                         <div className="absolute top-0 right-0 p-6 opacity-20 text-6xl grayscale group-hover:grayscale-0 transition-all transform group-hover:scale-110 duration-500">👁️</div>
                         <div className="relative z-10">
-                            <div className="text-sm font-bold text-violet-300 uppercase tracking-widest mb-2">총 조회수</div>
-                            <div className="text-5xl font-black text-white drop-shadow-[0_0_15px_rgba(139,92,246,0.3)]">
-                                {stats ? (stats.total_views / 10000).toFixed(1) : '0'}<span className="text-2xl text-white/50 ml-1">만</span>
+                            <div className="text-sm font-black text-[#c1ff00] uppercase tracking-widest mb-2">TOTAL VIEWS</div>
+                            <div className="text-5xl font-black text-white drop-shadow-[0_0_15px_rgba(193,255,0,0.3)] italic">
+                                {stats ? (stats.total_views / 10000).toFixed(1) : '0'}<span className="text-2xl text-white/50 ml-1 not-italic">M</span>
                             </div>
-                            <div className="mt-4 text-xs font-mono text-white/40 bg-black/30 w-fit px-2 py-1 rounded border border-white/5">
-                                {stats?.node_count ?? 0}개 노드
+                            <div className="mt-4 text-xs font-mono text-white/60 bg-black/30 w-fit px-3 py-1.5 rounded-lg border border-white/5 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#c1ff00]" />
+                                {stats?.node_count ?? 0} NODES ACTIVE
                             </div>
                         </div>
                     </div>
@@ -447,50 +451,53 @@ export default function MyPage() {
                 </div>
 
                 {/* Quick Actions */}
+                {/* Recommended Remixes Flow */}
                 <div className="mt-20">
-                    <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest mb-6">빠른 작업</h3>
+                    <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-6 border-b border-white/10 pb-4">Quick Actions</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <Link
                             href="/canvas"
-                            className="p-8 bg-gradient-to-br from-violet-600/20 to-violet-900/10 border border-violet-500/20 hover:border-violet-500/40 rounded-3xl relative overflow-hidden group transition-all hover:-translate-y-1"
+                            className="p-8 bg-black/40 border border-[#c1ff00]/20 hover:border-[#c1ff00]/50 rounded-2xl relative overflow-hidden group transition-all hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(193,255,0,0.1)]"
                         >
-                            <div className="absolute inset-0 bg-violet-600/5 group-hover:bg-violet-600/10 transition-colors" />
-                            <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">⚡</div>
-                            <div className="font-bold text-lg mb-1">새 리믹스 엔진</div>
-                            <div className="text-xs text-white/50">빈 캔버스에서 시작</div>
+                            <div className="absolute inset-0 bg-[#c1ff00]/5 group-hover:bg-[#c1ff00]/10 transition-colors" />
+                            <div className="text-4xl mb-6 group-hover:scale-110 transition-transform duration-300 filter drop-shadow-[0_0_10px_rgba(193,255,0,0.5)]">⚡</div>
+                            <div className="font-black text-xl mb-1 text-white italic uppercase tracking-tighter">NEW ENGINE</div>
+                            <div className="text-xs text-[#c1ff00] font-bold uppercase tracking-wider">Start Blank Canvas</div>
                         </Link>
+
                         <Link
                             href="/o2o"
-                            className="p-8 bg-black/40 backdrop-blur-xl border border-white/10 hover:border-white/20 rounded-3xl relative overflow-hidden group transition-all hover:-translate-y-1"
+                            className="p-8 bg-black/40 border border-white/10 hover:border-white/30 rounded-2xl relative overflow-hidden group transition-all hover:-translate-y-1"
                         >
                             <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">🛒</div>
-                            <div className="font-bold text-lg mb-1">O2O 체험단</div>
-                            <div className="text-xs text-white/50">방문형 캠페인 탐색</div>
+                            <div className="text-4xl mb-6 group-hover:scale-110 transition-transform duration-300 grayscale group-hover:grayscale-0">🛒</div>
+                            <div className="font-black text-xl mb-1 text-white italic uppercase tracking-tighter">O2O CAMPAIGN</div>
+                            <div className="text-xs text-white/40 font-bold uppercase tracking-wider group-hover:text-white/60">Explore Campaigns</div>
                         </Link>
+
                         <Link
                             href="/"
-                            className="p-8 bg-black/40 backdrop-blur-xl border border-white/10 hover:border-white/20 rounded-3xl relative overflow-hidden group transition-all hover:-translate-y-1"
+                            className="p-8 bg-black/40 border border-white/10 hover:border-white/30 rounded-2xl relative overflow-hidden group transition-all hover:-translate-y-1"
                         >
                             <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">🔁</div>
-                            <div className="font-bold text-lg mb-1">다음 리믹스 찾기</div>
-                            <div className="text-xs text-white/50">아웃라이어로 돌아가기</div>
+                            <div className="text-4xl mb-6 group-hover:scale-110 transition-transform duration-300 grayscale group-hover:grayscale-0">🔁</div>
+                            <div className="font-black text-xl mb-1 text-white italic uppercase tracking-tighter">FIND REMIX</div>
+                            <div className="text-xs text-white/40 font-bold uppercase tracking-wider group-hover:text-white/60">Back to Outliers</div>
                         </Link>
                     </div>
                 </div>
 
                 {/* Account Section */}
                 <div className="mt-16 pt-8 border-t border-white/10">
-                    <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest mb-6">계정</h3>
-                    <div className="flex items-center justify-between p-6 bg-white/5 border border-white/10 rounded-2xl">
+                    <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-6">Account</h3>
+                    <div className="flex items-center justify-between p-6 bg-black/40 border border-white/10 rounded-2xl group hover:border-white/30 transition-colors">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                            <div className="w-12 h-12 rounded-lg bg-[#c1ff00] flex items-center justify-center text-black font-black text-xl shadow-[0_0_15px_rgba(193,255,0,0.3)]">
                                 {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                             </div>
                             <div>
-                                <div className="font-medium text-white">{user?.name || 'User'}</div>
-                                <div className="text-sm text-white/40">{user?.email}</div>
+                                <div className="font-bold text-white uppercase tracking-wider">{user?.name || 'User'}</div>
+                                <div className="text-sm text-white/40 font-mono">{user?.email}</div>
                             </div>
                         </div>
                         <button
@@ -498,9 +505,9 @@ export default function MyPage() {
                                 logout();
                                 router.push('/');
                             }}
-                            className="px-4 py-2 text-sm text-white/50 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                            className="px-6 py-2 text-xs font-bold uppercase tracking-widest text-[#c1ff00] border border-[#c1ff00]/30 hover:bg-[#c1ff00] hover:text-black rounded-lg transition-all shadow-[0_0_10px_rgba(193,255,0,0.1)] hover:shadow-[0_0_20px_rgba(193,255,0,0.4)]"
                         >
-                            로그아웃
+                            LOGOUT
                         </button>
                     </div>
                 </div>

@@ -1,5 +1,6 @@
 // frontend/src/components/remix/QuickGuide.tsx
 "use client";
+import { useTranslations } from 'next-intl';
 
 import { useSessionStore } from "@/stores/useSessionStore";
 import { Lightbulb, Zap, Target, MessageSquare } from "lucide-react";

@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 /**
  * EvidenceBar - 댓글 5개 + 재등장 근거 + 리스크 표시

@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useEffect, useState, useRef } from 'react';
 import { api, EvidenceBoard } from '@/lib/api';
 import Link from 'next/link';
@@ -94,7 +96,7 @@ export default function EvidenceBoardsPage() {
                             KPI 기반 콘텐츠 실험을 관리하고 우승자를 결정하세요
                         </p>
                     </div>
-                    <button className="px-4 py-2.5 bg-gradient-to-r from-violet-600 to-pink-600 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center gap-2 text-white">
+                    <button className="px-4 py-2.5 bg-[#c1ff00] hover:bg-white text-black rounded-lg font-black uppercase tracking-wider hover:opacity-100 transition-all flex items-center gap-2 shadow-[0_0_10px_rgba(193,255,0,0.3)]">
                         <Plus className="w-4 h-4" />
                         <span>새 보드</span>
                     </button>

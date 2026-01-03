@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * PipelineStatus - Outlier pipeline stage badge
@@ -17,39 +18,39 @@ interface PipelineStatusProps {
 }
 
 const STAGE_CONFIG: Record<PipelineStage, {
-    label: string;
+    labelKey: string;
     emoji: string;
     bgClass: string;
     textClass: string;
     animate?: boolean;
 }> = {
     pending: {
-        label: '크롤됨',
+        labelKey: 'pending',
         emoji: '🆕',
         bgClass: 'bg-white/10',
         textClass: 'text-white/50',
     },
     promoted: {
-        label: '승격됨',
+        labelKey: 'promoted',
         emoji: '📦',
         bgClass: 'bg-blue-500/20',
         textClass: 'text-blue-300',
     },
     comments: {
-        label: '댓글 대기',
+        labelKey: 'comments',
         emoji: '💬',
         bgClass: 'bg-amber-500/20',
         textClass: 'text-amber-300',
     },
     analyzing: {
-        label: '분석중',
+        labelKey: 'analyzing',
         emoji: '🔬',
         bgClass: 'bg-purple-500/20',
         textClass: 'text-purple-300',
         animate: true,
     },
     completed: {
-        label: '완료',
+        labelKey: 'completed',
         emoji: '✅',
         bgClass: 'bg-emerald-500/20',
         textClass: 'text-emerald-300',
@@ -75,11 +76,11 @@ export function PipelineStatus({
     size = 'sm',
     className = '',
 }: PipelineStatusProps) {
-    // Compute actual stage if analysisStatus is provided
     const stage = analysisStatus
         ? getPipelineStage(status, analysisStatus)
         : status as PipelineStage;
 
+    const t = useTranslations('components.pipelineStatus');
     const config = STAGE_CONFIG[stage] || STAGE_CONFIG.pending;
     const sizeClass = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs';
 
@@ -92,7 +93,7 @@ export function PipelineStatus({
                 ${sizeClass} ${className}
             `}
         >
-            {showLabel ? config.label : config.emoji}
+            {showLabel ? t(config.labelKey) : config.emoji}
         </span>
     );
 }

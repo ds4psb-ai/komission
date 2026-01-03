@@ -2,7 +2,7 @@
 VDP Gold Schema - Complete Video Data Product
 Based on original VDP structure + Gemini 3.0 Pro Intent Layer
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any, Literal
 
 # ==================== METADATA ====================
@@ -159,8 +159,7 @@ class MicroShift(BaseModel):
     to_emotion: str = Field(alias="to")
     cue: str
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 class SentimentArc(BaseModel):
     per_scene: List[SceneSentiment] = Field(default_factory=list)

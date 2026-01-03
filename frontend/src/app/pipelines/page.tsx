@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 /**
  * /pipelines → /ops/pipelines 리다이렉트
  * 

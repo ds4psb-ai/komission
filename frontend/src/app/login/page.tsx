@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { GoogleLoginButtonCustom } from '@/components/GoogleLoginButton';
 import { useAuth } from '@/lib/auth';
 import { ACTION_LABELS } from '@/lib/useAuthGate';
+import { useTranslations } from 'next-intl';
 
 function LoginContent() {
     const router = useRouter();
@@ -14,6 +15,7 @@ function LoginContent() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const isMountedRef = useRef(true);
+    const t = useTranslations('pages.login');
 
     // 3D Tilt State
     const cardRef = useRef<HTMLDivElement>(null);
@@ -29,9 +31,9 @@ function LoginContent() {
     // Show session expired message on mount
     useEffect(() => {
         if (isSessionExpired) {
-            setError('세션이 만료되었습니다. 다시 로그인해 주세요.');
+            setError(t('sessionExpired'));
         }
-    }, [isSessionExpired]);
+    }, [isSessionExpired, t]);
 
     useEffect(() => {
         return () => {
@@ -80,7 +82,7 @@ function LoginContent() {
         } catch (err) {
             console.error('Login failed:', err);
             if (isMountedRef.current) {
-                setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
+                setError(err instanceof Error ? err.message : t('loginFailed'));
             }
         } finally {
             if (isMountedRef.current) {
@@ -91,10 +93,10 @@ function LoginContent() {
 
     return (
         <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 relative overflow-hidden selection:bg-pink-500/30">
-            {/* Cinematic Background Aurora */}
+            {/* Cinematic Background Aurora - Lime/White */}
             <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full blur-[120px] animate-[pulse_8s_ease-in-out_infinite]" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[70vw] h-[70vw] bg-pink-600/20 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite_reverse]" />
+                <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-[#c1ff00]/5 rounded-full blur-[120px] animate-[pulse_8s_ease-in-out_infinite]" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[70vw] h-[70vw] bg-white/5 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite_reverse]" />
             </div>
 
             {/* Grid Pattern Overlay */}
@@ -104,13 +106,13 @@ function LoginContent() {
             <div className="relative z-10 w-full max-w-md perspective-1000">
                 {/* Logo Section with Glow */}
                 <div className="text-center mb-16 relative group">
-                    <div className="absolute -inset-10 bg-gradient-to-r from-violet-600/20 to-pink-600/20 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                    <div className="absolute -inset-10 bg-gradient-to-r from-[#c1ff00]/10 to-white/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
                     <Link href="/" className="inline-block relative">
                         <h1 className="text-6xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/50 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]">
                             Komission
                         </h1>
                         <div className="flex items-center justify-center gap-2 mt-3">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]" />
+                            <span className="w-2 h-2 rounded-full bg-[#c1ff00] animate-pulse shadow-[0_0_10px_#c1ff00]" />
                             <p className="text-white/40 text-sm font-medium tracking-widest uppercase text-[10px]">
                                 Viral Intelligence Platform
                             </p>
@@ -137,14 +139,14 @@ function LoginContent() {
                         }}
                     />
 
-                    {/* Card Inner Glow */}
-                    <div className="absolute -inset-[1px] bg-gradient-to-br from-violet-500/20 via-transparent to-pink-500/20 rounded-[33px] -z-10 blur-sm opacity-50" />
+                    {/* Card Inner Glow - Electric Lime */}
+                    <div className="absolute -inset-[1px] bg-gradient-to-br from-[#c1ff00]/10 via-transparent to-[#c1ff00]/5 rounded-[33px] -z-10 blur-sm opacity-50" />
 
                     <h2 className="text-3xl font-bold text-white text-center mb-3 tracking-tight">
-                        Welcome Back
+                        {t('welcomeBack')}
                     </h2>
                     <p className="text-white/50 text-center mb-10 text-sm font-medium leading-relaxed">
-                        계정으로 로그인하여<br />당신의 <span className="text-white/90">바이럴 유전자</span>를 발견하세요
+                        {t('subtitle')}
                     </p>
 
                     {/* Error Box */}
@@ -156,11 +158,11 @@ function LoginContent() {
 
                     {/* Action Required Info Box */}
                     {isActionRequired && !error && (
-                        <div className="mb-6 p-4 bg-violet-500/10 border border-violet-500/20 rounded-2xl text-violet-300 text-xs font-bold text-center flex items-center justify-center gap-2">
-                            <span>🔐</span>
+                        <div className="mb-6 p-4 bg-black/40 border border-[#c1ff00]/20 rounded-xl text-white text-xs font-bold text-center flex items-center justify-center gap-2 font-mono">
+                            <span className="text-[#c1ff00]">🔐</span>
                             {actionLabel
-                                ? `"${actionLabel}" 기능을 사용하려면 로그인이 필요합니다.`
-                                : '이 기능을 사용하려면 로그인이 필요합니다.'}
+                                ? `"${actionLabel}" LOG IN REQUIRED`
+                                : 'LOGIN REQUIRED TO ACCESS THIS FEATURE'}
                         </div>
                     )}
 
@@ -169,7 +171,7 @@ function LoginContent() {
                         <div className="transform transition-transform hover:scale-[1.02] active:scale-[0.98]">
                             <GoogleLoginButtonCustom
                                 onSuccess={handleGoogleSuccess}
-                                onError={() => setError('Google 로그인 실패')}
+                                onError={() => setError(t('loginFailed'))}
                                 isLoading={isLoading || authLoading}
                             />
                         </div>
@@ -178,27 +180,28 @@ function LoginContent() {
                     {/* Divider with Text */}
                     <div className="flex items-center gap-4 my-8">
                         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                        <span className="text-white/20 text-[10px] font-bold uppercase tracking-widest">or continue as guest</span>
+                        <span className="text-white/20 text-[10px] font-bold uppercase tracking-widest">{t('orContinueAsGuest')}</span>
                         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                     </div>
 
                     {/* Guest Button */}
                     <Link
                         href="/"
-                        className="block w-full py-4 px-6 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 rounded-2xl text-center text-white/50 hover:text-white transition-all duration-300 text-sm font-bold relative overflow-hidden group/btn"
+                        className="block w-full py-4 px-6 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-[#c1ff00]/30 rounded-xl text-center text-white/50 hover:text-white transition-all duration-300 text-sm font-bold relative overflow-hidden group/btn"
                     >
                         <span className="relative z-10 flex items-center justify-center gap-2">
-                            <span>🚀</span> 지금 바로 체험하기
+                            <span>🚀</span> {t('continueAsGuest')}
                         </span>
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#c1ff00]/10 to-transparent translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000" />
                     </Link>
                 </div>
 
                 {/* Footer Terms */}
                 <p className="text-center text-white/20 text-[10px] mt-10 leading-loose">
-                    로그인하면 Komission의 <Link href="/terms" className="text-white/40 hover:text-white underline decoration-white/20 underline-offset-4 transition-colors">이용약관</Link> 및
-                    <br />
-                    <Link href="/privacy" className="text-white/40 hover:text-white underline decoration-white/20 underline-offset-4 transition-colors">개인정보처리방침</Link>에 동의하게 됩니다.
+                    {t('agreeToTerms').split('{terms}')[0]}
+                    <Link href="/terms" className="text-white/40 hover:text-white underline decoration-white/20 underline-offset-4 transition-colors">{t('terms')}</Link>
+                    {' '}
+                    <Link href="/privacy" className="text-white/40 hover:text-white underline decoration-white/20 underline-offset-4 transition-colors">{t('privacy')}</Link>
                 </p>
             </div>
         </div>
@@ -209,7 +212,7 @@ export default function LoginPage() {
     return (
         <Suspense fallback={
             <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-10 h-10 border-4 border-[#c1ff00] border-t-transparent rounded-full animate-spin" />
             </div>
         }>
             <LoginContent />

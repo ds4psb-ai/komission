@@ -67,17 +67,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 isLoading: false,
                 isAuthenticated: true,
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to fetch user:', error);
-            // Token is invalid, clear it
-            localStorage.removeItem('access_token');
-            api.clearToken();
-            setState({
-                user: null,
-                token: null,
-                isLoading: false,
-                isAuthenticated: false,
-            });
+
+            // Only clear token on actual session expiry (401)
+            // Keep token for network errors, server issues, etc.
+            const errorMessage = error?.message || '';
+            const isSessionExpired = errorMessage.includes('세션이 만료') ||
+                errorMessage.includes('401') ||
+                errorMessage.includes('Token has expired') ||
+                errorMessage.includes('Could not validate');
+
+            if (isSessionExpired) {
+                // Token is truly invalid, clear it
+                localStorage.removeItem('access_token');
+                api.clearToken();
+                setState({
+                    user: null,
+                    token: null,
+                    isLoading: false,
+                    isAuthenticated: false,
+                });
+            } else {
+                // Network error or server issue - keep token, try again later
+                console.warn('[Auth] Non-fatal error, keeping token for retry');
+                setState(prev => ({
+                    ...prev,
+                    isLoading: false,
+                    // Keep token but mark as not authenticated until verified
+                }));
+            }
         }
     };
 

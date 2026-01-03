@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 /**
  * /discover → / (홈) 리다이렉트
  */

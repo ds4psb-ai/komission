@@ -1,7 +1,7 @@
 # Page IA Redesign: Discover → Session 중심
 
 **목표**: L1/L2 자동화 + Temporal Recurrence 도입에 맞춰 네비게이션 구조를 "탐색 중심 → 세션/추천 중심"으로 전환  
-**Updated**: 2025-12-31 (`/trending` 삭제, `/` 홈 통합 반영)
+**Updated**: 2026-01-03 (Discover → 홈 통합, Ops 리다이렉트 반영)
 
 ---
 
@@ -9,24 +9,27 @@
 
 ### 메인 라우트
 ```
-/                    → 홈 (메인 피드)
-/(app)/discover      → 아웃라이어 탐색
+/                    → 홈 (Unified Outlier Discovery)
+/(app)/discover      → `/` 리다이렉트 (legacy)
 /(app)/boards        → Evidence Boards
 /(app)/knowledge     → 지식 라이브러리
-/outliers            → 아웃라이어 관리
+/for-you             → Answer-First 추천
+/outliers            → `/ops/outliers` 리다이렉트 (Ops)
 /remix/*             → 리믹스 세션
-/canvas              → Canvas (Pro)
+/guide/*             → 간단 촬영 가이드
+/session/*           → 세션 기반 작업 흐름
+/canvas              → `/ops/canvas` 리다이렉트 (Ops)
+/pipelines           → `/ops/pipelines` 리다이렉트 (Ops)
+/ops/*               → Ops Console (outliers/canvas/pipelines)
 /o2o/*               → O2O 캠페인
 /my/*                → 마이페이지
-/guide/*             → 촬영 가이드
 /calibration         → Taste Calibration
 ```
 
 ### 문제점
-- **탐색 중심**: 사용자가 직접 찾아야 함
-- **분산된 진입점**: Discover/Outliers/Remix가 분리됨
-- **L1/L2 자동화 반영 없음**: 추천 결과를 보여주는 전용 공간 없음
-- **모드 혼재**: Creator/Business/Ops가 동일 메뉴에 혼재
+- **탐색 중심**: 홈 피드는 여전히 브라우징 중심
+- **분산된 진입점**: `/for-you`와 `/remix`/`/session` 흐름이 분리됨
+- **Role 게이팅 미구현**: Creator/Business/Ops 메뉴 분리 미완
 
 ---
 
@@ -34,24 +37,28 @@
 
 ### 2.1 핵심 원칙
 1. **Answer-First (For You)**: 검색보다 추천을 먼저 제시하는 UX 원칙 (추천 결과가 첫 화면)
-2. **두 가지 모드 분리**: 뉴스(Trending) vs 과제(For You)
+2. **두 가지 모드 분리**: 홈(Outlier Discovery) vs 과제(For You)
 3. **세션 기반 흐름**: 상태가 유지되는 단일 작업 흐름
-4. **Role 기반 게이팅**: Creator/Business/Ops 콘텐츠 분리
+4. **Role 기반 게이팅**: Creator/Business/Ops 콘텐츠 분리 (planned)
 
-### 2.2 새 라우트 구조 (2025-12-31 업데이트)
+### 2.2 새 라우트 구조 (2026-01-03 업데이트)
 ```
-/                    → 홈 (검색 + 브라우징 + 프로모트 피드)
+/                    → 홈 (Outlier Discovery 피드)
 ├── /for-you         → 과제 모드 (L1/L2 추천)
 ├── /session/*       → 세션 기반 작업 흐름
 │   ├── /session/input    → 상황 입력
 │   ├── /session/result   → 추천 결과 + EvidenceBar
 │   └── /session/shoot    → 촬영 가이드 + CTA
+├── /remix/*         → 리믹스 세션 (레거시 플로우 유지)
+├── /guide/*         → 간단 촬영 가이드
 ├── /my/*            → 마이페이지 (성과/로열티)
-├── /ops/*           → 운영자 도구 (admin/curator only)
-└── /canvas          → Canvas Pro (숨김)
+└── /ops/*           → 운영자 도구 (admin/curator only)
+    ├── /ops/outliers
+    ├── /ops/canvas
+    └── /ops/pipelines
 ```
 
-> ⚠️ **2025-12-31 변경**: `/trending` 페이지가 삭제되고 `/` (홈)으로 통합됨
+> ⚠️ **리다이렉트**: `/discover` → `/`, `/outliers`/`/canvas`/`/pipelines` → `/ops/*`
 
 ---
 
@@ -77,11 +84,11 @@
 
 ## 4) 페이지별 상세
 
-### 4.1 `/trending` (뉴스 모드)
+### 4.1 `/` (홈 / 뉴스 모드)
 > "요즘 뭐가 뜨는지 보고 싶다"
 
-- **콘텐츠**: 엄선된 아웃라이어 피드 (기존 Discover)
-- **정렬**: 최신/인기/카테고리 필터
+- **콘텐츠**: 아웃라이어 피드 (Discover 통합)
+- **정렬**: 플랫폼/티어 필터 + 검색
 - **카드**: `UnifiedOutlierCard` 재사용
 - **CTA**: "이 패턴으로 촬영하기" → Session 진입
 
@@ -132,7 +139,9 @@ interface SessionState {
 
 ---
 
-## 5) Role Switch 구현
+## 5) Role Switch (planned)
+
+현재 헤더/사이드바에 Role Switch UI는 노출되지 않으며, BottomNav는 기본 `creator` 모드로 렌더링된다.
 
 ### 헤더 위치
 ```
@@ -147,10 +156,10 @@ interface SessionState {
 const [role, setRole] = useState<'creator' | 'business'>('creator');
 ```
 
-### 게이팅 규칙
-- Creator: `/trending`, `/for-you`, `/session/*`, `/my`
+### 게이팅 규칙 (목표)
+- Creator: `/`, `/for-you`, `/session/*`, `/my`
 - Business: `/for-you`, `/boards`, `/o2o`, `/my`
-- Ops (is_curator=true): 모든 라우트 + `/ops`
+- Ops (is_curator=true): `/ops/*`
 
 ---
 
@@ -158,11 +167,12 @@ const [role, setRole] = useState<'creator' | 'business'>('creator');
 
 | AS-IS | TO-BE | 비고 |
 |-------|-------|------|
-| `/(app)/discover` | `/trending` | 리다이렉트 |
-| `/outliers` | `/ops/outliers` | Ops 전용 |
-| `/remix/[id]` | `/session/result` | 세션 통합 |
-| `/guide/[id]` | `/session/shoot` | 세션 통합 |
-| `/canvas` | `/ops/canvas` | Pro/Ops 전용 |
+| `/(app)/discover` | `/` | 리다이렉트 |
+| `/outliers` | `/ops/outliers` | Ops 전용 리다이렉트 |
+| `/canvas` | `/ops/canvas` | Ops 전용 리다이렉트 |
+| `/pipelines` | `/ops/pipelines` | Ops 전용 리다이렉트 |
+| `/remix/[id]` | 유지 | 레거시 플로우 유지 |
+| `/guide/[id]` | 유지 | 간단 가이드 페이지 유지 |
 | `/calibration` | `/calibration` | 유지 |
 | `/o2o/*` | `/o2o/*` | 유지 (Business) |
 
@@ -172,36 +182,34 @@ const [role, setRole] = useState<'creator' | 'business'>('creator');
 
 1. **`/for-you` + `PatternAnswerCard`** — 핵심 Answer-First (For You)
 2. **`/session/*` 세션 흐름** — 상태 유지 작업
-3. **`/trending` 리팩토링** — 기존 Discover 이전
-4. **Role Switch** — BottomNav 분기
-5. **기존 라우트 리다이렉트** — 마이그레이션
+3. **`/discover` → `/` 리다이렉트** — 홈 통합
+4. **`/outliers`/`/canvas`/`/pipelines` → `/ops/*`** — Ops 전용 이동
+5. **Role Switch** — BottomNav 분기 (planned)
 
 ---
 
-## 8) 파일 변경 예상
+## 8) 현재 파일 구성 (요약)
 
-### 신규 생성
+### 구현된 라우트/컴포넌트
 ```
-frontend/src/app/for-you/page.tsx
-frontend/src/app/trending/page.tsx
+frontend/src/app/page.tsx
+frontend/src/app/(app)/for-you/page.tsx
 frontend/src/app/session/input/page.tsx
 frontend/src/app/session/result/page.tsx
 frontend/src/app/session/shoot/page.tsx
+frontend/src/app/(app)/discover/page.tsx   # redirect → /
+frontend/src/app/outliers/page.tsx         # redirect → /ops/outliers
+frontend/src/app/canvas/page.tsx           # redirect → /ops/canvas
+frontend/src/app/pipelines/page.tsx        # redirect → /ops/pipelines
 frontend/src/contexts/SessionContext.tsx
 frontend/src/components/PatternAnswerCard.tsx
 frontend/src/components/EvidenceBar.tsx
 frontend/src/components/FeedbackWidget.tsx
 ```
 
-### 수정
+### 변경된 레이아웃/네비게이션
 ```
-frontend/src/components/BottomNav.tsx   ← Role 기반 탭
-frontend/src/components/AppHeader.tsx  ← Role Switch 추가
-frontend/src/app/layout.tsx            ← SessionProvider 추가
-```
-
-### 제거/이동
-```
-frontend/src/app/(app)/discover → /trending으로 이동
-frontend/src/app/outliers → /ops/outliers로 이동
+frontend/src/components/BottomNav.tsx       # role param 지원 (기본 creator)
+frontend/src/components/AppHeader.tsx       # i18n + 고정 탭
+frontend/src/app/layout.tsx                 # NextIntlClientProvider 적용
 ```

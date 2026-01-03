@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useEffect, useState, use, useRef } from 'react';
 import { api, EvidenceBoardDetail, BoardItem } from '@/lib/api';
 import Link from 'next/link';
@@ -31,6 +33,7 @@ const MOCK_BOARD: EvidenceBoardDetail = {
 
 export default function BoardDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const unwrappedParams = use(params);
+    const t = useTranslations('pages.boards.detail');
     const [board, setBoard] = useState<EvidenceBoardDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const isMountedRef = useRef(true);
@@ -61,13 +64,13 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
         };
     }, []);
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center text-white/50">로딩중...</div>;
-    if (!board) return <div className="min-h-screen flex items-center justify-center text-white/50">보드를 찾을 수 없습니다</div>;
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-white/50">{t('loading')}</div>;
+    if (!board) return <div className="min-h-screen flex items-center justify-center text-white/50">{t('notFound')}</div>;
 
     const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-        DRAFT: { bg: "bg-gray-500/20", text: "text-gray-300", label: "초안" },
-        ACTIVE: { bg: "bg-green-500/20", text: "text-green-300", label: "진행중" },
-        CONCLUDED: { bg: "bg-blue-500/20", text: "text-blue-300", label: "완료" },
+        DRAFT: { bg: "bg-gray-500/20", text: "text-gray-300", label: t('status.draft') },
+        ACTIVE: { bg: "bg-green-500/20", text: "text-green-300", label: t('status.active') },
+        CONCLUDED: { bg: "bg-blue-500/20", text: "text-blue-300", label: t('status.concluded') },
     };
     const status = statusConfig[board.status] || statusConfig.DRAFT;
 
@@ -78,7 +81,7 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="flex items-center gap-4">
                     <Link href="/boards" className="text-white/50 hover:text-white transition-colors flex items-center gap-1">
                         <ArrowLeft className="w-4 h-4" />
-                        뒤로
+                        {t('back')}
                     </Link>
                     <div className="h-5 w-px bg-white/10" />
                     <h1 className="font-bold">{board.title}</h1>
@@ -89,11 +92,11 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="flex gap-2">
                     <button className="px-3 py-1.5 text-sm bg-white/5 hover:bg-white/10 rounded-md border border-white/10 transition-colors flex items-center gap-1.5">
                         <Settings className="w-3.5 h-3.5" />
-                        설정
+                        {t('settings')}
                     </button>
                     <button className="px-3 py-1.5 text-sm bg-violet-600 hover:bg-violet-500 rounded-md transition-colors flex items-center gap-1.5">
                         <Plus className="w-3.5 h-3.5" />
-                        아이템 추가
+                        {t('addItem')}
                     </button>
                 </div>
             </header>
@@ -103,36 +106,36 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
                 <aside className="space-y-4">
                     <div className="bg-white/5 border border-white/10 p-5 rounded-xl space-y-4">
                         <div>
-                            <label className="text-xs font-bold text-white/40 uppercase tracking-wider">KPI 목표</label>
-                            <div className="text-lg font-mono text-cyan-300 mt-1">{board.kpi_target || "설정 안됨"}</div>
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-wider">{t('sidebar.kpiTarget')}</label>
+                            <div className="text-lg font-mono text-cyan-300 mt-1">{board.kpi_target || t('sidebar.notSet')}</div>
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-white/40 uppercase tracking-wider">설명</label>
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-wider">{t('sidebar.description')}</label>
                             <p className="text-sm text-gray-300 mt-1 leading-relaxed">
-                                {board.description || "설명 없음"}
+                                {board.description || t('sidebar.noDescription')}
                             </p>
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-white/40 uppercase tracking-wider">결론</label>
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-wider">{t('sidebar.conclusion')}</label>
                             {board.conclusion ? (
                                 <p className="text-sm text-yellow-100 bg-yellow-500/10 p-3 rounded mt-1 border border-yellow-500/20">
                                     {board.conclusion}
                                 </p>
                             ) : (
-                                <p className="text-sm text-gray-500 italic mt-1">결론 대기중...</p>
+                                <p className="text-sm text-gray-500 italic mt-1">{t('sidebar.conclusionPending')}</p>
                             )}
                         </div>
                     </div>
 
                     <div className="bg-white/5 border border-white/10 p-5 rounded-xl">
-                        <h3 className="font-bold text-sm mb-3">보드 통계</h3>
+                        <h3 className="font-bold text-sm mb-3">{t('stats.title')}</h3>
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
-                                <span className="text-white/40">총 아이템</span>
-                                <span>{board.items?.length || 0}개</span>
+                                <span className="text-white/40">{t('stats.totalItems')}</span>
+                                <span>{board.items?.length || 0}{t('stats.count')}</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-white/40">생성일</span>
+                                <span className="text-white/40">{t('stats.createdAt')}</span>
                                 <span>{new Date(board.created_at).toLocaleDateString('ko-KR')}</span>
                             </div>
                         </div>
@@ -142,9 +145,9 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
                 {/* Main Content */}
                 <div className="space-y-4">
                     <div className="flex justify-between items-end">
-                        <h2 className="text-xl font-bold">실험 아이템</h2>
+                        <h2 className="text-xl font-bold">{t('experiments.title')}</h2>
                         <div className="text-sm text-white/40">
-                            {board.items?.length || 0}개 후보 비교중
+                            {board.items?.length || 0}{t('experiments.comparing')}
                         </div>
                     </div>
 
@@ -158,7 +161,7 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
                                 transition={{ delay: idx * 0.05 }}
                             >
                                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button className="p-1.5 hover:text-red-400 rounded hover:bg-white/5" title="삭제">
+                                    <button className="p-1.5 hover:text-red-400 rounded hover:bg-white/5" title={t('delete')}>
                                         <X className="w-4 h-4" />
                                     </button>
                                 </div>
@@ -169,7 +172,7 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
                                         {item.remix_node_id ? 'R' : 'O'}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="font-medium truncate">{item.item_data?.title || "제목 없음"}</h4>
+                                        <h4 className="font-medium truncate">{item.item_data?.title || t('noTitle')}</h4>
                                         {item.item_data?.source_url && (
                                             <a
                                                 href={item.item_data.source_url}
@@ -177,7 +180,7 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
                                                 rel="noopener noreferrer"
                                                 className="text-xs text-blue-400 hover:underline flex items-center gap-1"
                                             >
-                                                {item.item_data?.platform || "소스"}
+                                                {item.item_data?.platform || t('source')}
                                                 <ExternalLink className="w-3 h-3" />
                                             </a>
                                         )}
@@ -195,7 +198,7 @@ export default function BoardDetailPage({ params }: { params: Promise<{ id: stri
                         {/* Add Item Placeholder */}
                         <button className="border-2 border-dashed border-white/10 rounded-xl p-6 flex flex-col items-center justify-center text-white/30 hover:text-white hover:border-white/30 transition-all min-h-[180px]">
                             <Plus className="w-6 h-6 mb-2" />
-                            <span>후보 추가</span>
+                            <span>{t('addCandidate')}</span>
                         </button>
                     </div>
                 </div>

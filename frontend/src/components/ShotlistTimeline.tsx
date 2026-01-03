@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * ShotlistTimeline - VDG 기반 샷리스트 타임라인

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * BottomNav - Role 기반 모바일 하단 네비게이션

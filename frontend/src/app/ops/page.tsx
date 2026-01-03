@@ -15,16 +15,18 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
 import { SessionHUD } from '@/components/SessionHUD';
 import {
     Activity, AlertCircle, CheckCircle, Clock,
     RefreshCw, ChevronRight, Database, GitBranch, BarChart3,
     Zap, FlaskConical, ArrowRight, RotateCcw, Upload, BookOpen, ExternalLink,
-    Sparkles, Target, TrendingUp, FileVideo
+    Sparkles, Target, TrendingUp, FileVideo, Lock
 } from 'lucide-react';
 import { api, SourcePackItem } from '@/lib/api';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 interface PipelineStatus {
     total_runs: number;
@@ -67,6 +69,7 @@ interface P2Progress {
 }
 
 export default function OpsConsolePage() {
+    const pathname = usePathname();  // 라우트 변경 감지
     const [status, setStatus] = useState<PipelineStatus | null>(null);
     const [runs, setRuns] = useState<RunItem[]>([]);
     const [sourcePacks, setSourcePacks] = useState<SourcePackItem[]>([]);
@@ -80,7 +83,7 @@ export default function OpsConsolePage() {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [pathname]);  // pathname 추가: 라우트 변경 시 refetch
 
     useEffect(() => {
         return () => {
@@ -269,37 +272,41 @@ export default function OpsConsolePage() {
 
             <main className="max-w-7xl mx-auto px-6 py-8">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center justify-between mb-12">
                     <div>
-                        <h1 className="text-3xl font-black flex items-center gap-3">
-                            <Activity className="w-8 h-8 text-violet-400" />
-                            Ops Console
+                        <h1 className="text-4xl font-black italic tracking-tighter uppercase flex items-center gap-4">
+                            <Activity className="w-10 h-10 text-[#c1ff00]" />
+                            <span className="text-white">OPS</span>
+                            <span className="text-[#c1ff00] drop-shadow-[0_0_10px_rgba(193,255,0,0.5)]">CONSOLE</span>
                         </h1>
-                        <p className="text-white/50 mt-1">파이프라인 운영 대시보드</p>
+                        <p className="text-white/40 mt-2 font-mono text-sm tracking-wide">
+                            PIPELINE MONITORING & CONTROL SYSTEM
+                        </p>
                     </div>
                     <button
                         onClick={fetchData}
                         disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-[#c1ff00]/10 border border-white/10 hover:border-[#c1ff00]/30 rounded-xl text-sm font-bold text-white/80 hover:text-[#c1ff00] transition-all group"
                     >
-                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                        새로고침
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                        REFRESH SYSTEM
                     </button>
                 </div>
 
                 {/* Error State - Softer Design */}
                 {error && (
-                    <div className="mb-8 p-6 bg-white/5 border border-white/10 rounded-2xl text-center">
-                        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-violet-500/10 flex items-center justify-center">
-                            <AlertCircle className="w-6 h-6 text-violet-400" />
+                    <div className="mb-8 p-8 bg-black/40 border border-[#c1ff00]/20 rounded-2xl text-center relative overflow-hidden group">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1 bg-gradient-to-r from-transparent via-[#c1ff00]/50 to-transparent" />
+                        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#c1ff00]/10 flex items-center justify-center border border-[#c1ff00]/20 shadow-[0_0_15px_rgba(193,255,0,0.1)]">
+                            <Lock className="w-8 h-8 text-[#c1ff00]" />
                         </div>
-                        <p className="text-white font-medium mb-2">{error}</p>
-                        <p className="text-white/50 text-sm mb-4">Ops Console은 관리자 계정으로 로그인해야 접근할 수 있습니다.</p>
+                        <p className="text-white font-black uppercase tracking-wider text-xl mb-2">{error}</p>
+                        <p className="text-white/40 text-sm mb-8 font-mono">ACCESS RESTRICTED: ADMIN PRIVILEGES REQUIRED</p>
                         <button
                             onClick={() => window.location.href = '/login?redirect=/ops'}
-                            className="px-6 py-2.5 bg-violet-500 hover:bg-violet-400 rounded-xl text-white text-sm font-bold transition-colors"
+                            className="px-8 py-3 bg-[#c1ff00] hover:bg-white text-black text-sm font-black uppercase tracking-wider rounded-lg transition-all shadow-[0_0_20px_rgba(193,255,0,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transform hover:-translate-y-1"
                         >
-                            로그인하기
+                            LOGIN TO CONSOLE
                         </button>
                     </div>
                 )}
@@ -319,13 +326,13 @@ export default function OpsConsolePage() {
                         {/* Stats Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
                             {/* Runs */}
-                            <div className="p-5 bg-gradient-to-br from-violet-500/10 to-violet-900/10 border border-violet-500/20 rounded-2xl">
+                            <div className="p-5 bg-black/40 border border-violet-500/20 rounded-2xl hover:border-violet-500/50 transition-colors group">
                                 <div className="flex items-center gap-2 text-violet-400 mb-2">
                                     <Zap className="w-4 h-4" />
-                                    <span className="text-xs font-medium">Runs</span>
+                                    <span className="text-xs font-black uppercase tracking-wider">Runs</span>
                                 </div>
                                 <div className="text-3xl font-black text-white">{status.total_runs}</div>
-                                <div className="mt-2 flex gap-2 text-xs">
+                                <div className="mt-2 flex gap-2 text-xs font-mono">
                                     <span className="text-emerald-400">✓ {status.completed}</span>
                                     <span className="text-red-400">✗ {status.failed}</span>
                                     <span className="text-amber-400">◎ {status.running}</span>
@@ -333,55 +340,56 @@ export default function OpsConsolePage() {
                             </div>
 
                             {/* Evidence Events */}
-                            <div className="p-5 bg-gradient-to-br from-cyan-500/10 to-cyan-900/10 border border-cyan-500/20 rounded-2xl">
+                            <div className="p-5 bg-black/40 border border-cyan-500/20 rounded-2xl hover:border-cyan-500/50 transition-colors group">
                                 <div className="flex items-center gap-2 text-cyan-400 mb-2">
                                     <FlaskConical className="w-4 h-4" />
-                                    <span className="text-xs font-medium">Evidence</span>
+                                    <span className="text-xs font-black uppercase tracking-wider">Evidence</span>
                                 </div>
                                 <div className="text-3xl font-black text-white">{status.total_evidence_events}</div>
-                                <div className="mt-2 flex gap-2 text-xs">
+                                <div className="mt-2 flex gap-2 text-xs font-mono">
                                     <span className="text-emerald-400">✓ {status.evidence_measured}</span>
                                     <span className="text-amber-400">⏳ {status.evidence_pending}</span>
                                 </div>
                             </div>
 
                             {/* VDG Edges */}
-                            <div className="p-5 bg-gradient-to-br from-pink-500/10 to-pink-900/10 border border-pink-500/20 rounded-2xl">
+                            <div className="p-5 bg-black/40 border border-pink-500/20 rounded-2xl hover:border-pink-500/50 transition-colors group">
                                 <div className="flex items-center gap-2 text-pink-400 mb-2">
                                     <GitBranch className="w-4 h-4" />
-                                    <span className="text-xs font-medium">VDG Edges</span>
+                                    <span className="text-xs font-black uppercase tracking-wider">VDG Edges</span>
                                 </div>
                                 <div className="text-3xl font-black text-white">{status.total_vdg_edges}</div>
-                                <div className="mt-2 flex gap-2 text-xs">
+                                <div className="mt-2 flex gap-2 text-xs font-mono">
                                     <span className="text-emerald-400">✓ {status.edges_confirmed}</span>
                                     <span className="text-amber-400">? {status.edges_candidate}</span>
                                 </div>
                             </div>
 
                             {/* Clusters & Packs */}
-                            <div className="p-5 bg-gradient-to-br from-orange-500/10 to-orange-900/10 border border-orange-500/20 rounded-2xl">
+                            <div className="p-5 bg-black/40 border border-orange-500/20 rounded-2xl hover:border-orange-500/50 transition-colors group">
                                 <div className="flex items-center gap-2 text-orange-400 mb-2">
                                     <Database className="w-4 h-4" />
-                                    <span className="text-xs font-medium">P2 Clusters</span>
+                                    <span className="text-xs font-black uppercase tracking-wider">P2 Clusters</span>
                                 </div>
                                 <div className="text-3xl font-black text-white">
                                     {p2Progress?.distill_ready_clusters || 0}
                                     <span className="text-lg text-white/40">/{p2Progress?.target || 10}</span>
                                 </div>
-                                <div className="mt-2 text-xs text-white/40">
-                                    {p2Progress?.progress_percent || 0}% 완료
+                                <div className="mt-2 text-xs text-white/40 font-mono">
+                                    {p2Progress?.progress_percent || 0}% Done
                                 </div>
                             </div>
 
                             {/* STPF Engine Status (Ops-Only) */}
-                            <div className="p-5 bg-gradient-to-br from-emerald-500/10 to-emerald-900/10 border border-emerald-500/20 rounded-2xl">
-                                <div className="flex items-center gap-2 text-emerald-400 mb-2">
+                            <div className="p-5 bg-black/40 border border-[#c1ff00]/20 rounded-2xl hover:border-[#c1ff00]/50 transition-colors group relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-[#c1ff00] blur-2xl opacity-10 group-hover:opacity-20 transition-opacity" />
+                                <div className="flex items-center gap-2 text-[#c1ff00] mb-2">
                                     <Target className="w-4 h-4" />
-                                    <span className="text-xs font-medium">STPF Engine</span>
+                                    <span className="text-xs font-black uppercase tracking-wider">STPF Engine</span>
                                 </div>
                                 <div className="text-3xl font-black text-white">v3.1</div>
-                                <div className="mt-2 flex gap-2 text-xs">
-                                    <span className="text-emerald-400">✓ 14 APIs</span>
+                                <div className="mt-2 flex gap-2 text-xs font-mono">
+                                    <span className="text-[#c1ff00]">✓ 14 APIs</span>
                                     <span className="text-cyan-400">7 MCP</span>
                                 </div>
                             </div>
@@ -400,18 +408,18 @@ export default function OpsConsolePage() {
                                     <div className="flex items-center gap-2">
                                         <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
                                             <div
-                                                className="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all"
+                                                className="h-full bg-gradient-to-r from-orange-500 to-[#c1ff00] rounded-full transition-all box-shadow-[0_0_10px_rgba(193,255,0,0.5)]"
                                                 style={{ width: `${p2Progress?.progress_percent || 0}%` }}
                                             />
                                         </div>
-                                        <span className="text-xs text-white/60">{p2Progress?.progress_percent || 0}%</span>
+                                        <span className="text-xs font-mono font-bold text-[#c1ff00]">{p2Progress?.progress_percent || 0}%</span>
                                     </div>
                                     <Link
                                         href="/ops/outliers"
-                                        className="px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 rounded-lg text-xs font-medium text-orange-300 flex items-center gap-1 transition-colors"
+                                        className="px-3 py-1.5 bg-[#c1ff00]/10 hover:bg-[#c1ff00]/20 border border-[#c1ff00]/20 hover:border-[#c1ff00]/40 rounded-lg text-xs font-black text-[#c1ff00] flex items-center gap-1 transition-colors uppercase"
                                     >
                                         <FileVideo className="w-3 h-3" />
-                                        아웃라이어 관리
+                                        Manage Outliers
                                     </Link>
                                 </div>
                             </div>

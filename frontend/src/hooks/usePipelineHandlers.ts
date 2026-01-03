@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { api, Pipeline } from '@/lib/api';
 import { useAuthGate, AUTH_ACTIONS } from '@/lib/useAuthGate';
 import { Node, Edge } from '@xyflow/react';
@@ -41,6 +42,8 @@ export function usePipelineHandlers({
     showToast,
     onNavigate,
 }: UsePipelineHandlersProps) {
+    const t = useTranslations('components.pipeline');
+
     // Pipeline state
     const [pipelineId, setPipelineId] = useState<string | null>(null);
     const [pipelineTitle, setPipelineTitle] = useState<string>('');
@@ -63,13 +66,13 @@ export function usePipelineHandlers({
         if (!requireAuth(AUTH_ACTIONS.SAVE)) return;
 
         if (!nodes.length) {
-            showToast('캔버스가 비어있습니다!', 'error');
+            showToast(t('emptyCanvas'), 'error');
             return;
         }
 
-        let title = pipelineTitle || '제목 없는 파이프라인';
+        let title = pipelineTitle || t('untitled');
         if (!pipelineId) {
-            const input = window.prompt('파이프라인 이름을 입력하세요:', title);
+            const input = window.prompt(t('enterName'), title);
             if (!input) return;
             title = input;
             setPipelineTitle(title);
@@ -77,7 +80,7 @@ export function usePipelineHandlers({
 
         let publicStatus = isPublic;
         if (!pipelineId) {
-            publicStatus = window.confirm('이 파이프라인을 커뮤니티에 공개할까요?');
+            publicStatus = window.confirm(t('confirmPublic'));
             setIsPublic(publicStatus);
         }
 
@@ -90,7 +93,7 @@ export function usePipelineHandlers({
                     graph_data: graphData,
                     is_public: publicStatus
                 });
-                showToast('파이프라인 업데이트 완료!', 'success');
+                showToast(t('updateSuccess'), 'success');
             } else {
                 const newPipeline = await api.savePipeline({
                     title,
@@ -98,16 +101,16 @@ export function usePipelineHandlers({
                     is_public: publicStatus
                 });
                 setPipelineId(newPipeline.id);
-                showToast('파이프라인 저장 완료!', 'success');
+                showToast(t('saveSuccess'), 'success');
             }
             setIsDirty(false);
         } catch (e) {
-            showToast('파이프라인 저장 실패', 'error');
+            showToast(t('saveFail'), 'error');
             console.error(e);
         } finally {
             setIsSaving(false);
         }
-    }, [nodes, pipelineId, pipelineTitle, isPublic, reactFlowInstance, showToast, requireAuth]);
+    }, [nodes, pipelineId, pipelineTitle, isPublic, reactFlowInstance, showToast, requireAuth, t]);
 
     // Load list handler
     const handleLoadList = useCallback(async () => {
@@ -117,15 +120,15 @@ export function usePipelineHandlers({
             setSavedPipelines(list);
             setShowLoadModal(true);
         } catch (e) {
-            showToast('파이프라인 목록 로드 실패', 'error');
+            showToast(t('loadListFail'), 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [showToast]);
+    }, [showToast, t]);
 
     // Load single pipeline
     const handleLoad = useCallback(async (id: string) => {
-        if (isDirty && !window.confirm('저장하지 않은 변경사항이 있습니다. 그래도 로드할까요?')) {
+        if (isDirty && !window.confirm(t('confirmLoad'))) {
             return;
         }
 
@@ -141,13 +144,13 @@ export function usePipelineHandlers({
             setIsPublic(pipeline.is_public);
             setShowLoadModal(false);
             setIsDirty(false);
-            showToast(`로드 완료: ${pipeline.title}`, 'success');
+            showToast(`${t('loadSuccess')}: ${pipeline.title}`, 'success');
         } catch (e) {
-            showToast('파이프라인 로드 실패', 'error');
+            showToast(t('loadFail'), 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [setNodes, setEdges, isDirty, showToast]);
+    }, [setNodes, setEdges, isDirty, showToast, t]);
 
     // Export handler
     const handleExport = useCallback((nodeId: string) => {

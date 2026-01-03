@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * AccessibleComponents - 접근성 향상 컴포넌트 (PEGL v1.0)

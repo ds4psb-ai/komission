@@ -453,6 +453,12 @@ class VideoDownloader:
                     thumbs.get("high", {}).get("url") or 
                     thumbs.get("default", {}).get("url")
                 )
+                
+                # Convert ISO date to YYYYMMDD format for consistency with yt-dlp
+                published_at = snippet.get("publishedAt", "")  # e.g., "2009-10-25T06:57:33Z"
+                upload_date = None
+                if published_at:
+                    upload_date = published_at[:10].replace("-", "")  # "20091025"
 
                 return VideoMetadata(
                     id=item["id"],
@@ -464,7 +470,9 @@ class VideoDownloader:
                     platform="youtube",
                     description=snippet["description"],
                     thumbnail_url=best_thumb,
-                    audio_url=f"https://www.youtube.com/watch?v={item['id']}" # Not direct link, but valid for yt-dlp later
+                    audio_url=f"https://www.youtube.com/watch?v={item['id']}",  # Not direct link, but valid for yt-dlp later
+                    upload_date=upload_date,
+                    comment_count=int(stats.get("commentCount", 0)) if stats.get("commentCount") else None,
                 )
             except Exception as e:
                 print(f"YouTube API Exception: {e}")

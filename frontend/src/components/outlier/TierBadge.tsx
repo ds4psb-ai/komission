@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * TierBadge - Outlier tier badge component (S/A/B/C)

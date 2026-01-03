@@ -2,6 +2,8 @@
 // Unified page with query-based tab navigation (PEGL v1.0)
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 import Link from "next/link";
 import { useSearchParams, useParams } from "next/navigation";
 import { useSessionStore } from "@/stores/useSessionStore";

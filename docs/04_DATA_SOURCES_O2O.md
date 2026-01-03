@@ -73,8 +73,9 @@ python backend/scripts/sync_outliers_to_sheet.py --limit 200 --status pending,se
 기본 매핑: `pending → new`, `selected → candidate`, `rejected → ignored`, `promoted → promoted`.
 
 ### 영상 해석 단계 (옵션)
-- Parent 승격 이후 `/api/v1/remix/{node_id}/analyze` 호출
+- Parent 승격 이후 `/api/v1/remix/{node_id}/analyze` 호출 (Admin only)
 - 분석 결과는 Pattern 합성/클러스터링 입력으로 사용 (Gemini 3.0 Pro 기반 코드 분석 우선)
+  - Admin 범위: `role=admin` 또는 `SUPER_ADMIN_EMAILS` 환경변수에 포함된 이메일
 
 ### Outlier 클러스터링 (기본)
 분석 스키마 기반 유사도 클러스터링으로 **패턴 묶음**을 만듭니다.
@@ -153,7 +154,7 @@ outlier_items.campaign_eligible  -- boolean, default=False
 
 **API**
 ```
-POST /api/v1/outliers/items/{id}/promote
+POST /api/v1/outliers/items/{item_id}/promote
 Body: { "campaign_eligible": true }
 ```
 

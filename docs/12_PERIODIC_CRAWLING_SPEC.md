@@ -176,18 +176,20 @@ def classify_tier(score):
 
 ### 5.2 Cron Expressions
 
+Note: The cron expressions below assume the server timezone is KST. If your server runs in UTC, shift schedules by -9 hours (see `backend/scripts/crontab.example` for UTC-adjusted entries).
+
 ```bash
 # YouTube Outliers (6-hourly)
-0 0,6,12,18 * * * python crawlers/youtube_outlier.py
+0 0,6,12,18 * * * python scripts/run_scheduled_crawl.py --platform youtube --limit 50
 
 # TikTok Outliers (4-hourly)
-0 0,4,8,12,16,20 * * * python crawlers/tiktok_outlier.py
+0 0,4,8,12,16,20 * * * python scripts/run_scheduled_crawl.py --platform tiktok --limit 50
 
 # Instagram Outliers (12-hourly)
-0 6,18 * * * python crawlers/instagram_outlier.py
+0 6,18 * * * python scripts/run_scheduled_crawl.py --platform instagram --limit 30
 
 # Platform Updates (daily 9 AM KST)
-0 9 * * * python crawlers/platform_updates.py
+0 9 * * * python scripts/run_scheduled_crawl.py --type updates --limit 10
 
 # Evidence Loop (daily 10 AM KST)
 0 10 * * * python scripts/run_real_evidence_loop.py
@@ -676,7 +678,7 @@ REDIS_URL=redis://localhost:6379/0
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 ALERT_EMAIL=alerts@example.com
 
-# Crawling thresholds
+# Crawling thresholds (planned; not yet wired into crawlers)
 YOUTUBE_MIN_VIEWS=100000
 TIKTOK_MIN_VIEWS=500000
 INSTAGRAM_MIN_VIEWS=50000
@@ -703,7 +705,7 @@ RUN playwright install chromium
 COPY crawlers/ ./crawlers/
 COPY scripts/ ./scripts/
 
-CMD ["python", "-m", "crawlers.scheduler"]
+CMD ["python", "scripts/run_scheduled_crawl.py", "--type", "outliers", "--platform", "all"]
 ```
 
 ### 11.2 Kubernetes CronJob
@@ -722,7 +724,7 @@ spec:
           containers:
           - name: crawler
             image: komission-crawler:latest
-            command: ["python", "crawlers/youtube_outlier.py"]
+            command: ["python", "scripts/run_scheduled_crawl.py", "--platform", "youtube", "--type", "outliers"]
             envFrom:
             - secretRef:
                 name: crawler-secrets

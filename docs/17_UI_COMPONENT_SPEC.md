@@ -11,7 +11,6 @@
 ### 1.1 Data Binding (API → Component)
 ```typescript
 interface PatternAnswerCardProps {
-  // Pattern Library 출력
   pattern_id: string;
   cluster_id: string;
   pattern_summary: string;         // 한 줄 정의
@@ -20,22 +19,32 @@ interface PatternAnswerCardProps {
     timing: string;
     audio: string;
   };
-  
-  // L2 Reranker 출력
+
   fit_score: number;               // 0~1
-  evidence_strength: number;       // source_count + variant_lift
-  
+  evidence_strength: number;       // 댓글/증거 수
+  tier: 'S' | 'A' | 'B';
+  platform: 'tiktok' | 'youtube' | 'instagram';
+
   // Recurrence (있으면 표시)
   recurrence?: {
-    status: 'confirmed' | 'candidate';
-    ancestor_cluster_id: string;
-    recurrence_score: number;
+    status: 'confirmed' | 'candidate' | 'unmatched';
+    ancestor_cluster_id?: string;
+    recurrence_score?: number;
     origin_year?: number;
   };
-  
+
+  // 신뢰 시그널 (옵션)
+  trust_signals?: {
+    analyzed_videos?: number;
+    avg_views?: number;
+    top_percentile?: number;
+    expected_filming_mins?: number;
+  };
+
   // CTA
-  onShoot: () => void;
-  onViewEvidence: () => void;
+  onShoot?: () => void;
+  onViewEvidence?: () => void;
+  isEvidenceExpanded?: boolean;
 }
 ```
 
@@ -77,7 +86,7 @@ interface EvidenceBarProps {
     text: string;
     likes: number;
     lang: 'ko' | 'en' | 'other';
-    tag: 'hook' | 'payoff' | 'product_curiosity' | 'confusion' | 'controversy';
+    tag?: 'hook' | 'payoff' | 'product_curiosity' | 'confusion' | 'controversy';
   }>;
   
   // Recurrence Evidence (있으면)
@@ -88,8 +97,8 @@ interface EvidenceBarProps {
     origin_year: number;
   };
   
-  // Risk Tags
-  risk_tags: Array<{
+  // Risk Tags (optional)
+  risk_tags?: Array<{
     type: 'confusion' | 'controversy' | 'weak_evidence';
     label: string;
   }>;
@@ -122,6 +131,7 @@ interface EvidenceBarProps {
 ### 2.3 Design Rules
 - **접힘 기본**: 모바일에서는 기본 접힘, 탭하면 펼침
 - **태그 색상**: hook/payoff = 녹색, confusion/controversy = 주황
+- **조건부 노출**: 태그/재등장/리스크는 데이터가 있을 때만 표시 (현재 API는 태그/리스크 미제공)
 - **없는 경우**: "증거 수집 중..." 표시
 
 ---
@@ -134,13 +144,11 @@ interface EvidenceBarProps {
 ```typescript
 interface FeedbackWidgetProps {
   pattern_id: string;
-  user_id: string;
   context: 'answer_card' | 'after_shoot';
   
   onSubmit: (feedback: {
     helpful: boolean;
-    reason?: string;           // 선택 입력
-    tag?: 'wrong_category' | 'outdated' | 'too_hard' | 'perfect';
+    reason?: 'wrong_category' | 'outdated' | 'too_hard' | 'perfect'; // 선택 입력
   }) => void;
 }
 ```
@@ -177,7 +185,7 @@ interface FeedbackWidgetProps {
   <PatternAnswerCard             {/* Top 1 Answer */}
     pattern={topPattern}
     onViewEvidence={() => setShowEvidence(true)}
-    onShoot={() => router.push('/shoot')}
+    onShoot={() => router.push('/session/result?pattern=PATTERN_ID')}
   />
   
   {showEvidence && (
@@ -197,15 +205,15 @@ interface FeedbackWidgetProps {
 </ForYouPage>
 ```
 
-### Trending 페이지 (뉴스/발견 모드)
+### 홈 페이지 (뉴스/발견 모드)
 ```tsx
-<TrendingPage>
+<HomePage>
   <OutlierFeed>                  {/* 기존 Outlier 브라우징 유지 */}
     <UnifiedOutlierCard />
     <UnifiedOutlierCard />
     ...
   </OutlierFeed>
-</TrendingPage>
+</HomePage>
 ```
 
 ---
@@ -214,9 +222,9 @@ interface FeedbackWidgetProps {
 
 | Component | API | 비고 |
 |-----------|-----|------|
-| PatternAnswerCard | `GET /v1/patterns/recommend` | L1+L2 결과 |
-| EvidenceBar | `GET /v1/patterns/{id}/evidence` | 댓글+재등장 |
-| FeedbackWidget | `POST /v1/feedback/pattern` | 신규 필요 |
+| PatternAnswerCard | `GET /api/v1/for-you` | 추천 + evidence.best_comments 포함 |
+| EvidenceBar | `GET /api/v1/for-you` | 별도 evidence 엔드포인트 없음 |
+| FeedbackWidget | - | UI만 연결됨 (백엔드 미연동) |
 
 ---
 

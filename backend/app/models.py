@@ -593,6 +593,7 @@ class OutlierItem(Base):
     outlier_tier: Mapped[Optional[str]] = mapped_column(String(1), nullable=True)  # S/A/B/C
     creator_avg_views: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     engagement_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    creator_username: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # Creator handle/username
     
     # 선별 상태
     status: Mapped[str] = mapped_column(SQLEnum(OutlierItemStatus), default=OutlierItemStatus.PENDING)

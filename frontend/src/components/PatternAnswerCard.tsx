@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -51,6 +52,7 @@ export default function PatternAnswerCard({
     isEvidenceExpanded = false,
     children
 }: PatternAnswerCardProps) {
+    const t = useTranslations('patternAnswerCard');
     // Determine colors based on tier
     const getTierGradient = () => {
         switch (tier) {
@@ -70,9 +72,9 @@ export default function PatternAnswerCard({
     };
 
     const platformLabelMap: Record<typeof platform, string> = {
-        tiktok: '틱톡',
-        youtube: '유튜브 쇼츠',
-        instagram: '인스타 릴스',
+        tiktok: t('tiktok'),
+        youtube: t('youtube'),
+        instagram: t('instagram'),
     };
     const platformLabel = platformLabelMap[platform] || platform;
 
@@ -114,7 +116,7 @@ export default function PatternAnswerCard({
                                 bg-gradient-to-b from-[#1a1a1c] to-[#0A0A0C] border border-white/10
                             `}>
                                 <span className={`font-black text-lg bg-gradient-to-br ${getTierGradient()} bg-clip-text text-transparent`}>
-                                    {tier}티어
+                                    {tier}{t('tierSuffix')}
                                 </span>
                                 {tier === 'S' && (
                                     <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
@@ -130,7 +132,7 @@ export default function PatternAnswerCard({
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
                             >
                                 <RotateCw className="w-3.5 h-3.5" />
-                                <span className="text-xs font-bold">재등장</span>
+                                <span className="text-xs font-bold">{t('resurfaced')}</span>
                             </motion.div>
                         )}
                     </div>
@@ -151,21 +153,21 @@ export default function PatternAnswerCard({
                     <div className="grid grid-cols-1 gap-2.5">
                         <SignatureRow
                             icon={Zap}
-                            label="훅"
+                            label={t('hook')}
                             value={signature.hook}
                             color="text-yellow-300"
                             bg="bg-yellow-500/10"
                         />
                         <SignatureRow
                             icon={Timer}
-                            label="타이밍"
+                            label={t('timing')}
                             value={signature.timing}
                             color="text-cyan-300"
                             bg="bg-cyan-500/10"
                         />
                         <SignatureRow
                             icon={Music}
-                            label="오디오"
+                            label={t('audio')}
                             value={signature.audio}
                             color="text-pink-300"
                             bg="bg-pink-500/10"
@@ -177,31 +179,31 @@ export default function PatternAnswerCard({
                         <div className="mt-4 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
                             <div className="flex items-center gap-2 text-emerald-400 text-xs font-medium mb-2">
                                 <span>📊</span>
-                                <span>AI 데이터 기반 분석</span>
+                                <span>{t('aiAnalysis')}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-3 text-xs">
                                 {trust_signals.analyzed_videos && (
                                     <div>
-                                        <span className="text-white/50">분석 영상 </span>
-                                        <span className="text-white font-bold">{trust_signals.analyzed_videos.toLocaleString()}개</span>
+                                        <span className="text-white/50">{t('analyzedVideos')} </span>
+                                        <span className="text-white font-bold">{trust_signals.analyzed_videos.toLocaleString()}{t('countSuffix')}</span>
                                     </div>
                                 )}
                                 {trust_signals.avg_views && (
                                     <div>
-                                        <span className="text-white/50">평균 조회수 </span>
-                                        <span className="text-white font-bold">{(trust_signals.avg_views / 10000).toFixed(0)}만</span>
+                                        <span className="text-white/50">{t('avgViews')} </span>
+                                        <span className="text-white font-bold">{(trust_signals.avg_views / 10000).toFixed(0)}{t('viewsSuffix')}</span>
                                     </div>
                                 )}
                                 {trust_signals.top_percentile && (
                                     <div>
-                                        <span className="text-white/50">성과 상위 </span>
+                                        <span className="text-white/50">{t('topPercentile')} </span>
                                         <span className="text-emerald-400 font-bold">{trust_signals.top_percentile}%</span>
                                     </div>
                                 )}
                                 {trust_signals.expected_filming_mins && (
                                     <div>
-                                        <span className="text-white/50">예상 촬영 </span>
-                                        <span className="text-white font-bold">~{trust_signals.expected_filming_mins}분</span>
+                                        <span className="text-white/50">{t('expectedFilming')} </span>
+                                        <span className="text-white font-bold">~{trust_signals.expected_filming_mins}{t('minsSuffix')}</span>
                                     </div>
                                 )}
                             </div>
@@ -213,17 +215,17 @@ export default function PatternAnswerCard({
                 <div className="px-6 py-4 border-t border-white/5 bg-white/[0.02] flex items-center justify-between">
                     <div className="flex items-center gap-6">
                         <div className="text-center">
-                            <div className="text-[10px] text-white/40 font-medium uppercase tracking-wider mb-0.5">적합도</div>
+                            <div className="text-[10px] text-white/40 font-medium uppercase tracking-wider mb-0.5">{t('fitScore')}</div>
                             <div className="text-lg font-bold text-white">
                                 {Math.round(fit_score * 100)}%
                             </div>
                         </div>
                         <div className="w-px h-8 bg-white/10" />
                         <div className="text-center">
-                            <div className="text-[10px] text-white/40 font-medium uppercase tracking-wider mb-0.5">증거</div>
+                            <div className="text-[10px] text-white/40 font-medium uppercase tracking-wider mb-0.5">{t('evidence')}</div>
                             <div className="text-lg font-bold text-white flex items-center gap-1">
                                 {evidence_strength}
-                                <span className="text-xs font-normal text-white/50">건</span>
+                                <span className="text-xs font-normal text-white/50">{t('countSuffix')}</span>
                             </div>
                         </div>
                     </div>
@@ -272,7 +274,7 @@ export default function PatternAnswerCard({
                         }}
                     >
                         <Camera className="w-5 h-5" />
-                        촬영 가이드 시작
+                        {t('startGuide')}
                     </motion.button>
                 </div>
             </div>

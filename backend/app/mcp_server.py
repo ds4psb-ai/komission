@@ -12,6 +12,10 @@ Resources (읽기 전용):
 - komission://recurrence/{cluster_id}
 - komission://vdg/{outlier_id}
 - komission://director-pack/{outlier_id}
+- stpf://patterns/{pattern_id}
+- stpf://grades
+- stpf://health
+- stpf://variables
 
 Tools (실행):
 - search_patterns
@@ -19,6 +23,14 @@ Tools (실행):
 - reanalyze_vdg
 - smart_pattern_analysis (LLM Sampling)
 - ai_batch_analysis (LLM Sampling)
+- get_pattern_performance
+- stpf_full_analyze
+- stpf_quick_score
+- stpf_compare_content
+- stpf_simulate_scenarios
+- stpf_monte_carlo
+- stpf_kelly_decision
+- stpf_get_anchor
 
 Prompts (템플릿):
 - explain_recommendation

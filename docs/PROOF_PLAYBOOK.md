@@ -57,7 +57,7 @@ await logOutcome({
 
 ```typescript
 // useCoachingWebSocket.ts
-const { feedback, sendControl, sendFrame } = useCoachingWebSocket(sessionId);
+const { feedback, sendControl, sendVideoFrame } = useCoachingWebSocket(sessionId);
 ```
 
 ---

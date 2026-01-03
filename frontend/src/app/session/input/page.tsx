@@ -9,13 +9,14 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/contexts/SessionContext';
-import { motion } from 'framer-motion';
+import { motion, stagger } from 'framer-motion';
 import { Sparkles, ChevronRight, Package, Tag, Smartphone } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 const CATEGORIES = [
     { value: 'beauty', label: '뷰티', icon: '💄', color: 'from-pink-500 to-rose-500' },
     { value: 'food', label: '푸드', icon: '🍜', color: 'from-orange-500 to-amber-500' },
-    { value: 'fashion', label: '패션', icon: '👗', color: 'from-violet-500 to-purple-500' },
+    { value: 'fashion', label: '패션', icon: '👗', color: 'from-[#c1ff00] to-emerald-500' },
     { value: 'tech', label: '테크', icon: '📱', color: 'from-cyan-500 to-blue-500' },
     { value: 'lifestyle', label: '라이프', icon: '🏠', color: 'from-emerald-500 to-green-500' },
     { value: 'entertainment', label: '엔터', icon: '🎬', color: 'from-fuchsia-500 to-pink-500' },
@@ -55,7 +56,7 @@ export default function SessionInputPage() {
         visible: {
             opacity: 1,
             transition: {
-                staggerChildren: 0.1
+                delayChildren: stagger(0.1, { from: "first" })
             }
         }
     };
@@ -187,7 +188,7 @@ export default function SessionInputPage() {
                             className={`
                                 w-full flex items-center justify-center gap-2 py-5 rounded-2xl font-bold text-lg transition-all duration-300
                                 ${isValid
-                                    ? 'bg-gradient-to-r from-violet-600 to-pink-600 text-white shadow-[0_10px_30px_-5px_rgba(124,58,237,0.4)]'
+                                    ? 'bg-[#c1ff00] text-black shadow-[0_0_20px_rgba(193,255,0,0.4)]'
                                     : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
                                 }
                             `}

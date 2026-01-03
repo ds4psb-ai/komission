@@ -2,7 +2,7 @@
 Pydantic schemas for Evidence Loop system
 Phase 4: VDG + EvidenceSnapshot + Outlier Ingestion
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, List, Any
 from uuid import UUID
 from datetime import datetime
@@ -37,8 +37,7 @@ class OutlierSourceResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OutlierItemCreate(BaseModel):
@@ -72,6 +71,7 @@ class OutlierCrawlItem(BaseModel):
     outlier_tier: Optional[str] = None
     creator_avg_views: Optional[int] = None
     engagement_rate: Optional[float] = None
+    creator_username: Optional[str] = None  # 크리에이터 핸들/계정명
 
 
 class OutlierItemManualCreate(BaseModel):
@@ -104,8 +104,7 @@ class OutlierItemResponse(BaseModel):
     campaign_eligible: bool = False
     crawled_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OutlierPromoteRequest(BaseModel):
@@ -123,6 +122,7 @@ class OutlierRejectRequest(BaseModel):
     """
     거부 요청 바디
     """
+    reason: Optional[str] = None
     matched_rule_id: Optional[UUID] = None
     rule_followed: Optional[bool] = None
     notes: Optional[str] = None
@@ -161,8 +161,7 @@ class MetricDailyResponse(BaseModel):
     delta_rate: Optional[str] = None
     data_source: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================
@@ -210,8 +209,7 @@ class EvidenceSnapshotResponse(BaseModel):
     sheet_synced: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================

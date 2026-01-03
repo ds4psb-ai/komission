@@ -1,5 +1,6 @@
 // frontend/src/components/remix/RemixTabsNav.tsx
 "use client";
+import { useTranslations } from 'next-intl';
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";

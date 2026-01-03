@@ -19,22 +19,27 @@ Hardening:
 - H1: Gemini audio response loop (background task)
 - H2: TTS fallback (Web Speech / Google Cloud)
 - H3: DirectorPack loading at session start
+
+Env:
+- SKIP_GEMINI_LIVE=1 to skip Gemini Live connection (smoke/CI)
 """
 import asyncio
 import base64
 import json
 import logging
+import os
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any, Set
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Depends
 from pydantic import BaseModel
 
 from app.services.audio_coach import AudioCoach
 from app.services.coaching_session import get_coaching_service
 from app.services.proof_patterns import create_proof_pack  # H3: DirectorPack fallback
 from app.utils.time import utcnow
+from app.routers.auth import require_admin, User
 
 # VDG DirectorPack loading
 from app.database import AsyncSessionLocal
@@ -145,7 +150,7 @@ async def coaching_websocket(
     outlier_id: Optional[str] = Query(default=None),  # OutlierItem.id (promoted)
     # Phase 1: 출력 모드 + 페르소나
     output_mode: str = Query(default="graphic"),  # graphic | text | audio | graphic_audio
-    persona: str = Query(default="calm_mentor"),  # strict_pd | close_friend | calm_mentor | energetic
+    persona: str = Query(default="calm_mentor"),  # drill_sergeant/bestie/chill_guide/hype_coach (aliases: strict_pd/close_friend/calm_mentor/energetic)
 ):
     """
     실시간 오디오 코칭 WebSocket
@@ -157,7 +162,8 @@ async def coaching_websocket(
         - video_id: RemixNode.node_id (메인에 게시된 카드)
         - outlier_id: OutlierItem.id (승격된 아웃라이어)
         - output_mode: graphic(디폴트) | text | audio | graphic_audio
-        - persona: strict_pd | close_friend | calm_mentor(디폴트) | energetic
+        - persona: drill_sergeant | bestie | chill_guide(디폴트, alias calm_mentor) | hype_coach
+                   (aliases: strict_pd | close_friend | calm_mentor | energetic)
     
     Flow:
         1. Connect → server sends session_status
@@ -208,7 +214,7 @@ async def coaching_websocket(
         
         # Phase 1: 출력 모드 + 페르소나 저장
         session["output_mode"] = output_mode  # graphic | text | audio | graphic_audio
-        session["persona"] = persona  # strict_pd | close_friend | calm_mentor | energetic
+        session["persona"] = persona  # drill_sergeant/bestie/chill_guide/hype_coach (+ aliases)
         
         # 3. Send initial status
         await manager.send_message(session_id, {
@@ -1225,26 +1231,34 @@ async def handle_control(session_id: str, session: dict, message: dict):
         
         # Gemini Live 연결 시도
         gemini_connected = False
-        try:
-            await coach.connect()
-            gemini_connected = True
-            session["gemini_connected"] = True  # H4: Track connection state
-            logger.info(f"Gemini Live connected: {session_id}")
-            
-            # H1: 백그라운드 응답 수신 루프 시작
-            response_task = asyncio.create_task(
-                run_audio_response_loop(session_id, session)
-            )
-            session["response_task"] = response_task
-            
-        except Exception as e:
+        skip_gemini = os.getenv("SKIP_GEMINI_LIVE", "").lower() in ("1", "true", "yes")
+        if skip_gemini:
             session["gemini_connected"] = False
-            # H9: Pro 모드인데 Gemini 실패 시 Basic으로 다운그레이드 (비용 절감)
             if session.get("coaching_tier") == "pro":
                 session["effective_tier"] = "basic"
                 session["tier_downgraded"] = True
-                logger.warning(f"H9: Gemini failed, tier downgraded to basic: {session_id}")
-            logger.warning(f"Gemini Live connection failed, using fallback: {e}")
+            logger.info(f"Skipping Gemini Live connection (SKIP_GEMINI_LIVE=1): {session_id}")
+        else:
+            try:
+                await coach.connect()
+                gemini_connected = True
+                session["gemini_connected"] = True  # H4: Track connection state
+                logger.info(f"Gemini Live connected: {session_id}")
+                
+                # H1: 백그라운드 응답 수신 루프 시작
+                response_task = asyncio.create_task(
+                    run_audio_response_loop(session_id, session)
+                )
+                session["response_task"] = response_task
+                
+            except Exception as e:
+                session["gemini_connected"] = False
+                # H9: Pro 모드인데 Gemini 실패 시 Basic으로 다운그레이드 (비용 절감)
+                if session.get("coaching_tier") == "pro":
+                    session["effective_tier"] = "basic"
+                    session["tier_downgraded"] = True
+                    logger.warning(f"H9: Gemini failed, tier downgraded to basic: {session_id}")
+                logger.warning(f"Gemini Live connection failed, using fallback: {e}")
         
         # H7: 세션 타임아웃 모니터 시작
         timeout_task = asyncio.create_task(
@@ -1571,7 +1585,7 @@ async def handle_video_frame(session_id: str, session: dict, message: dict, voic
 # ==================
 
 @router.get("/coaching/ws/health")
-async def coaching_ws_health():
+async def coaching_ws_health(current_user: User = Depends(require_admin)):
     """WebSocket 상태 확인"""
     return {
         "status": "ok",
@@ -1582,7 +1596,7 @@ async def coaching_ws_health():
 
 
 @router.get("/coaching/ws/sessions")
-async def list_ws_sessions():
+async def list_ws_sessions(current_user: User = Depends(require_admin)):
     """활성 WebSocket 세션 목록"""
     sessions = []
     for sid, session in manager.active_sessions.items():

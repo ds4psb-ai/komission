@@ -1,11 +1,13 @@
 'use client';
+import { useTranslations } from 'next-intl';
+import Image from 'next/image';
 
 /**
  * TikTokPlayer - Reusable TikTok video player component
  * 
  * Features:
  * - Virlo-style v1 player with postMessage unmute
- * - weserv.nl thumbnail proxy for CORS
+ * - Next.js Image Optimization for stable thumbnail loading
  * - Multiple size variants (sm/md/lg)
  * - Hover preview support
  */
@@ -44,27 +46,55 @@ export function extractVideoId(url: string): string | null {
         if (match) return match[1];
     }
 
+    // Instagram patterns (reel shortcode)
+    // URLs: /reel/DS-reO9DxJi/ , /p/ABC123/ , /reels/ABC123/
+    const instagramPatterns = [
+        /\/reel\/([A-Za-z0-9_-]+)/,   // instagram.com/reel/SHORTCODE
+        /\/reels\/([A-Za-z0-9_-]+)/,  // instagram.com/reels/SHORTCODE
+        /\/p\/([A-Za-z0-9_-]+)/,      // instagram.com/p/SHORTCODE (posts/videos)
+    ];
+    for (const pattern of instagramPatterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+
     return null;
 }
 
 // Detect platform from URL
-export function detectPlatform(url: string): 'tiktok' | 'youtube' | 'unknown' {
+export function detectPlatform(url: string): 'tiktok' | 'youtube' | 'instagram' | 'unknown' {
     if (!url) return 'unknown';
     if (url.includes('tiktok.com')) return 'tiktok';
     if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+    if (url.includes('instagram.com')) return 'instagram';
     return 'unknown';
 }
 
 // Proxy thumbnail URL through weserv.nl
-export function getProxiedThumbnailUrl(thumbnailUrl: string): string {
-    if (!thumbnailUrl) return '';
+// For Instagram, includes fallback handling since CDN URLs expire quickly
+export function getProxiedThumbnailUrl(thumbnailUrl: string, videoUrl?: string): string {
+    if (!thumbnailUrl) {
+        // If no thumbnail but we have a video URL, try to generate a fallback
+        if (videoUrl && videoUrl.includes('instagram.com')) {
+            // Use Instagram's embed as a pseudo-thumbnail (won't work as img, but signals we tried)
+            return '';
+        }
+        return '';
+    }
     return `https://images.weserv.nl/?url=${encodeURIComponent(thumbnailUrl)}&output=jpg&default=404`;
+}
+
+// Get Instagram shortcode from URL for fallback display
+export function getInstagramShortcode(url: string): string | null {
+    if (!url) return null;
+    const match = url.match(/\/(reel|p|reels)\/([A-Za-z0-9_-]+)/);
+    return match ? match[2] : null;
 }
 
 interface TikTokPlayerProps {
     videoUrl: string;
     thumbnailUrl?: string;
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'sm' | 'md' | 'lg' | 'full';
     showUnmute?: boolean;
     autoplay?: boolean;
     loop?: boolean;
@@ -76,6 +106,7 @@ const SIZE_CONFIG = {
     sm: 'w-32',      // 128px - for small cards
     md: 'w-64',      // 256px - for medium cards  
     lg: 'w-80',      // 320px - for modal/detail view
+    full: 'w-full',  // Responsive width
 };
 
 export function TikTokPlayer({
@@ -99,6 +130,9 @@ export function TikTokPlayer({
         if (platform === 'youtube') {
             // YouTube Shorts embed - with enablejsapi for postMessage control
             embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${autoplay ? 1 : 0}&loop=${loop ? 1 : 0}&mute=${autoplay ? 1 : 0}&controls=${showControls ? 1 : 0}&playsinline=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`;
+        } else if (platform === 'instagram') {
+            // Instagram Reel embed - official embed URL pattern (Virlo reverse-engineered)
+            embedUrl = `https://www.instagram.com/reel/${videoId}/embed/?autoplay=1`;
         } else {
             // TikTok embed (default)
             embedUrl = `https://www.tiktok.com/player/v1/${videoId}?autoplay=${autoplay ? 1 : 0}&loop=${loop ? 1 : 0}&mute=1&controls=${showControls ? 1 : 0}&progress_bar=${showControls ? 1 : 0}&play_button=${showControls ? 1 : 0}&volume_control=${showControls ? 1 : 0}&fullscreen_button=${showControls ? 1 : 0}`;
@@ -197,11 +231,12 @@ export function TikTokPlayer({
     );
 }
 
-// Hover preview version (minimal, no controls)
+// Hover preview version with optional mute control
 interface TikTokHoverPreviewProps {
     videoUrl: string;
     thumbnailUrl?: string;
     isHovering: boolean;
+    showMuteOnHover?: boolean;
     className?: string;
 }
 
@@ -209,8 +244,12 @@ export function TikTokHoverPreview({
     videoUrl,
     thumbnailUrl,
     isHovering,
+    showMuteOnHover = false,
     className = '',
 }: TikTokHoverPreviewProps) {
+    const [thumbnailError, setThumbnailError] = useState(false);
+    const [isMuted, setIsMuted] = useState(true);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
     const videoId = extractVideoId(videoUrl);
     const platform = detectPlatform(videoUrl);
     const proxiedThumb = thumbnailUrl ? getProxiedThumbnailUrl(thumbnailUrl) : null;
@@ -219,21 +258,62 @@ export function TikTokHoverPreview({
     let previewUrl: string | null = null;
     if (videoId) {
         if (platform === 'youtube') {
-            previewUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1`;
+            previewUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`;
+        } else if (platform === 'instagram') {
+            previewUrl = `https://www.instagram.com/reel/${videoId}/embed/?autoplay=1`;
         } else {
             previewUrl = `https://www.tiktok.com/player/v1/${videoId}?autoplay=1&loop=1&mute=1&controls=0&progress_bar=0&play_button=0&volume_control=0&fullscreen_button=0`;
         }
     }
 
+    // Platform-specific unmute implementation
+    const handleToggleMute = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const iframe = iframeRef.current;
+        if (!iframe?.contentWindow) return;
+
+        if (platform === 'youtube') {
+            iframe.contentWindow.postMessage(JSON.stringify({
+                event: 'command',
+                func: isMuted ? 'unMute' : 'mute',
+                args: []
+            }), '*');
+        } else {
+            // TikTok postMessage - 'unMute' has capital M
+            iframe.contentWindow.postMessage({
+                type: isMuted ? 'unMute' : 'mute',
+                'x-tiktok-player': true,
+                value: undefined
+            }, '*');
+        }
+
+        setIsMuted(!isMuted);
+    };
+
+    // For Instagram, show embed immediately if thumbnail fails or is missing
+    const showInstagramEmbed = platform === 'instagram' && (!proxiedThumb || thumbnailError);
+
     return (
         <div className={`relative aspect-[9/16] bg-gradient-to-br from-pink-500/20 to-cyan-500/20 overflow-hidden ${className}`}>
-            {/* Static Thumbnail */}
-            {proxiedThumb ? (
-                <img
+            {/* Instagram fallback: Show embed directly when thumbnail unavailable */}
+            {showInstagramEmbed && previewUrl ? (
+                <iframe
+                    ref={iframeRef}
+                    src={previewUrl}
+                    className="absolute inset-0 w-full h-full"
+                    allow="autoplay; encrypted-media"
+                    frameBorder="0"
+                    loading="lazy"
+                />
+            ) : proxiedThumb && !thumbnailError ? (
+                <Image
                     src={proxiedThumb}
                     alt=""
-                    className="absolute inset-0 w-full h-full object-cover"
-                    loading="lazy"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 50vw, 320px"
+                    unoptimized={false}
+                    onError={() => setThumbnailError(true)}
                 />
             ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-30">
@@ -241,14 +321,38 @@ export function TikTokHoverPreview({
                 </div>
             )}
 
-            {/* Hover Preview Iframe */}
-            {isHovering && previewUrl && (
+            {/* Hover Preview Iframe (for non-Instagram or when thumbnail is showing) */}
+            {isHovering && previewUrl && !showInstagramEmbed && (
                 <iframe
+                    ref={iframeRef}
                     src={previewUrl}
-                    className="absolute inset-0 w-full h-full z-[1] pointer-events-none"
+                    className="absolute inset-0 w-full h-full z-[1]"
                     allow="autoplay; encrypted-media"
                     frameBorder="0"
                 />
+            )}
+
+            {/* Mute button - shown on hover */}
+            {showMuteOnHover && isHovering && (
+                <button
+                    onClick={handleToggleMute}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 hover:bg-black/80 transition-all z-[10] opacity-80 hover:opacity-100"
+                    title={isMuted ? '음소거 해제' : '음소거'}
+                >
+                    {isMuted ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                            <line x1="23" y1="9" x2="17" y2="15" />
+                            <line x1="17" y1="9" x2="23" y2="15" />
+                        </svg>
+                    ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                        </svg>
+                    )}
+                </button>
             )}
 
             {/* Gradient overlay */}

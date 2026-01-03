@@ -79,7 +79,7 @@ app = FastAPI(
 - **Canvas**: 노드 기반 템플릿 시스템
 
 ### 인증
-대부분의 엔드포인트는 Firebase JWT 토큰이 필요합니다.
+대부분의 엔드포인트는 Google OAuth 기반 JWT 토큰이 필요합니다.
 `Authorization: Bearer <token>` 헤더를 사용하세요.
     """,
     version="5.2.0",

@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { api, GamificationLeaderboardEntry, Badge, StreakInfo, DailyMission } from "@/lib/api";
@@ -126,7 +128,7 @@ export default function LeaderboardPage() {
                                                     className="w-10 h-10 rounded-full"
                                                 />
                                             ) : (
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-pink-500" />
+                                                <div className="w-10 h-10 rounded-full bg-[#c1ff00] shadow-[0_0_10px_rgba(193,255,0,0.5)]" />
                                             )}
                                             <div>
                                                 <div className="font-bold text-white">
@@ -242,7 +244,7 @@ export default function LeaderboardPage() {
                         {/* CTA */}
                         <Link
                             href="/"
-                            className="block w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-pink-500 text-white font-bold text-center hover:from-violet-400 hover:to-pink-400 transition-all shadow-[0_0_30px_rgba(139,92,246,0.3)]"
+                            className="block w-full py-4 rounded-lg bg-[#c1ff00] hover:bg-white text-black font-black uppercase tracking-wider text-center transition-all shadow-[0_0_15px_rgba(193,255,0,0.3)] hover:shadow-[0_0_25px_rgba(255,255,255,0.5)]"
                         >
                             🚀 리믹스 시작하기
                         </Link>

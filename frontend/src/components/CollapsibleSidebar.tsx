@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 /**
  * CollapsibleSidebar - LMSys Arena Style
@@ -55,31 +56,31 @@ interface BottomItemData {
 const navGroups: NavGroupData[] = [
     {
         id: "content",
-        label: "콘텐츠",
+        label: "content",
         icon: Sparkles,
         items: [
-            { href: "/", label: "홈", icon: TrendingUp },
-            { href: "/for-you", label: "추천", icon: Sparkles },
+            { href: "/", label: "home", icon: TrendingUp },
+            { href: "/for-you", label: "forYou", icon: Sparkles },
         ]
     },
     {
         id: "knowledge",
-        label: "지식",
+        label: "knowledge",
         icon: BookOpen,
         items: [
-            { href: "/knowledge/hooks", label: "훅 라이브러리", icon: Zap },
-            { href: "/knowledge/patterns", label: "패턴 분석", icon: BarChart3 },
-            { href: "/boards", label: "실험 보드", icon: FlaskConical },
+            { href: "/knowledge/hooks", label: "hooks", icon: Zap },
+            { href: "/knowledge/patterns", label: "patterns", icon: BarChart3 },
+            { href: "/boards", label: "boards", icon: FlaskConical },
         ]
     },
     {
         id: "ops",
-        label: "운영",
+        label: "ops",
         icon: Radar,
         items: [
-            { href: "/ops", label: "Ops Console", icon: Radar },
-            { href: "/ops/outliers", label: "아웃라이어", icon: TrendingUp },
-            { href: "/ops/canvas", label: "캔버스", icon: Network },
+            { href: "/ops", label: "opsConsole", icon: Radar },
+            { href: "/ops/outliers", label: "outliers", icon: TrendingUp },
+            { href: "/ops/canvas", label: "canvas", icon: Network },
         ]
     }
 ];
@@ -87,27 +88,27 @@ const navGroups: NavGroupData[] = [
 const bottomItems: BottomItemData[] = [
     {
         id: "my",
-        label: "마이페이지",
+        label: "myPage",
         icon: User,
         href: "/my",
         flyout: {
-            title: "계정",
+            title: "account",
             items: [
-                { label: "프로필", href: "/my" },
-                { label: "로열티 내역", href: "/my/royalty" },
+                { label: "profile", href: "/my" },
+                { label: "history", href: "/my/royalty" },
             ]
         }
     },
     {
         id: "kakao",
-        label: "카카오톡 상담",
+        label: "kakao",
         icon: MessageCircle,
         href: "http://pf.kakao.com/_YxhVvj",
         external: true,
         flyout: {
-            title: "고객 지원",
-            description: "궁금한 점을 1:1로 상담하세요",
-            cta: "상담 시작하기"
+            title: "support",
+            description: "supportDesc",
+            cta: "consult"
         }
     }
 ];
@@ -126,12 +127,13 @@ interface FlyoutPanelProps {
 }
 
 function FlyoutPanel({ title, description, items, cta, ctaHref, external }: FlyoutPanelProps) {
+    const t = useTranslations('sidebar');
     return (
         <div className="w-56 bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
             <div className="p-3 border-b border-white/10">
-                <div className="font-bold text-white">{title}</div>
+                <div className="font-bold text-white">{t(title)}</div>
                 {description && (
-                    <div className="text-xs text-white/50 mt-1">{description}</div>
+                    <div className="text-xs text-white/50 mt-1">{t(description)}</div>
                 )}
             </div>
 
@@ -143,7 +145,7 @@ function FlyoutPanel({ title, description, items, cta, ctaHref, external }: Flyo
                             href={item.href}
                             className="flex items-center gap-2 px-3 py-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                         >
-                            {item.label}
+                            {t(item.label)}
                         </Link>
                     ))}
                 </div>
@@ -158,7 +160,7 @@ function FlyoutPanel({ title, description, items, cta, ctaHref, external }: Flyo
                             rel="noopener noreferrer"
                             className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-[#FAE100] hover:bg-[#FFE812] text-black font-bold rounded-lg transition-colors"
                         >
-                            {cta}
+                            {t(cta)}
                             <ExternalLink className="w-3 h-3" />
                         </a>
                     ) : (
@@ -166,7 +168,7 @@ function FlyoutPanel({ title, description, items, cta, ctaHref, external }: Flyo
                             href={ctaHref || "#"}
                             className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-violet-500 hover:bg-violet-400 text-white font-bold rounded-lg transition-colors"
                         >
-                            {cta}
+                            {t(cta)}
                         </Link>
                     )}
                 </div>
@@ -183,6 +185,7 @@ interface NavGroupProps {
 }
 
 function NavGroup({ group, isExpanded, activeFlyoutId, onActivate }: NavGroupProps) {
+    const t = useTranslations('sidebar');
     const pathname = usePathname();
     const groupRef = useRef<HTMLDivElement>(null);
     const [showTooltip, setShowTooltip] = useState(false);
@@ -263,7 +266,7 @@ function NavGroup({ group, isExpanded, activeFlyoutId, onActivate }: NavGroupPro
                                 transform: 'translateY(-50%)'
                             }}
                         >
-                            {group.label}
+                            {t(group.label)}
                         </div>
                     )}
                 </div>
@@ -272,7 +275,7 @@ function NavGroup({ group, isExpanded, activeFlyoutId, onActivate }: NavGroupPro
                 <div className="mb-4">
                     {/* Group Label as section header */}
                     <div className="px-3 py-2 text-[10px] font-bold text-white/30 uppercase tracking-widest">
-                        {group.label}
+                        {t(group.label)}
                     </div>
                     {/* Sub-items */}
                     <div className="space-y-0.5">
@@ -288,7 +291,7 @@ function NavGroup({ group, isExpanded, activeFlyoutId, onActivate }: NavGroupPro
                                         }`}
                                 >
                                     <item.icon className="w-4 h-4 flex-shrink-0" />
-                                    <span className="truncate">{item.label}</span>
+                                    <span className="truncate">{t(item.label)}</span>
                                 </Link>
                             );
                         })}
@@ -309,6 +312,7 @@ interface CollapsibleSidebarProps {
 }
 
 export function CollapsibleSidebar({ isExpanded, onToggle }: CollapsibleSidebarProps) {
+    const t = useTranslations('sidebar');
     const pathname = usePathname();
     const { user, isAuthenticated, logout } = useAuth();
     const [isLogoHovered, setIsLogoHovered] = useState(false);
@@ -347,42 +351,32 @@ export function CollapsibleSidebar({ isExpanded, onToggle }: CollapsibleSidebarP
             onMouseLeave={() => setActiveFlyout(null)}
         >
             {/* Logo Section */}
-            <div className="p-3 border-b border-white/10">
+            <div className={`${isExpanded ? 'p-3' : 'p-2'} border-b border-white/10`}>
                 <button
                     onClick={onToggle}
                     onMouseEnter={() => setIsLogoHovered(true)}
                     onMouseLeave={() => setIsLogoHovered(false)}
-                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-all group"
+                    className={`w-full flex items-center ${isExpanded ? 'gap-3 p-2' : 'justify-center py-2'} rounded-lg hover:bg-white/10 transition-all group`}
                 >
                     <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 relative">
-                        {/* Gradient Definition for Icon Stroke */}
-                        <svg width="0" height="0" className="absolute">
-                            <defs>
-                                <linearGradient id="k-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stopColor="#a78bfa" />
-                                    <stop offset="100%" stopColor="#f472b6" />
-                                </linearGradient>
-                            </defs>
-                        </svg>
+                        {/* Gradient Definition removed as we use solid Lime color now */}
 
                         {isLogoHovered && !isExpanded ? (
                             <PanelLeftOpen
-                                style={{ stroke: "url(#k-gradient)" }}
-                                className="w-5 h-5 animate-pulse"
+                                className="w-5 h-5 animate-pulse text-[#c1ff00]"
                             />
                         ) : (
-                            <span className="font-black text-xl bg-gradient-to-br from-violet-400 to-pink-400 bg-clip-text text-transparent group-hover:scale-110 transition-transform">
+                            <span className="font-black italic text-xl text-[#c1ff00] transition-transform group-hover:scale-110 shadow-[0_0_10px_rgba(193,255,0,0.3)]">
                                 K
                             </span>
                         )}
                     </div>
                     {isExpanded && (
                         <div className="flex items-center justify-between flex-1 pr-2 animate-fadeIn">
-                            <span className="font-bold text-white whitespace-nowrap">Komission</span>
+                            <span className="font-black italic tracking-tighter text-[#c1ff00] whitespace-nowrap text-lg uppercase">KOMISSION</span>
                             {isLogoHovered && (
                                 <PanelLeftClose
-                                    style={{ stroke: "url(#k-gradient)" }}
-                                    className="w-5 h-5 animate-in fade-in slide-in-from-left-1 duration-200"
+                                    className="w-5 h-5 text-[#c1ff00] animate-in fade-in slide-in-from-left-1 duration-200"
                                 />
                             )}
                         </div>
@@ -429,7 +423,7 @@ export function CollapsibleSidebar({ isExpanded, onToggle }: CollapsibleSidebarP
                             >
                                 <item.icon className="w-5 h-5 flex-shrink-0" />
                                 {isExpanded && (
-                                    <span className="text-sm font-medium whitespace-nowrap animate-fadeIn">{item.label}</span>
+                                    <span className="text-sm font-medium whitespace-nowrap animate-fadeIn">{t(item.label)}</span>
                                 )}
                             </a>
                         ) : (
@@ -446,14 +440,14 @@ export function CollapsibleSidebar({ isExpanded, onToggle }: CollapsibleSidebarP
                                         }
                                     }
                                 }}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname.startsWith(item.href)
-                                    ? "bg-violet-500/20 text-white"
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${pathname.startsWith(item.href)
+                                    ? "bg-[#c1ff00]/10 text-[#c1ff00] border border-[#c1ff00]/20"
                                     : "text-white/60 hover:text-white hover:bg-white/10"
                                     }`}
                             >
                                 <item.icon className="w-5 h-5 flex-shrink-0" />
                                 {isExpanded && (
-                                    <span className="text-sm font-medium whitespace-nowrap animate-fadeIn">{item.label}</span>
+                                    <span className="text-sm font-medium whitespace-nowrap animate-fadeIn">{t(item.label)}</span>
                                 )}
                             </Link>
                         )}
@@ -465,18 +459,18 @@ export function CollapsibleSidebar({ isExpanded, onToggle }: CollapsibleSidebarP
                     <div className="pt-2 border-t border-white/10 mt-2">
                         <Link
                             href="/my"
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-white/10 ${pathname === '/my' ? 'bg-violet-500/20' : ''
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-[#c1ff00]/10 group ${pathname === '/my' ? 'bg-[#c1ff00]/20' : ''
                                 }`}
                         >
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-[#c1ff00] flex items-center justify-center text-black text-xs font-black flex-shrink-0 shadow-[0_0_10px_rgba(193,255,0,0.5)] group-hover:scale-110 transition-transform">
                                 {user.name?.charAt(0) || user.email?.charAt(0) || 'U'}
                             </div>
                             {isExpanded && (
                                 <div className="overflow-hidden animate-fadeIn">
-                                    <div className="text-sm font-medium text-white truncate">
+                                    <div className="text-sm font-bold text-white truncate group-hover:text-[#c1ff00] transition-colors">
                                         {user.name || "User"}
                                     </div>
-                                    <div className="text-xs text-white/40 truncate">
+                                    <div className="text-xs text-white/40 truncate font-mono">
                                         {user.k_points?.toLocaleString() ?? 0} K
                                     </div>
                                 </div>
@@ -524,7 +518,7 @@ export function CollapsibleSidebar({ isExpanded, onToggle }: CollapsibleSidebarP
                                             }`}
                                     >
                                         <item.icon className="w-4 h-4" />
-                                        {item.label}
+                                        {t(item.label)}
                                     </Link>
                                 ))}
                             </div>

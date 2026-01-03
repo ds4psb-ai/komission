@@ -54,26 +54,23 @@ NL_{platform}_{category}_{cluster_id}_{temporal_phase}_v{n}
 ### 4.1 Pack 파일 구성
 | 파일 | 내용 |
 |------|------|
-| `cluster_summary.docx` | 패턴 정의 + 핵심 시그니처 3개 |
-| `variants_table.xlsx` | Depth1/2 성공/실패 + 메트릭 |
-| `evidence_digest.docx` | Evidence Snapshot + Failure modes |
-| `comment_samples.md` | 상위 댓글 10~30개 (태깅 완료) |
+| `NL_{platform}_{category}_{cluster_id}_{temporal_phase}_v1` | Google Sheet/CSV (columns: section/key/value/entry_idx; cluster/entry/analysis/evidence 포함) |
 
 ### 4.2 Comment Evidence 규칙
 ```
-[likes] [lang] [tag] comment text
+[likes] [lang] comment text
 ```
-- 태그: `hook`, `payoff`, `product_curiosity`, `confusion`, `controversy`
+- 태그: `hook`, `payoff`, `product_curiosity`, `confusion`, `controversy` (planned; 현재 파이프라인은 태깅 미적용)
 - 언어 우선: `ko > en > others`
-- 댓글 없으면: `NO_COMMENTS_AVAILABLE` 추가
+- 댓글 없으면: 빈 리스트로 처리 (현재 `NO_COMMENTS_AVAILABLE` sentinel 미사용)
 
 ### 4.3 생성 커맨드
 ```bash
 python backend/scripts/build_notebook_source_pack.py \
   --cluster-id CLUSTER_ID \
-  --temporal-phase T1 \
-  --output-dir /path/to/packs
+  --temporal-phase T1
 ```
+로컬 CSV가 필요하면 `--local` 옵션 사용.
 
 ---
 
@@ -142,6 +139,7 @@ JSON 형식으로 출력
 
 ### 8.1 Notebook Registry (DB)
 ```sql
+-- Planned (not yet implemented in DB)
 CREATE TABLE notebooklm_registry (
   id UUID PRIMARY KEY,
   cluster_id TEXT,
@@ -158,16 +156,7 @@ CREATE TABLE notebooklm_registry (
 1. `planned` → 2. `created` → 3. `shared` → 4. `archived` → 5. `deleted`
 
 ### 8.3 자동화 플로우
-```bash
-# 생성
-python backend/scripts/notebooklm_create.py --cluster-id CLUSTER_ID
-
-# 정합성 점검
-python backend/scripts/notebooklm_reconcile.py
-
-# 정리
-python backend/scripts/notebooklm_cleanup.py --older-than 90d
-```
+예정: `notebooklm_create.py`, `notebooklm_reconcile.py`, `notebooklm_cleanup.py` (현재 repo에 없음)
 
 ---
 

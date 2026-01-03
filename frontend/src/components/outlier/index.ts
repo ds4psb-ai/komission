@@ -10,3 +10,7 @@ export { OutlierMetrics } from './OutlierMetrics';
 export { PipelineStatus, getPipelineStage } from './PipelineStatus';
 export { FilmingGuide } from './FilmingGuide';
 export { OutlierDetailModal } from './OutlierDetailModal';
+
+// Shared card components (to ensure consistency across different card UIs)
+export { OutlierCardFooter, formatRelativeTime } from './OutlierCardFooter';
+export { ViewCountBadge, formatViewCount } from './ViewCountBadge';

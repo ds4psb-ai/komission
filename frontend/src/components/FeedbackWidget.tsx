@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 /**
  * FeedbackWidget - 사용자 피드백 수집

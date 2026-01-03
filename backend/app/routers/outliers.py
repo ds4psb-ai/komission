@@ -270,10 +270,11 @@ async def list_outliers(
     platform: Optional[str] = None,
     tier: Optional[str] = None,
     status: Optional[str] = None,
+    campaign_eligible: Optional[bool] = None,
     analysis_status: Optional[str] = None,  # NEW: Filter by analysis status
     freshness: Optional[str] = Query(default="7d"),
     sort_by: Optional[str] = Query(default="outlier_score"),
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=100, le=2000),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -295,6 +296,8 @@ async def list_outliers(
         status_enum = getattr(OutlierItemStatus, status_upper, None)
         if status_enum:
             query = query.where(OutlierItem.status == status_enum)
+    if campaign_eligible is not None:
+        query = query.where(OutlierItem.campaign_eligible == campaign_eligible)
     
     # NEW: analysis_status filter (completed, analyzing, pending)
     if analysis_status:
@@ -340,7 +343,9 @@ async def list_outliers(
                 "share_count": i.share_count or 0,
                 "outlier_score": i.outlier_score or 0,
                 "outlier_tier": i.outlier_tier or "C",
-                "creator_avg_views": 10000,  # TODO: Calculate from creator data
+                "creator_avg_views": i.creator_avg_views or 10000,
+                "creator_username": i.creator_username or (i.raw_payload or {}).get("creator_username"),
+                "upload_date": i.upload_date.isoformat() if i.upload_date else None,
                 "engagement_rate": (i.like_count or 0) / max(i.view_count or 1, 1),
                 "crawled_at": i.crawled_at.isoformat() if i.crawled_at else None,
                 "status": i.status.value.lower() if i.status else "pending",
@@ -428,6 +433,7 @@ async def create_item_manual(
     thumbnail_url = item.thumbnail_url
     title = item.title
     comment_count = 0
+    creator_username = None  # 크리에이터 핸들/채널명
     
     if 'tiktok' in item.platform.lower():
         try:
@@ -443,6 +449,10 @@ async def create_item_manual(
                 like_count = tiktok_data.get('like_count', like_count)
                 share_count = tiktok_data.get('share_count', share_count)
                 title = tiktok_data.get('title') or title
+                # 크리에이터 정보 추출 (author_id = @핸들, author = 닉네임)
+                creator_username = tiktok_data.get('author_id') or tiktok_data.get('author')
+                if creator_username and creator_username != 'Unknown':
+                    print(f"👤 Creator: @{creator_username}")
                 print(f"✅ 추출 성공: {view_count:,} views, {like_count:,} likes")
             
             # oEmbed로 썸네일 가져오기
@@ -488,6 +498,11 @@ async def create_item_manual(
                         comment_count = int(statistics.get('commentCount', 0))
                         title = snippet.get('title') or title
                         
+                        # 크리에이터 정보 추출 (채널명)
+                        creator_username = snippet.get('channelTitle')
+                        if creator_username:
+                            print(f"👤 Creator: {creator_username}")
+                        
                         # 썸네일: maxres > high > medium
                         thumbs = snippet.get('thumbnails', {})
                         thumbnail_url = (
@@ -501,6 +516,37 @@ async def create_item_manual(
                         
         except Exception as e:
             print(f"⚠️ YouTube 메타데이터 추출 실패: {e}")
+
+    elif 'instagram' in item.platform.lower():
+        # Instagram 메타데이터 자동 추출 (yt-dlp via social_metadata)
+        try:
+            from app.services.social_metadata import extract_social_metadata
+            import asyncio
+            
+            print(f"🔍 Instagram 메타데이터 자동 추출: {item.video_url[:50]}...")
+            
+            # extract_social_metadata is sync, run in thread pool
+            loop = asyncio.get_event_loop()
+            _, ig_data = await loop.run_in_executor(
+                None, 
+                lambda: extract_social_metadata(item.video_url)
+            )
+            
+            if ig_data.get('view_count', 0) > 0:
+                view_count = ig_data['view_count']
+                like_count = ig_data.get('like_count', like_count)
+                title = ig_data.get('title') or ig_data.get('description', '')[:100] or title
+                thumbnail_url = ig_data.get('thumbnail_url') or thumbnail_url
+                
+                # 크리에이터 정보 추출 (author = uploader/channel/uploader_id)
+                creator_username = ig_data.get('author')
+                if creator_username:
+                    print(f"👤 Creator: @{creator_username}")
+                
+                print(f"✅ Instagram 추출: {view_count:,} views, {like_count:,} likes")
+                
+        except Exception as e:
+            print(f"⚠️ Instagram 메타데이터 추출 실패: {e}")
 
     # P0: outlier_score 자동 계산
     outlier_score = None
@@ -554,6 +600,7 @@ async def create_item_manual(
         share_count=share_count,
         outlier_score=outlier_score,
         outlier_tier=outlier_tier,
+        creator_username=creator_username,  # 크리에이터 핸들/채널명
         growth_rate=item.growth_rate,
         status=OutlierItemStatus.PENDING,
     )
@@ -1534,7 +1581,7 @@ async def list_candidates(
     category: Optional[str] = None,
     platform: Optional[str] = None,
     status: Optional[str] = Query(default="pending"),
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=100, le=2000),
     db: AsyncSession = Depends(get_db)
 ):
     """후보 아웃라이어 목록 조회 (선별 대상)"""
@@ -1791,8 +1838,12 @@ async def reject_outlier_item(
 
     item.status = OutlierItemStatus.REJECTED
 
-    from app.services.curation_service import record_curation_decision
+    from app.services.curation_service import record_curation_decision, extract_metadata_features
     from app.models import CurationDecisionType
+
+    # VDG 없이도 메타데이터 피처 추출 (폐기 경향성 학습용)
+    reject_reason = getattr(request, "reason", None) if request else None
+    metadata_features = extract_metadata_features(item, reject_reason=reject_reason)
 
     await record_curation_decision(
         db,
@@ -1803,7 +1854,9 @@ async def reject_outlier_item(
         curator_notes=getattr(request, "notes", None) if request else None,
         matched_rule_id=matched_rule_id,
         rule_followed=rule_followed,
+        extracted_features=metadata_features,  # 메타데이터 피처 저장
     )
+
 
     await db.commit()
 

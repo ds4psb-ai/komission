@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * ViralGuideCard - P1 Downloadable Guide for Creators
@@ -45,7 +46,7 @@ export function ViralGuideCard({ pattern, onClose }: ViralGuideCardProps) {
             link.click();
         } catch (e) {
             console.error('Download failed:', e);
-            alert('다운로드 실패. 다시 시도해주세요.');
+            alert('Download failed. Please try again.');
         } finally {
             if (isMountedRef.current) {
                 setDownloading(false);
@@ -74,14 +75,14 @@ export function ViralGuideCard({ pattern, onClose }: ViralGuideCardProps) {
             // Fallback: copy link
             try {
                 if (!navigator.clipboard?.writeText) {
-                    alert('클립보드를 사용할 수 없습니다. 주소를 직접 복사해주세요.');
+                    alert('Clipboard not available. Please copy the address manually.');
                     return;
                 }
                 await navigator.clipboard.writeText(window.location.href);
-                alert('링크가 복사되었습니다!');
+                alert('Link copied!');
             } catch (e) {
                 console.error('Clipboard write failed:', e);
-                alert('링크 복사에 실패했습니다.');
+                alert('Failed to copy link.');
             }
         }
     };
@@ -91,9 +92,9 @@ export function ViralGuideCard({ pattern, onClose }: ViralGuideCardProps) {
 
     const getRiskBadge = (risk: string) => {
         switch (risk) {
-            case 'low': return { label: '안전', color: 'bg-emerald-500' };
-            case 'medium': return { label: '주의', color: 'bg-amber-500' };
-            case 'high': return { label: '위험', color: 'bg-red-500' };
+            case 'low': return { label: 'Safe', color: 'bg-emerald-500' };
+            case 'medium': return { label: 'Caution', color: 'bg-amber-500' };
+            case 'high': return { label: 'Risk', color: 'bg-red-500' };
             default: return { label: risk, color: 'bg-gray-500' };
         }
     };
@@ -123,7 +124,7 @@ export function ViralGuideCard({ pattern, onClose }: ViralGuideCardProps) {
                         className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-600 rounded-lg text-sm text-white transition-colors disabled:opacity-50"
                     >
                         <Download className={`w-4 h-4 ${downloading ? 'animate-bounce' : ''}`} />
-                        {downloading ? '저장 중...' : '이미지 저장'}
+                        {downloading ? 'Saving...' : 'Save Image'}
                     </button>
                     {onClose && (
                         <button

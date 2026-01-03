@@ -198,22 +198,23 @@ class CoachingOutcome(Base):       # L1836 - 준수 결과
 
 # 모바일에서 호출하는 API
 POST /api/v1/coaching/sessions
-POST /api/v1/coaching/sessions/{id}/events/intervention
-POST /api/v1/coaching/sessions/{id}/events/outcome
-POST /api/v1/coaching/sessions/{id}/end
+POST /api/v1/coaching/sessions/{session_id}/events/rule-evaluated
+POST /api/v1/coaching/sessions/{session_id}/events/intervention
+POST /api/v1/coaching/sessions/{session_id}/events/outcome
+POST /api/v1/coaching/sessions/{session_id}/end
 ```
 
 ### WebSocket 개선 (Phase 2)
 
 ```python
-# coaching_ws.py L231-237
+# coaching_ws.py (ping/pong RTT)
 elif msg_type == "ping":
     await manager.send_message(session_id, {
         "type": "pong",
         "client_t": message.get("t"),  # RTT 측정용
     })
 
-# coaching_ws.py L1001-1012
+# coaching_ws.py (frame_ack)
 if t_ms:
     await manager.send_message(session_id, {
         "type": "frame_ack",

@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 import React, { useEffect, useRef, useState } from "react";
 import { api, OutlierItem } from "@/lib/api";

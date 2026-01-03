@@ -64,6 +64,28 @@ def get_auth_headers() -> Dict[str, str]:
     }
 
 
+def get_proxy_url() -> Optional[str]:
+    """
+    Build NordVPN SOCKS5 proxy URL from environment variables.
+    
+    Required env vars:
+        NORDVPN_SOCKS_HOST: Server hostname (e.g., us.socks.nordhold.net)
+        NORDVPN_SOCKS_USER: SOCKS5 username from NordVPN dashboard
+        NORDVPN_SOCKS_PASS: SOCKS5 password from NordVPN dashboard
+    
+    Returns:
+        socks5h:// URL for httpx proxy, or None if not configured
+    """
+    host = os.getenv("NORDVPN_SOCKS_HOST")  # e.g., us.socks.nordhold.net
+    user = os.getenv("NORDVPN_SOCKS_USER")  
+    passwd = os.getenv("NORDVPN_SOCKS_PASS")
+    
+    if host and user and passwd:
+        # Use socks5h:// for remote DNS resolution (prevents DNS leaks)
+        return f"socks5h://{user}:{passwd}@{host}:1080"
+    return None
+
+
 # Known Virlo API endpoints (Supabase-based)
 VIRLO_API_BASE = "https://api.virlo.ai"  # or supabase endpoint
 VIRLO_SUPABASE_URL = os.getenv("VIRLO_SUPABASE_URL", "https://kttfukgfcwvmtgggucyo.supabase.co")
@@ -103,7 +125,13 @@ async def scrape_outliers_via_api(
     headers = get_auth_headers()
     items: List[VirloOutlierItem] = []
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    proxy_url = get_proxy_url()
+    if proxy_url:
+        # Mask password in log
+        masked = proxy_url.split('@')[1] if '@' in proxy_url else proxy_url
+        logger.info(f"🔀 Using SOCKS5 proxy: {masked}")
+    
+    async with httpx.AsyncClient(timeout=30.0, proxy=proxy_url) as client:
         try:
             # Use the correct Virlo RPC endpoint (discovered 2025-12-31)
             platform_param = (platforms[0] if platforms else "tiktok")
@@ -178,8 +206,12 @@ def _parse_api_response(data: Any, limit: int) -> List[VirloOutlierItem]:
             video_url = record.get("url") or ""
             
             # Get creator username from 'authors' field
+            # Virlo API returns authors as a dict object with username/nickname fields
             authors = record.get("authors")
-            if isinstance(authors, list) and len(authors) > 0:
+            if isinstance(authors, dict):
+                # New format: authors is an object with username, nickname, avatar_url
+                creator = authors.get("username") or authors.get("nickname") or "unknown"
+            elif isinstance(authors, list) and len(authors) > 0:
                 creator = authors[0] if isinstance(authors[0], str) else str(authors[0])
             elif isinstance(authors, str):
                 creator = authors
@@ -245,7 +277,12 @@ async def scrape_outliers_from_page(
     # Get cookies for auth
     cookie_str = os.getenv("VIRLO_SESSION_COOKIE", "")
     
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+    proxy_url = get_proxy_url()
+    if proxy_url:
+        masked = proxy_url.split('@')[1] if '@' in proxy_url else proxy_url
+        logger.info(f"🔀 Using SOCKS5 proxy for page scrape: {masked}")
+    
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, proxy=proxy_url) as client:
         response = await client.get(
             "https://app.virlo.ai/outlier",
             headers={
@@ -304,6 +341,7 @@ async def scrape_outliers(
 async def scrape_and_save_to_db(
     limit: int = 50,
     run_id: Optional[str] = None,  # PEGL v1.0: Run 연결
+    platforms: Optional[List[str]] = None,  # 플랫폼 필터 (tiktok, youtube, instagram)
 ) -> dict:
     """
     Scrape Virlo outliers and save to database.
@@ -325,7 +363,7 @@ async def scrape_and_save_to_db(
     from app.models import OutlierSource, OutlierItem
     
     # Scrape data
-    items = await scrape_outliers(limit=limit)
+    items = await scrape_outliers(limit=limit, platforms=platforms)
     
     if not items:
         return {"status": "no_data", "collected": 0, "inserted": 0}
@@ -398,10 +436,27 @@ async def scrape_and_save_to_db(
                 existing.outlier_score = int(item.multiplier * 10)
                 existing.raw_payload = raw_payload
                 existing.updated_at = utcnow()
+                existing.creator_username = item.creator_username  # Update creator handle
                 if canonical_url:
                     existing.canonical_url = canonical_url
+                # Parse and update upload_date
+                if item.posted_date:
+                    try:
+                        from dateutil import parser as dateparser
+                        existing.upload_date = dateparser.parse(item.posted_date)
+                    except Exception:
+                        pass
                 updated += 1
             else:
+                # Parse upload_date from posted_date
+                upload_date_parsed = None
+                if item.posted_date:
+                    try:
+                        from dateutil import parser as dateparser
+                        upload_date_parsed = dateparser.parse(item.posted_date)
+                    except Exception:
+                        pass
+                
                 # Insert new item
                 outlier = OutlierItem(
                     source_id=source.id,
@@ -413,6 +468,8 @@ async def scrape_and_save_to_db(
                     thumbnail_url=item.thumbnail_url,
                     view_count=item.view_count,
                     outlier_score=int(item.multiplier * 10),  # Convert multiplier to score
+                    creator_username=item.creator_username,  # Store creator handle
+                    upload_date=upload_date_parsed,  # Store actual video upload date
                     status=OutlierItemStatus.PENDING,  # 하드닝: Enum 사용
                     crawled_at=item.scraped_at or utcnow(),
                     # PEGL v1.0 필드
@@ -510,6 +567,7 @@ async def discover_and_enrich_urls(
             outlier_tier=_calculate_tier(item.multiplier),
             creator_avg_views=0,
             engagement_rate=0.0,
+            creator_username=item.creator_username,  # 크리에이터 핸들 전달
         )
         enriched_items.append(crawl_item)
     
@@ -568,6 +626,7 @@ async def discover_and_enrich_urls(
                 "outlier_score": item.outlier_score,
                 "outlier_tier": item.outlier_tier,
                 "growth_rate": item.growth_rate,
+                "creator_username": item.creator_username,  # 크리에이터 정보 저장
                 "discovered_at": utcnow().isoformat(),
             }
             
@@ -586,6 +645,7 @@ async def discover_and_enrich_urls(
                 growth_rate=item.growth_rate,
                 outlier_score=item.outlier_score,
                 outlier_tier=item.outlier_tier,
+                creator_username=item.creator_username,  # 크리에이터 핸들 저장
                 status=OutlierItemStatus.PENDING,  # ← Ops 파이프라인 시작점
                 crawled_at=utcnow(),
                 raw_payload=raw_payload,

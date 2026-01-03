@@ -279,7 +279,10 @@ class DirectorCompiler:
                 "coaching_tip": "이 순간 표정 변화를 정확히 맞추세요"
             }, ...]
         """
-        if not vdg.semantic or not vdg.semantic.viral_kicks:
+        viral_kicks = None
+        if vdg.semantic:
+            viral_kicks = getattr(vdg.semantic, "viral_kicks", None)
+        if not viral_kicks:
             logger.warning("🔴 No viral_kicks found for Ghost Overlay")
             return []
         
@@ -287,7 +290,7 @@ class DirectorCompiler:
         hook = vdg.semantic.hook_genome if vdg.semantic else None
         hook_end_ms = int((hook.end_sec if hook else 3.0) * 1000)
         
-        for kick in vdg.semantic.viral_kicks:
+        for kick in viral_kicks:
             # 불변 요소 분류
             invariant_elements = cls._classify_invariant_elements(kick, hook_end_ms)
             
@@ -314,7 +317,7 @@ class DirectorCompiler:
         # 시간순 정렬
         keyframes.sort(key=lambda x: x["t_ms"])
         
-        logger.info(f"👻 Ghost Keyframes: {len(keyframes)} frames from {len(vdg.semantic.viral_kicks)} kicks")
+        logger.info(f"👻 Ghost Keyframes: {len(keyframes)} frames from {len(viral_kicks)} kicks")
         return keyframes
 
     @classmethod
@@ -393,17 +396,27 @@ class DirectorCompiler:
             candidates = vdg.contract_candidates
             # Check if candidates actually have data (not just empty object)
             has_candidate_data = (
-                candidates and 
-                candidates.dna_invariants_candidates and 
-                len(candidates.dna_invariants_candidates) > 0
+                candidates
+                and candidates.dna_invariants_candidates
+                and len(candidates.dna_invariants_candidates) > 0
             )
+            candidate_invariants: List[DNAInvariant] = []
             if has_candidate_data:
-                invariants = cls._extract_from_contract_candidates(candidates)
-                logger.info(f"   └─ Using contract_candidates as primary source ({len(invariants)} rules)")
+                candidate_invariants = cls._extract_from_contract_candidates(candidates)
+                logger.info(
+                    f"   └─ Using contract_candidates as primary source ({len(candidate_invariants)} rules)"
+                )
+            # Always compute heuristics to supply critical baselines
+            heuristic_invariants = cls._extract_dna_invariants(vdg)
+            if has_candidate_data:
+                invariants = candidate_invariants + heuristic_invariants
+                if heuristic_invariants:
+                    compiler_warnings.append("heuristic_supplement_used")
             else:
-                # Fallback to heuristic extraction if no candidates
-                invariants = cls._extract_dna_invariants(vdg)
-                logger.info(f"   └─ No contract_candidates data, using heuristic extraction ({len(invariants)} rules)")
+                invariants = heuristic_invariants
+                logger.info(
+                    f"   └─ No contract_candidates data, using heuristic extraction ({len(invariants)} rules)"
+                )
                 compiler_warnings.append("heuristic_fallback_used")
             
             # 2. Dedupe invariants by rule_id
@@ -419,14 +432,24 @@ class DirectorCompiler:
             logger.info(f"   └─ DNA Invariants: {len(invariants)}")
             
             # 3. Generate Mutation Slots - CONTRACT FIRST
-            if candidates:
+            has_slot_candidates = (
+                candidates
+                and candidates.mutation_slots_candidates
+                and len(candidates.mutation_slots_candidates) > 0
+            )
+            if has_slot_candidates:
                 slots = cls._extract_slots_from_contract_candidates(candidates)
             else:
                 slots = cls._generate_mutation_slots(vdg, persona_preset)
             logger.info(f"   └─ Mutation Slots: {len(slots)}")
             
             # 4. Extract Forbidden Mutations - CONTRACT FIRST
-            if candidates:
+            has_forbidden_candidates = (
+                candidates
+                and candidates.forbidden_mutations_candidates
+                and len(candidates.forbidden_mutations_candidates) > 0
+            )
+            if has_forbidden_candidates:
                 forbidden = cls._extract_forbidden_from_contract_candidates(candidates)
             else:
                 forbidden = cls._extract_forbidden_mutations(vdg)
@@ -506,6 +529,7 @@ class DirectorCompiler:
         
         # 1. Hook Timing Rule (Critical)
         if hook.microbeats:
+            hook_custom_msg = cls._get_vdg_coach_message(vdg, "hook")
             punch_beat = cls._find_microbeat(hook.microbeats, "punch")
             punch_time = punch_beat.t if punch_beat else hook.end_sec
             
@@ -530,12 +554,12 @@ class DirectorCompiler:
                 coach_line_templates=CoachLineTemplates(
                     strict=cls.COACH_LINES["hook_timing"]["strict"],
                     # VDG에서 영상별 맞춤 메시지 우선, 없으면 기본 메시지
-                    friendly=cls._get_vdg_coach_message(vdg, "hook") or cls.COACH_LINES["hook_timing"]["friendly"],
+                    friendly=hook_custom_msg or cls.COACH_LINES["hook_timing"]["friendly"],
                     neutral=cls.COACH_LINES["hook_timing"]["neutral"],
                     ko={
                         "strict": "너무 늦어요!",
                         "friendly": "더 빨리!",
-                        "custom": cls._get_vdg_coach_message(vdg, "hook")  # 영상별 맞춤
+                        **({"custom": hook_custom_msg} if hook_custom_msg else {}),
                     }
                 ),
                 fallback="generic_tip"

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * SimpleCreatorGuide - Minimal Creator View (PEGL v1.0)
@@ -24,6 +25,7 @@ interface SimpleCreatorGuideProps {
 }
 
 export function SimpleCreatorGuide({ patternId, onApply }: SimpleCreatorGuideProps) {
+    const t = useTranslations('simpleCreatorGuide');
     const [pattern, setPattern] = useState<PatternLibraryItem | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -61,7 +63,7 @@ export function SimpleCreatorGuide({ patternId, onApply }: SimpleCreatorGuidePro
     if (!pattern) {
         return (
             <div className="p-4 text-center text-white/50 text-sm">
-                패턴을 찾을 수 없습니다
+                {t('notFound')}
             </div>
         );
     }
@@ -79,14 +81,14 @@ export function SimpleCreatorGuide({ patternId, onApply }: SimpleCreatorGuidePro
         .slice(0, 3);
 
     // 3-line summary
-    const summary = `${pattern.platform} ${pattern.category} 패턴 • ${pattern.temporal_phase} • 변주 ${variableSlots.length}개`;
+    const summary = `${pattern.platform} ${pattern.category} ${t('patternSuffix')} • ${pattern.temporal_phase} • ${t('variationCount', { count: variableSlots.length })}`;
 
     return (
         <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-5 max-w-sm mx-auto shadow-2xl border border-white/10">
             {/* 3-line Summary */}
             <div className="text-center mb-4">
                 <div className="text-xs text-violet-400 font-medium uppercase tracking-wider mb-1">
-                    Creator Guide
+                    {t('guideTitle')}
                 </div>
                 <div className="text-white/60 text-xs">
                     {summary}
@@ -97,7 +99,7 @@ export function SimpleCreatorGuide({ patternId, onApply }: SimpleCreatorGuidePro
             <div className="mb-4">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 mb-2">
                     <Lock className="w-3.5 h-3.5" />
-                    이건 꼭 지켜주세요
+                    {t('invariantTitle')}
                 </div>
                 <div className="space-y-1.5">
                     {invariantSlots.map(([key, value]) => (
@@ -110,7 +112,7 @@ export function SimpleCreatorGuide({ patternId, onApply }: SimpleCreatorGuidePro
                         </div>
                     ))}
                     {invariantSlots.length === 0 && (
-                        <div className="text-xs text-white/40">규칙 없음</div>
+                        <div className="text-xs text-white/40">{t('noInvariant')}</div>
                     )}
                 </div>
             </div>
@@ -119,7 +121,7 @@ export function SimpleCreatorGuide({ patternId, onApply }: SimpleCreatorGuidePro
             <div className="mb-5">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 mb-2">
                     <Sparkles className="w-3.5 h-3.5" />
-                    여기서 창의력 발휘!
+                    {t('variableTitle')}
                 </div>
                 <div className="space-y-1.5">
                     {variableSlots.map(([key, value]) => {
@@ -137,7 +139,7 @@ export function SimpleCreatorGuide({ patternId, onApply }: SimpleCreatorGuidePro
                         );
                     })}
                     {variableSlots.length === 0 && (
-                        <div className="text-xs text-white/40">변주 포인트 없음</div>
+                        <div className="text-xs text-white/40">{t('noVariable')}</div>
                     )}
                 </div>
             </div>
@@ -147,7 +149,7 @@ export function SimpleCreatorGuide({ patternId, onApply }: SimpleCreatorGuidePro
                 onClick={onApply}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 rounded-xl text-white text-sm font-bold transition-all shadow-lg shadow-violet-500/25"
             >
-                촬영 시작하기
+                {t('startFilming')}
                 <ArrowRight className="w-4 h-4" />
             </button>
         </div>

@@ -159,7 +159,7 @@ const handleToggleMute = () => {
  * 지원 URL 형식:
  * - https://www.tiktok.com/@username/video/7589283597429869857
  * - https://www.tiktok.com/v/7589283597429869857
- * - https://vm.tiktok.com/XXXXXX (리다이렉트 후 추출)
+ * - https://vm.tiktok.com/XXXXXX (단축 URL: 현재 프론트엔드에서는 리다이렉트 해제 미지원)
  */
 function extractTikTokVideoId(url: string): string | null {
     if (!url) return null;

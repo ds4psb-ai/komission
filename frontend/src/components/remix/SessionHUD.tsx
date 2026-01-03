@@ -1,5 +1,6 @@
 // frontend/src/components/remix/SessionHUD.tsx
 "use client";
+import { useTranslations } from 'next-intl';
 
 import { useSessionStore } from "@/stores/useSessionStore";
 import { SESSION_PHASES } from "@/lib/types/session";

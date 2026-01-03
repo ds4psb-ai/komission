@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * SessionHUD - 운영자 헤드업 디스플레이 (PEGL v1.0)

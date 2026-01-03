@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * PipelineProgress - 파이프라인 진행 단계 표시 (PEGL v1.0)

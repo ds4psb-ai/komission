@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 import { useSessionStore } from "@/stores/useSessionStore";
 import { SESSION_PHASES, SessionPhase } from "@/lib/types/session";

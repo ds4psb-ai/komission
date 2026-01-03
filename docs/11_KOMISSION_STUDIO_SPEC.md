@@ -14,10 +14,10 @@ Komission Content Studio is not just a form-filler; it is a **visual reasoning e
 This specification defines the "Best of Breed" features extracted from our deep-dive research, tailored strictly for the Komission Evidence Loop ecosystem.
 
 ### Core Value Proposition
-- **Visual Evidence Chain**: Users see *why* a decision was made by tracing the graph from `Evidence Node` → `Capsule Node` → `Decision Node`.
+- **Visual Evidence Chain**: Users see *why* a decision was made by tracing the graph from `Evidence Node` → `Capsule Node` → `Decision Node` (planned; current build does not enforce chain/provenance rendering).
 - **Transparent Economy**: First-class credit visibility ensures users understand the cost of "intelligence" vs "generation".
 - **Context-Aware Processing**: The AI Processor is not a black box; it visibly consumes up-stream evidence.
-- **Notebook Library Integration**: 분석 스키마/클러스터는 **DB로 래핑**되어 노드로 소비된다. NotebookLM = Pattern Engine (기본 실행).
+- **Notebook Library Integration**: 분석 스키마/클러스터는 **DB로 래핑**되어 노드로 소비된다 (planned; current build shows static notebook summaries).
 
 ---
 
@@ -35,11 +35,11 @@ We adopt a strictly typed node system to prevent "garbage graphs".
 2.  **Notebook Library (Context)**
     *   *Visual*: Rounded node, library icon.
     *   *Data*: `library_entry_id`, `cluster_id`.
-    *   *Behavior*: Notebook Library 패턴 요약(NotebookLM Pattern Engine 결과)을 **DB에서 불러와** 컨텍스트로 공급.
+    *   *Behavior*: 현재는 정적 요약 표시; DB 연동/NotebookLM 결과 주입은 planned.
 
 3.  **Template Seed (Opal, Optional)**
     *   *Visual*: Dotted outline, "Seed" badge.
-    *   *Data*: `seed_id`, `seed_json`, `prompt_version`.
+    *   *Data*: `seed_id`, `template_type`, `hook`, `shotlist`, `audio`, `timing`, `parent_id`, `cluster_id`.
     *   *Behavior*: Opal이 만든 템플릿 시드를 캡슐/템플릿의 기본값으로 공급.
 
 4.  **Capsule Processor (Decision Engine)**
@@ -71,6 +71,7 @@ The graph allows **Many-to-One** for context, but **One-to-One** for flow contro
   ]
 }
 ```
+Note: Connection rule enforcement is planned; current build does not enforce schema validation on connections.
 
 ---
 
@@ -102,7 +103,7 @@ Derived from Virlo's "Dark Studio" aesthetic but refined for professional analyt
 ### 3.3 Interaction Micro-interactions
 *   **Drag-to-Connect**: Rubber-band line with "snap" effect on valid ports.
 *   **Port Hover**: Valid target ports glow Green (Context) or Blue (Flow).
-*   **Live Token Counter**: Capsule Processor node displays estimated cost *before* run.
+*   **Live Token Counter**: Capsule Processor node displays estimated cost *before* run (planned).
 
 ---
 
@@ -129,10 +130,10 @@ We adopt the **Dual-Wallet** system to separate "SaaS Value" from "Compute Cost"
 *   [ ] Build "Drag-Connect" validation logic.
 
 ### Phase 2: The "Capsule Brain" Integration
-*   [ ] Connect Capsule Processor Node to `run_real_evidence_loop.py` backend.
-*   [ ] Stream "Status" (Running/Done) via WebSocket/Polling to node UI.
-*   [ ] Visualize `VDG_Evidence` data when clicking Input nodes.
-*   [ ] Notebook Library Node 연동 (DB → 노드)
+*   [ ] Connect Capsule Processor Node to `run_real_evidence_loop.py` backend (planned, not implemented in current build).
+*   [ ] Stream "Status" (Running/Done) via WebSocket/Polling to node UI (planned).
+*   [ ] Visualize `VDG_Evidence` data when clicking Input nodes (planned).
+*   [ ] Notebook Library Node 연동 (DB → 노드) (planned).
 
 ### Phase 3: The "Credit Wallet"
 *   [ ] Implement Credit Ledger in Postgres.

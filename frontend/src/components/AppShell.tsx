@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 /**
  * AppShell - Layout wrapper with Hybrid Navigation

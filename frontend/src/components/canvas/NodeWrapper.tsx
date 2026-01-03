@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { ReactNode, memo } from 'react';
 import { cn } from '@/lib/utils';
 import { Lock, Target } from 'lucide-react';

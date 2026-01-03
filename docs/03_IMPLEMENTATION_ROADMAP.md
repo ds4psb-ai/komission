@@ -38,7 +38,7 @@
 - Director Pack 컴파일러
 
 ### ✅ 실시간 AI 코칭
-- WebSocket `/coaching/live/{session_id}`
+- WebSocket `/api/v1/ws/coaching/{session_id}`
 - Audio Coach (Gemini 2.5 Flash)
 - TTS 음성 피드백
 

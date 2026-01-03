@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 /**
  * CoachingSession - Real-time AI Audio Coaching
@@ -12,7 +13,7 @@
  * Backend Integration:
  * - POST /coaching/sessions → create session (with control group assignment)
  * - POST /coaching/sessions/{id}/events/* → event logging
- * - WebSocket /coaching/live → real-time feedback
+ * - WebSocket /api/v1/ws/coaching → real-time feedback
  * 
  * P1 Features:
  * - Control Group (10%): No coaching, for causal inference
@@ -72,6 +73,7 @@ export function CoachingSession({
     mode = 'variation',
     onComplete
 }: CoachingSessionProps) {
+    const t = useTranslations('coaching');
     // State
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [isRecording, setIsRecording] = useState(false);
@@ -258,10 +260,10 @@ export function CoachingSession({
 
                 // Log if control group
                 if (sessionData.assignment === 'control') {
-                    console.log('🔬 Control Group: 코칭 없이 촬영 (인과 추론용)');
+                    console.log(`🔬 Control Group: ${t('controlGroupDesc')}`);
                 }
                 if (sessionData.holdout_group) {
-                    console.log('📊 Holdout Group: 승격 판단 제외');
+                    console.log(`📊 Holdout Group: ${t('holdoutGroup')}`);
                 }
 
             } catch (apiErr) {
@@ -292,22 +294,22 @@ export function CoachingSession({
         } catch (err) {
             console.error('Failed to init session:', err);
             if (isMountedRef.current) {
-                setError('세션 초기화 실패');
+                setError('Session initialization failed');
             }
         }
     };
 
     const getDemoRules = (mode: string): CoachingRule[] => {
         const baseRules: CoachingRule[] = [
-            { rule_id: 'hook_timing', description: '첫 0.5초에 훅 시작', priority: 'critical', status: 'pending' },
-            { rule_id: 'center_subject', description: '주 피사체 중앙 배치', priority: 'high', status: 'pending' },
-            { rule_id: 'eye_contact', description: '카메라 시선 유지', priority: 'medium', status: 'pending' },
+            { rule_id: 'hook_timing', description: 'Start hook within 0.5s', priority: 'critical', status: 'pending' },
+            { rule_id: 'center_subject', description: 'Center main subject', priority: 'high', status: 'pending' },
+            { rule_id: 'eye_contact', description: 'Maintain eye contact', priority: 'medium', status: 'pending' },
         ];
 
         if (mode === 'homage') {
-            baseRules.push({ rule_id: 'exact_timing', description: '원본 타이밍 정확히 따르기', priority: 'critical', status: 'pending' });
+            baseRules.push({ rule_id: 'exact_timing', description: 'Follow original timing', priority: 'critical', status: 'pending' });
         } else if (mode === 'campaign') {
-            baseRules.push({ rule_id: 'product_visible', description: '제품 노출 3초 이상', priority: 'critical', status: 'pending' });
+            baseRules.push({ rule_id: 'product_visible', description: 'Product visible 3+ sec', priority: 'critical', status: 'pending' });
         }
 
         return baseRules;
@@ -352,10 +354,14 @@ export function CoachingSession({
     const simulateCoaching = useCallback(() => {
         // P1: Demo coaching with event logging
         const feedbacks = [
-            { message: "좋아요! 카메라를 정면으로 봐주세요", type: 'instruction' as const, delay: 2000, rule: rules[0] },
-            { message: "훌륭해요! 첫 훅이 잘 걸렸어요 ✨", type: 'praise' as const, delay: 4000, rule: rules[0] },
-            { message: "조금 더 가까이 와주세요", type: 'instruction' as const, delay: 7000, rule: rules[1] },
-            { message: "완벽해요! 자연스럽게 마무리하세요", type: 'praise' as const, delay: 12000, rule: rules[2] },
+            { message: "Good! Look at the camera", type: 'instruction' as const, delay: 2000, rule: rules[0] }, // Fallback text, handled by UI translation usually? No this is message content.
+            // Actually these should probably be keys if we want perfect i18n, but for demo it's tricky.
+            // Let's use keys and translate in UI? But `message` is stored in DB.
+            // For now, I'll use t() here.
+            { message: t('feedback.instruction1', { default: "Good! Look at the camera" }), type: 'instruction' as const, delay: 2000, rule: rules[0] },
+            { message: t('feedback.praise1', { default: "Great! Hook is good ✨" }), type: 'praise' as const, delay: 4000, rule: rules[0] },
+            { message: t('feedback.instruction2', { default: "Come closer" }), type: 'instruction' as const, delay: 7000, rule: rules[1] },
+            { message: t('feedback.praise2', { default: "Perfect! Finish naturally" }), type: 'praise' as const, delay: 12000, rule: rules[2] },
         ];
 
         feedbacks.forEach(({ message, type, delay, rule }, index) => {
@@ -685,19 +691,19 @@ export function CoachingSession({
         return (
             <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6">
                 <AlertCircle className="w-16 h-16 text-red-400 mb-4" />
-                <h2 className="text-xl font-bold text-white mb-2">오류 발생</h2>
+                <h2 className="text-xl font-bold text-white mb-2">{t('errorTitle')}</h2>
                 <p className="text-white/50 text-center mb-6">{error}</p>
                 <button onClick={onClose} className="px-8 py-3 bg-white/10 border border-white/20 rounded-xl text-white font-bold">
-                    닫기
+                    {t('close')}
                 </button>
             </div>
         );
     }
 
     const modeLabels = {
-        homage: { label: '오마쥬', color: 'bg-orange-500/20 text-orange-300 border-orange-500/50' },
-        variation: { label: '변주', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' },
-        campaign: { label: '체험단', color: 'bg-violet-500/20 text-violet-300 border-violet-500/50' }
+        homage: { label: t('homage'), color: 'bg-orange-500/20 text-orange-300 border-orange-500/50' },
+        variation: { label: t('variation'), color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' },
+        campaign: { label: t('campaign'), color: 'bg-violet-500/20 text-violet-300 border-violet-500/50' }
     };
 
     return (
@@ -729,7 +735,7 @@ export function CoachingSession({
                             {assignment === 'control' && (
                                 <span className="px-2 py-1 text-xs font-bold rounded border bg-amber-500/20 text-amber-300 border-amber-500/50 flex items-center gap-1">
                                     <FlaskConical className="w-3 h-3" />
-                                    실험군
+                                    {t('controlGroup')}
                                 </span>
                             )}
                             {isRecording && (
@@ -761,7 +767,7 @@ export function CoachingSession({
                                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                             : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                             }`}>
-                                            {geminiConnected ? 'AI 연결' : '로컬'}
+                                            {geminiConnected ? t('aiConnected') : t('local')}
                                         </span>
                                     )}
                                 </div>
@@ -791,7 +797,7 @@ export function CoachingSession({
                             <div className="flex-1 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-y-auto">
                                 <div className="text-xs text-cyan-400 mb-3 flex items-center gap-1">
                                     <Volume2 className="w-3 h-3" />
-                                    현재 코칭
+                                    {t('currentCoaching')}
                                 </div>
                                 {currentFeedback && assignment !== 'control' ? (
                                     <div className={`p-3 rounded-xl ${currentFeedback.type === 'praise' ? 'bg-emerald-500/20 border border-emerald-500/30' :
@@ -801,13 +807,13 @@ export function CoachingSession({
                                         <p className="text-sm text-white">{currentFeedback.message}</p>
                                     </div>
                                 ) : (
-                                    <p className="text-white/40 text-sm">대기 중...</p>
+                                    <p className="text-white/40 text-sm">{t('waiting')}</p>
                                 )}
                             </div>
 
                             {/* Feedback History */}
                             <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 max-h-48 overflow-y-auto">
-                                <div className="text-xs text-white/60 mb-2">피드백 히스토리</div>
+                                <div className="text-xs text-white/60 mb-2">{t('feedbackHistory')}</div>
                                 {feedbackHistory.length > 0 ? (
                                     <div className="space-y-2">
                                         {feedbackHistory.slice(-5).map((fb, i) => (
@@ -817,7 +823,7 @@ export function CoachingSession({
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="text-white/30 text-xs">아직 피드백이 없습니다</p>
+                                    <p className="text-white/30 text-xs">{t('noFeedback')}</p>
                                 )}
                             </div>
                         </div>
@@ -888,7 +894,7 @@ export function CoachingSession({
                                     <div className="flex items-center gap-2">
                                         <FlaskConical className="w-5 h-5 text-amber-300" />
                                         <p className="text-amber-200 font-medium text-sm">
-                                            🔬 인과 추론용 대조군 촬영 중
+                                            {t('controlGroupNotice')}
                                         </p>
                                     </div>
                                 </div>
@@ -901,7 +907,7 @@ export function CoachingSession({
                                 <div className="p-3 bg-black/60 backdrop-blur-lg rounded-xl border border-white/10">
                                     <div className="text-xs text-white/60 mb-2 flex items-center gap-1">
                                         <Sparkles className="w-3 h-3" />
-                                        체크리스트
+                                        {t('checklist')}
                                     </div>
                                     <div className="space-y-2">
                                         {rules.slice(0, 4).map((rule) => (
@@ -934,7 +940,7 @@ export function CoachingSession({
                             <div className="flex-1 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-y-auto">
                                 <div className="text-xs text-white/60 mb-3 flex items-center gap-1">
                                     <Sparkles className="w-3 h-3" />
-                                    코칭 체크리스트
+                                    {t('coachingChecklist')}
                                 </div>
                                 <div className="space-y-3">
                                     {rules.map((rule) => (
@@ -958,16 +964,16 @@ export function CoachingSession({
 
                             {/* Session Stats */}
                             <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-                                <div className="text-xs text-white/60 mb-2">세션 통계</div>
+                                <div className="text-xs text-white/60 mb-2">{t('sessionStats')}</div>
                                 <div className="grid grid-cols-2 gap-2 text-xs">
-                                    <div className="p-2 bg-white/5 rounded-lg">
-                                        <div className="text-white/40">녹화시간</div>
+                                    <div className="p-2 bg-white/5 rounded-lg border border-white/10 text-center">
+                                        <div className="text-white/40">{t('recordingTime')}</div>
                                         <div className="text-white font-mono">
                                             {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
                                         </div>
                                     </div>
-                                    <div className="p-2 bg-white/5 rounded-lg">
-                                        <div className="text-white/40">진행률</div>
+                                    <div className="p-2 bg-white/5 rounded-lg border border-white/10 text-center">
+                                        <div className="text-white/40">{t('progress')}</div>
                                         <div className="text-cyan-400 font-mono">{progress}%</div>
                                     </div>
                                 </div>
@@ -1037,7 +1043,7 @@ export function CoachingSession({
 
                     {!isRecording && (
                         <p className="text-center text-white/40 text-xs mt-3">
-                            🎙️ AI 코치가 실시간으로 촬영을 도와드립니다
+                            {t('aiHelper')}
                         </p>
                     )}
                 </div>

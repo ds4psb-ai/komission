@@ -1,5 +1,6 @@
 // frontend/src/components/remix/QuestChip.tsx
 "use client";
+import { useTranslations } from 'next-intl';
 
 import { useSessionStore } from "@/stores/useSessionStore";
 import Link from "next/link";

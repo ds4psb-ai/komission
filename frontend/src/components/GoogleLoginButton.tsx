@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 import React, { useEffect, useCallback, useState } from 'react';
 
@@ -80,9 +81,9 @@ export function GoogleLoginButton({
         return (
             <button
                 onClick={() => onSuccess('mock.credential.token')}
-                className="w-full py-4 px-6 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg shadow-violet-500/20"
+                className="w-full py-4 px-6 bg-[#c1ff00] hover:bg-white text-black rounded-xl font-black uppercase tracking-wider text-sm flex items-center justify-center gap-3 transition-all shadow-[0_0_15px_rgba(193,255,0,0.3)] hover:shadow-[0_0_20px_rgba(255,255,255,0.5)]"
             >
-                ⚡️ 바로 시작하기 (개발용)
+                ⚡️ MOCK LOGIN (DEV)
             </button>
         );
     }
@@ -192,14 +193,14 @@ export function GoogleLoginButtonCustom({
             onClick={handleClick}
             disabled={isLoading || !GOOGLE_CLIENT_ID}
             className={`
-                w-full py-4 px-6 rounded-xl font-bold text-lg
+                w-full py-4 px-6 rounded-xl font-black uppercase tracking-wider text-sm
                 flex items-center justify-center gap-3
-                transition-all duration-200
+                transition-all duration-300 transform active:scale-[0.98]
                 ${isLoading
-                    ? 'bg-gray-700 cursor-wait'
+                    ? 'bg-gray-800 cursor-wait'
                     : GOOGLE_CLIENT_ID
-                        ? 'bg-white text-gray-800 hover:bg-gray-100 shadow-lg hover:shadow-xl'
-                        : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                        ? 'bg-white hover:bg-[#c1ff00] text-black shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_20px_rgba(193,255,0,0.4)] group'
+                        : 'bg-gray-800 text-gray-500 cursor-not-allowed'
                 }
             `}
         >

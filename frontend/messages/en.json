@@ -1,0 +1,1041 @@
+{
+    "common": {
+        "login": "Login",
+        "logout": "Logout",
+        "save": "Save",
+        "cancel": "Cancel",
+        "loading": "Loading...",
+        "error": "An error occurred",
+        "back": "Back",
+        "next": "Next",
+        "previous": "Previous",
+        "submit": "Submit",
+        "confirm": "Confirm",
+        "close": "Close",
+        "search": "Search",
+        "filter": "Filter",
+        "all": "All",
+        "more": "More",
+        "less": "Less",
+        "share": "Share",
+        "copy": "Copy",
+        "copied": "Copied",
+        "delete": "Delete",
+        "edit": "Edit",
+        "create": "Create",
+        "apply": "Apply",
+        "start": "Start",
+        "stop": "Stop",
+        "pause": "Pause",
+        "resume": "Resume",
+        "refresh": "Refresh",
+        "retry": "Retry",
+        "viewAll": "View All",
+        "seeMore": "See More",
+        "guest": "Guest",
+        "continueAsGuest": "Continue as Guest",
+        "loginRequired": "Login Required",
+        "category": "Category",
+        "platform": "Platform",
+        "views": "Views",
+        "growthRate": "Growth Rate",
+        "score": "Score"
+    },
+    "header": {
+        "home": "Home",
+        "feed": "Feed",
+        "discover": "Discover",
+        "forYou": "For You",
+        "knowledge": "Knowledge",
+        "boards": "Boards",
+        "collabs": "Collabs",
+        "myPage": "My Page",
+        "ops": "Ops",
+        "notifications": "Notifications",
+        "settings": "Settings"
+    },
+    "sidebar": {
+        "home": "Home",
+        "content": "Content",
+        "knowledge": "Knowledge",
+        "ops": "Operations",
+        "mainFeed": "Main Feed",
+        "discover": "Discover",
+        "forYou": "For You",
+        "viralGuides": "Viral Guides",
+        "hookPatterns": "Hook Patterns",
+        "hooks": "Hook Library",
+        "patterns": "Pattern Analysis",
+        "patternLibrary": "Pattern Library",
+        "boards": "Boards",
+        "collabs": "Collabs",
+        "myPage": "My Page",
+        "performance": "Performance",
+        "royalty": "Royalty",
+        "opsConsole": "Ops Console",
+        "pipelines": "Pipelines",
+        "crawlers": "Crawlers",
+        "outliers": "Outliers",
+        "canvas": "Canvas",
+        "session": "Session",
+        "wizard": "Wizard",
+        "account": "Account",
+        "profile": "Profile",
+        "history": "Royalty History",
+        "kakao": "KakaoTalk Support",
+        "support": "Customer Support",
+        "consult": "Start Consultation",
+        "supportDesc": "1:1 Support Chat"
+    },
+    "pages": {
+        "home": {
+            "title": "Viral Content Feed",
+            "subtitle": "Discover trending outlier videos",
+            "filter": {
+                "all": "All",
+                "tiktok": "TikTok",
+                "youtube": "YouTube",
+                "instagram": "Instagram"
+            },
+            "emptyState": "No content yet",
+            "loadMore": "Load More"
+        },
+        "login": {
+            "title": "Login",
+            "welcomeBack": "Welcome Back",
+            "subtitle": "Sign in to discover your viral DNA",
+            "googleLogin": "Start with Google",
+            "orContinueAsGuest": "Or continue as guest",
+            "sessionExpired": "Session expired. Please log in again.",
+            "loginFailed": "Login failed.",
+            "terms": "Terms of Service",
+            "privacy": "Privacy Policy",
+            "agreeToTerms": "By signing in, you agree to Komission's Terms of Service and Privacy Policy."
+        },
+        "myPage": {
+            "title": "My Page",
+            "dashboard": "Dashboard",
+            "quickActions": "Quick Actions",
+            "account": "Account",
+            "stats": {
+                "totalViews": "Total Views",
+                "totalLikes": "Total Likes",
+                "avgEngagement": "Avg. Engagement",
+                "contentCount": "Content Count"
+            },
+            "actions": {
+                "startCanvas": "Start Canvas",
+                "viewCollabs": "View Collabs",
+                "exploreFeed": "Explore Feed"
+            },
+            "performance": {
+                "title": "📊 Check Performance",
+                "subtitle": "Enter the URL of your uploaded video\nto automatically check views and performance",
+                "inputPlaceholder": "Paste TikTok or YouTube Shorts URL",
+                "checkButton": "Check Performance",
+                "checking": "Fetching performance...",
+                "supportedPlatforms": "Supported Platforms",
+                "errors": {
+                    "enterUrl": "Please enter a URL",
+                    "invalidUrl": "Please enter a TikTok or YouTube Shorts URL",
+                    "extractFailed": "Extraction failed",
+                    "extractError": "Failed to extract performance data"
+                },
+                "metrics": {
+                    "views": "Views",
+                    "likes": "Likes",
+                    "comments": "Comments",
+                    "shares": "Shares"
+                },
+                "comparison": {
+                    "patternAvg": "Pattern Average",
+                    "myVideo": "My Video",
+                    "vsPatternAvg": "vs Average"
+                },
+                "actions": {
+                    "myPage": "My Page",
+                    "newVideo": "Create New Video"
+                },
+                "emptyState": "Enter a video URL after uploading\nto automatically analyze your performance"
+            }
+        },
+        "video": {
+            "title": "Video Detail",
+            "viralGuide": "Viral Guide",
+            "hookPattern": "Hook Pattern",
+            "shotlist": "Shotlist",
+            "timing": "Timing",
+            "doNot": "Do Not",
+            "invariants": "Invariants (Do Not Change)",
+            "variables": "Variables (Creative Freedom)",
+            "storyboard": "Storyboard",
+            "viralKicks": "Viral Kicks",
+            "aiCoaching": "AI Coaching",
+            "startCoaching": "Start Coaching",
+            "viewOriginal": "View Original",
+            "campaign": "Campaign",
+            "launchCampaign": "Launch Campaign",
+            "applyNow": "Apply Now",
+            "bestComments": "Best Comments",
+            "processingLink": "Processing Link...",
+            "playExternal": "Play External",
+            "videoNotFound": "Video not found",
+            "backToFeed": "Back to Feed"
+        },
+        "ops": {
+            "title": "Ops Console",
+            "subtitle": "Komission Operations Dashboard",
+            "loginRequired": "Ops Console Access",
+            "loginRequiredDesc": "Login required to access operations features",
+            "stats": {
+                "totalOutliers": "Total Outliers",
+                "awaitingReview": "Awaiting Review",
+                "processedToday": "Processed Today",
+                "avgConfidence": "Avg. Confidence",
+                "activePipelines": "Active Pipelines"
+            },
+            "quickActions": {
+                "pipelines": "Pipeline Management",
+                "pipelinesDesc": "Crawl outliers from Virlo/TikTok and create clusters",
+                "outliers": "Outlier Curation",
+                "outliersDesc": "Verify and tag AI-discovered outliers",
+                "canvas": "Visual Canvas",
+                "canvasDesc": "Manage video analysis and remixes visually",
+                "crawlers": "Crawler Settings",
+                "crawlersDesc": "Configure source platforms and crawling rules"
+            },
+            "outliersPage": {
+                "title": "Outlier Management",
+                "subtitle": "Click to play TikTok video + view metadata",
+                "inputPlaceholder": "Paste TikTok/Instagram/YouTube link...",
+                "register": "Register",
+                "refresh": "Refresh",
+                "accessDenied": "Access Denied",
+                "accessDeniedDesc": "This page requires Curator or Admin permissions.",
+                "goHome": "Go Home",
+                "retry": "Retry",
+                "urlSubmitFailed": "URL registration failed",
+                "promotionFailed": "Promotion failed",
+                "rejectionFailed": "Rejection failed",
+                "error": "Error",
+                "noOutliers": "No outliers collected.",
+                "noItemsInStage": "No items in '{stage}' stage.",
+                "sort": {
+                    "outlierScore": "Outlier Score",
+                    "viewCount": "View Count",
+                    "latest": "Latest"
+                },
+                "stages": {
+                    "all": "All",
+                    "pending": "🆕 Crawled",
+                    "promoted": "📦 Promoted",
+                    "analyzing": "🔬 Analyzing",
+                    "completed": "✅ Completed"
+                },
+                "platforms": {
+                    "all": "All",
+                    "tiktok": "TikTok",
+                    "youtube": "YouTube",
+                    "instagram": "Instagram"
+                }
+            }
+        },
+        "collabs": {
+            "title": "Collabs Marketplace",
+            "subtitle": "Connecting Brands and Creators",
+            "heroTitle": "Viral Campaigns with Creators",
+            "heroSubtitle": "Join campaigns using outlier patterns",
+            "liveCampaigns": "Live Campaigns",
+            "viewDetails": "View Details",
+            "applyNow": "Apply Now",
+            "spots": "Spots",
+            "reward": "Reward",
+            "deadline": "Deadline",
+            "noCampaigns": "No active campaigns"
+        },
+        "collabsMap": {
+            "title": "Brand Collabs",
+            "subtitle": "Get rewards by filming with\nviral references!",
+            "offline": "You are offline",
+            "locationDenied": "Location permission required for check-in",
+            "locationDeniedDesc": "Please allow location access in browser settings",
+            "emptyTitle": "No Active Collabs",
+            "emptyDesc": "New brand collabs opening soon!\nTurn on notifications to be first in line.",
+            "retry": "Retry",
+            "loading": "Loading campaigns...",
+            "reward": "Reward",
+            "checkIn": "Verifying location...",
+            "cta": {
+                "visit": "Check-in",
+                "apply": "Apply",
+                "join": "Join"
+            },
+            "meta": {
+                "product": "Product Trial",
+                "instant": "Instant",
+                "visit": "Visit",
+                "productDesc": "Free Product + Reward",
+                "instantDesc": "Immediate Shooting",
+                "visitDesc": "Visit & Verify"
+            }
+        },
+        "session": {
+            "title": "Shooting Session",
+            "input": {
+                "title": "Session Setup",
+                "selectCategory": "Select Category",
+                "selectPlatform": "Select Platform",
+                "startSession": "Start Session",
+                "whatProduct": "What product is it?",
+                "productPlaceholder": "e.g. lip tint, hair pack, cushion...",
+                "getRecommendation": "Get Pattern Recommendation"
+            },
+            "shoot": {
+                "title": "Filming Guide",
+                "startShooting": "Start Shooting",
+                "stopShooting": "Stop Shooting",
+                "phaseGuide": "Phase Guide",
+                "shotlist": "Shotlist",
+                "shootOrder": "Shooting Order",
+                "shootTip": "Shooting Tips",
+                "complete": "Shooting Complete!",
+                "nextStep": "Next Step",
+                "reshoot": "Reshoot",
+                "goToMyPage": "My Page",
+                "offline": "You are offline",
+                "noPattern": "No pattern selected",
+                "loadingGuide": "Loading guide...",
+                "loadFailed": "Failed to load guide",
+                "timeout": "Server response timeout"
+            },
+            "consentDemo": {
+                "title": "Consent UI Demo",
+                "subtitle": "Test user consent request before MCP Tools execution",
+                "requiresConsent": "Requires Consent",
+                "sourcePack": {
+                    "title": "Generate Source Pack",
+                    "description": "Data generation required"
+                },
+                "vdgReanalyze": {
+                    "title": "Reanalyze VDG",
+                    "description": "Cost involved (~$0.05-0.10)"
+                },
+                "customConsent": {
+                    "title": "Custom Consent Request",
+                    "description": "External API call",
+                    "name": "Custom Action",
+                    "requestDesc": "This is an example of a custom consent request."
+                },
+                "results": {
+                    "sourcePackComplete": "Source Pack generation complete",
+                    "vdgQueued": "VDG reanalysis queued",
+                    "cancelled": "User cancelled.",
+                    "consented": "Consented",
+                    "rejected": "Rejected"
+                },
+                "history": {
+                    "title": "Consent History",
+                    "consent": "Consented",
+                    "reject": "Rejected"
+                }
+            },
+            "result": {
+                "title": "Recommended Pattern",
+                "congratulations": "Shooting Complete!",
+                "viewResult": "View Result",
+                "generating": "Generating...",
+                "generateSourcePack": "Generate NotebookLM Source Pack",
+                "sourcePackDesc": "Send source data to NotebookLM for deep analysis.",
+                "sourcePackComplete": "Source pack generated!",
+                "downloadJson": "Download JSON",
+                "notebookLmTip": "Use 'Add Source' → 'Upload File' in NotebookLM.",
+                "regenerate": "Regenerate",
+                "patternNotFound": "Pattern not found",
+                "loadPatternFailed": "Failed to load pattern.",
+                "checkInternet": "Please check your internet connection.",
+                "mcpServerError": "Cannot connect to MCP server.",
+                "serverTimeout": "Server response timeout."
+            }
+        },
+        "wizard": {
+            "title": "O2O Mission",
+            "selectMission": "Select Mission",
+            "nextStep": "Next Step",
+            "prevStep": "Previous Step",
+            "complete": "Complete",
+            "step1": "Step 1: Check Mission",
+            "step1Desc": "Visit the location below and verify!",
+            "step2": "Step 2: Capture",
+            "step2Desc": "Record video or take photos at the location",
+            "step3": "Step 3: Location Verify",
+            "step3Desc": "Verify your location via GPS",
+            "nextCapture": "Next: Capture →",
+            "nextVerify": "Next: Verify Location →",
+            "captureInstructions": "Capture in camera app then return to verify",
+            "verifying": "Verifying...",
+            "verifyLocation": "Verify Location",
+            "verifySuccess": "Verification Success!",
+            "verifyFailed": "Verification Failed",
+            "retryVerify": "Retry",
+            "noMission": "No active missions",
+            "noMissionDesc": "We'll notify you when new challenges appear nearby!",
+            "goHome": "Go Home",
+            "kPointsEarned": "K-Points Earned!",
+            "gpsNotSupported": "This browser does not support location verification.",
+            "gpsError": "Cannot get location. Please check GPS."
+        },
+        "leaderboards": {
+            "title": "Leaderboards",
+            "subtitle": "Top Creators This Week",
+            "rank": "Rank",
+            "creator": "Creator",
+            "views": "Views",
+            "engagement": "Engagement",
+            "startRemix": "Start Remix"
+        },
+        "boards": {
+            "title": "Boards",
+            "newBoard": "New Board",
+            "emptyState": "No boards yet",
+            "detail": {
+                "loading": "Loading...",
+                "notFound": "Board not found",
+                "back": "Back",
+                "settings": "Settings",
+                "addItem": "Add Item",
+                "addCandidate": "Add Candidate",
+                "delete": "Delete",
+                "noTitle": "Untitled",
+                "source": "Source",
+                "status": {
+                    "draft": "Draft",
+                    "active": "Active",
+                    "concluded": "Concluded"
+                },
+                "sidebar": {
+                    "kpiTarget": "KPI Target",
+                    "notSet": "Not set",
+                    "description": "Description",
+                    "noDescription": "No description",
+                    "conclusion": "Conclusion",
+                    "conclusionPending": "Conclusion pending..."
+                },
+                "stats": {
+                    "title": "Board Stats",
+                    "totalItems": "Total Items",
+                    "count": "",
+                    "createdAt": "Created"
+                },
+                "experiments": {
+                    "title": "Experiment Items",
+                    "comparing": "candidates comparing"
+                }
+            }
+        },
+        "terms": {
+            "title": "Terms of Service",
+            "lastUpdated": "Last Updated"
+        },
+        "privacy": {
+            "title": "Privacy Policy",
+            "lastUpdated": "Last Updated"
+        },
+        "forYou": {
+            "title": "For You",
+            "subtitle": "Trending patterns for you",
+            "viewDetails": "View Details",
+            "startRemix": "Start Remix",
+            "noPatterns": "No recommended patterns",
+            "loading": "Loading patterns...",
+            "confidence": "Confidence",
+            "sampleCount": "Sample Count",
+            "avgRetention": "Avg. Retention"
+        },
+        "knowledge": {
+            "patterns": {
+                "title": "Pattern Library",
+                "subtitle": "High-performance pattern collection from NotebookLM Pattern Engine.\nRefer to invariant rules and mutation strategies for each pattern.",
+                "all": "All",
+                "stats": {
+                    "patterns": " patterns",
+                    "platforms": " platforms"
+                },
+                "emptyState": "No patterns yet.",
+                "emptyStateHint": "Import NotebookLM Data Tables to generate patterns.",
+                "invariantRules": "Invariant Rules",
+                "mutationStrategy": "Mutation Strategy",
+                "more": " more...",
+                "applyInCanvas": "Apply in Canvas"
+            }
+        }
+    },
+    "categories": {
+        "all": "All",
+        "beauty": "Beauty",
+        "food": "Food",
+        "fnb": "F&B",
+        "fashion": "Fashion",
+        "tech": "Tech",
+        "lifestyle": "Lifestyle",
+        "entertainment": "Entertainment",
+        "meme": "Meme",
+        "trending": "Trending",
+        "fitness": "Fitness",
+        "art": "Art"
+    },
+    "platforms": {
+        "all": "All",
+        "tiktok": "TikTok",
+        "youtube": "YouTube Shorts",
+        "instagram": "Instagram Reels",
+        "shorts": "Shorts",
+        "reels": "Reels"
+    },
+    "tiers": {
+        "all": "ALL TIERS",
+        "s": "S-Tier",
+        "a": "A-Tier",
+        "b": "B-Tier",
+        "c": "C-Tier"
+    },
+    "components": {
+        "card": {
+            "views": "Views",
+            "likes": "Likes",
+            "engagement": "Engagement",
+            "tier": "Tier",
+            "outlier": "Outlier",
+            "creatorAvg": "Creator Avg",
+            "promote": "Promote",
+            "promoted": "Promoted",
+            "view": "View"
+        },
+        "errorBoundary": {
+            "title": "Something went wrong",
+            "unknown": "An unknown error occurred.",
+            "retry": "Retry"
+        },
+        "pipeline": {
+            "emptyCanvas": "Canvas is empty!",
+            "untitled": "Untitled Pipeline",
+            "enterName": "Enter pipeline name:",
+            "confirmPublic": "Share this pipeline with the community?",
+            "updateSuccess": "Pipeline updated!",
+            "saveSuccess": "Pipeline saved!",
+            "saveFail": "Failed to save pipeline",
+            "loadListFail": "Failed to load pipeline list",
+            "confirmLoad": "You have unsaved changes. Load anyway?",
+            "loadSuccess": "Loaded",
+            "loadFail": "Failed to load pipeline"
+        },
+        "genealogy": {
+            "title": "Viral Genealogy",
+            "depth": "Generation Depth",
+            "loading": "Loading genealogy...",
+            "parentNode": "Parent Node",
+            "performance": "Performance",
+            "currentNode": "Current Node",
+            "masterOrigin": "Master Origin",
+            "evolvedMutation": "Evolved Mutation",
+            "organic": "organic",
+            "accelerated": "accelerated",
+            "trackingMessage": "This node is currently tracking {type} growth."
+        },
+        "outlierDetailModal": {
+            "outlier": "Outlier",
+            "noTitle": "(Untitled)",
+            "vdgAnalysis": "🧬 VDG Analysis Details",
+            "platform": "Platform",
+            "category": "Category",
+            "remixPromote": "Promote to Remix",
+            "organicViral": "Organic Viral",
+            "organicViralTitle": "Register as organic viral candidate",
+            "discard": "Discard",
+            "startVdg": "Start VDG Analysis",
+            "viewOriginal": "View Original",
+            "openRemixStudio": "🎬 Open in Remix Studio →"
+        },
+        "time": {
+            "justNow": "Just now",
+            "hoursAgo": "{hours}h ago",
+            "daysAgo": "{days}d ago"
+        },
+        "filmingGuide": {
+            "title": "Filming Guide",
+            "mobileOnlyTitle": "Mobile Only",
+            "mobileOnlyDesc": "Filming acts are only supported on mobile web.<br />Please open this page on your smartphone.",
+            "close": "Close",
+            "open": "Open",
+            "recording": "Recording",
+            "beatTimer": "{bpm} BPM",
+            "syncTitle": "Audio Sync",
+            "syncDesc": "Adjust slider if video and audio are out of sync",
+            "syncFast": "Audio Fast (-0.5s)",
+            "syncSlow": "Audio Slow (+0.5s)",
+            "download": "Download (for External Edit)",
+            "downloadDesc": "Edit in CapCut, InShot, etc. then upload later",
+            "downloadStart": "Download Started!",
+            "downloadFail": "Download failed.\nPlease check browser settings.",
+            "retry": "Retake",
+            "saveLater": "Later",
+            "saveSuccess": "Session saved.\n\nDownload video to edit,\nthen upload from My page.",
+            "finish": "Finish",
+            "finishDesc": "Use as is without editing",
+            "ghostOverlay": "Ghost Overlay Active - Follow the guide video",
+            "cameraDenied": "Camera access denied. Please check permissions.",
+            "noVideo": "No video saved.",
+            "vdg": {
+                "label": "VDG Synced",
+                "default": "Default",
+                "analyzing": "Analyzing...",
+                "pending": "Active after promotion & VDG analysis",
+                "hookSummary": "Core Hook Pattern"
+            },
+            "steps": {
+                "default": {
+                    "step1": {
+                        "title": "Hook Start",
+                        "desc": "Grab attention in first 3s"
+                    },
+                    "step2": {
+                        "title": "Core Delivery",
+                        "desc": "Follow the original pattern"
+                    },
+                    "step3": {
+                        "title": "CTA Finish",
+                        "desc": "Ask for Follow/Like/Comment"
+                    }
+                },
+                "pattern_break": {
+                    "step1": {
+                        "title": "Expectation",
+                        "desc": "Set up expected scene"
+                    },
+                    "step2": {
+                        "title": "Twist",
+                        "desc": "Break expectations suddenly"
+                    },
+                    "step3": {
+                        "title": "Reaction",
+                        "desc": "End with emotional reaction"
+                    }
+                },
+                "visual_reaction": {
+                    "step1": {
+                        "title": "Stimulus",
+                        "desc": "Show what you react to"
+                    },
+                    "step2": {
+                        "title": "Expression",
+                        "desc": "Exaggerated reaction"
+                    },
+                    "step3": {
+                        "title": "Empathy",
+                        "desc": "Make viewers feel it too"
+                    }
+                },
+                "transformation": {
+                    "step1": {
+                        "title": "Before",
+                        "desc": "Emphasize initial state"
+                    },
+                    "step2": {
+                        "title": "Process",
+                        "desc": "Dramatic transition"
+                    },
+                    "step3": {
+                        "title": "After",
+                        "desc": "Reveal valid result"
+                    }
+                },
+                "reveal": {
+                    "step1": {
+                        "title": "Teaser",
+                        "desc": "Create curiosity"
+                    },
+                    "step2": {
+                        "title": "Buildup",
+                        "desc": "Heighten anticipation"
+                    },
+                    "step3": {
+                        "title": "Reveal",
+                        "desc": "Dramatic reveal"
+                    }
+                },
+                "challenge": {
+                    "step1": {
+                        "title": "Rules",
+                        "desc": "Explain challenge rules"
+                    },
+                    "step2": {
+                        "title": "Action",
+                        "desc": "Attempt the challenge"
+                    },
+                    "step3": {
+                        "title": "Result",
+                        "desc": "Show success/fail & react"
+                    }
+                }
+            }
+        },
+        "coaching": {
+            "selectMode": "Select Shooting Mode",
+            "homage": "Homage",
+            "homageDesc": "Copy audio/composition of original",
+            "variation": "Variation",
+            "variationDesc": "Create variation of original idea",
+            "campaign": "Campaign",
+            "campaignDesc": "Promote product/service",
+            "original": "Original",
+            "originalDesc": "Shoot with new idea",
+            "feedback": "Feedback",
+            "rule": "Rule",
+            "score": "Score",
+            "errorTitle": "Error Occurred",
+            "close": "Close",
+            "controlGroup": "Control Group",
+            "controlGroupDesc": "Recording without coaching (for causal inference)",
+            "holdoutGroup": "Excluded from Promotion",
+            "aiConnected": "AI Connected",
+            "local": "Local",
+            "currentCoaching": "Current Coaching",
+            "waiting": "Waiting...",
+            "feedbackHistory": "Feedback History",
+            "noFeedback": "No feedback yet",
+            "checklist": "Campaign Checklist",
+            "controlGroupNotice": "🔬 Recording Control Group (No Coaching)",
+            "coachingChecklist": "Coaching Checklist",
+            "sessionStats": "Session Stats",
+            "recordingTime": "Duration",
+            "progress": "Progress",
+            "voiceOn": "Enable Voice Coaching",
+            "voiceOff": "Disable Voice Coaching",
+            "aiHelper": "🎙️ AI Coach is assisting you in real-time"
+        },
+        "coachingSelector": {
+            "title": "Coaching Settings",
+            "credits": "credits",
+            "creditsPerMin": "credits/min",
+            "outputMode": "Output Mode",
+            "coachingStyle": "Coaching Style",
+            "audioWarning": "noise",
+            "audioWarningFull": "Audio noise during recording",
+            "tiers": {
+                "basic": {
+                    "name": "Basic",
+                    "description": "Rule-based coaching"
+                },
+                "pro": {
+                    "name": "Pro",
+                    "description": "AI conversational coaching"
+                }
+            },
+            "outputModes": {
+                "graphic": {
+                    "name": "Graphic",
+                    "description": "Screen overlay (no noise)"
+                },
+                "text": {
+                    "name": "Text",
+                    "description": "Silent subtitles"
+                },
+                "audio": {
+                    "name": "Audio",
+                    "description": "TTS coaching"
+                },
+                "graphic_audio": {
+                    "name": "Graphic+Audio",
+                    "description": "Overlay + TTS"
+                }
+            },
+            "personas": {
+                "drill_sergeant": {
+                    "name": "Drill Sergeant",
+                    "description": "Sharp director style"
+                },
+                "bestie": {
+                    "name": "Bestie",
+                    "description": "Best friend vibes"
+                },
+                "chill_guide": {
+                    "name": "Chill Guide",
+                    "description": "ASMR-level calm"
+                },
+                "hype_coach": {
+                    "name": "Hype Coach",
+                    "description": "Energy 200%"
+                }
+            }
+        },
+        "pipelineStatus": {
+            "pending": "Crawled",
+            "promoted": "Promoted",
+            "comments": "Waiting Comments",
+            "analyzing": "Analyzing",
+            "completed": "Completed"
+        },
+        "metrics": {
+            "views": "Views",
+            "likes": "Likes",
+            "comments": "Comments",
+            "shares": "Shares"
+        },
+        "legal": {
+            "backHome": "Back to Home",
+            "loginPage": "Login Page",
+            "gotoTerms": "Terms of Service",
+            "gotoPrivacy": "Privacy Policy",
+            "privacy": {
+                "title": "Privacy Policy",
+                "lastUpdated": "Last Details: December 23, 2024",
+                "sections": {
+                    "1": {
+                        "title": "Article 1 (Items and Methods of Personal Information Collection)",
+                        "content": "Komission (hereinafter referred to as the 'Company') collects the following personal information to provide services:",
+                        "reqTitle": "Required Collection Items",
+                        "reqItems": [
+                            "Email Address (when linking Google OAuth)",
+                            "Profile Name and Profile Image",
+                            "Service Usage Records and Access Logs"
+                        ],
+                        "optTitle": "Optional Collection Items",
+                        "optItems": [
+                            "Location Information (when participating in O2O campaigns)",
+                            "Contact Information (for reward payment and event winning)"
+                        ]
+                    },
+                    "2": {
+                        "title": "Article 2 (Purpose of Collection and Use of Personal Information)",
+                        "content": "The Company uses the collected personal information for the following purposes:",
+                        "items": [
+                            "<b>Member Management:</b> Member identification, confirmation of intent to join, prevention of unauthorized use by bad members",
+                            "<b>Service Provision:</b> Provision of viral analysis results, content genealogy tracking, personalized recommendations",
+                            "<b>Point/Loyalty Management:</b> K-Point accumulation/usage history management, reward payment",
+                            "<b>Marketing and Events:</b> Information on new functions, provision of event information (upon consent)",
+                            "<b>Service Improvement:</b> Usage statistics analysis, use of anonymized data for AI model improvement"
+                        ]
+                    },
+                    "3": {
+                        "title": "Article 3 (Retention and Use Period of Personal Information)",
+                        "content": "The Company destroys personal information without delay after the purpose of collection and use is achieved. However, if it is necessary to preserve it in accordance with relevant laws and regulations, it is stored as follows:",
+                        "items": [
+                            {
+                                "label": "Records on contract or withdrawal of subscription",
+                                "value": "5 years"
+                            },
+                            {
+                                "label": "Records on payment and supply of goods",
+                                "value": "5 years"
+                            },
+                            {
+                                "label": "Records on consumer complaints or dispute resolution",
+                                "value": "3 years"
+                            },
+                            {
+                                "label": "Website visit records (log data)",
+                                "value": "3 months"
+                            }
+                        ]
+                    },
+                    "4": {
+                        "title": "Article 4 (Provision of Personal Information to Third Parties)",
+                        "content": "The Company does not provide personal information to third parties without the user's consent. However, exceptions are made in the following cases:",
+                        "items": [
+                            "When the user agrees in advance",
+                            "When there is a request from an investigative agency in accordance with the procedures and methods prescribed by laws and regulations for investigation purposes",
+                            "Provision of campaign participation confirmation information to O2O partner brands (providing only minimum information)"
+                        ]
+                    },
+                    "5": {
+                        "title": "Article 5 (Measures to Ensure Safety of Personal Information)",
+                        "content": "The Company takes the following measures to ensure the safety of personal information:",
+                        "items": [
+                            "<b>Data Encryption:</b> AES-256 encryption applied during transmission and storage",
+                            "<b>Access Restriction:</b> Minimization of personal information processing staff and management of access rights",
+                            "<b>Security Program:</b> Operation of security systems to prevent hacking and malicious code",
+                            "<b>Regular Inspection:</b> Regular inspection of vulnerabilities in personal information processing systems"
+                        ]
+                    },
+                    "6": {
+                        "title": "Article 6 (Rights of Users and How to Exercise Them)",
+                        "content": "Users can exercise the following rights at any time:",
+                        "items": [
+                            "Request for viewing personal information",
+                            "Request for correction if there is an error",
+                            "Request for deletion (excluding cases where there is a retention obligation under laws and regulations)",
+                            "Request for suspension of processing"
+                        ],
+                        "note": "※ You can exercise your rights directly in 'My Page → Account Settings' within the service, or contact the customer center (support@komission.ai)."
+                    },
+                    "7": {
+                        "title": "Article 7 (Use of Cookies)",
+                        "content": "The Company uses cookies to provide personalized services to users. Cookies are very small text files sent to the user's browser by the server used to operate the website and are stored on the user's computer hard disk. Users can refuse to receive cookies or set to be warned every time a cookie is saved through browser settings."
+                    },
+                    "8": {
+                        "title": "Article 8 (Privacy Protection Officer)",
+                        "content": "The Company is responsible for overall personal information processing and designates a Privacy Protection Officer as follows for complaint handling and damage relief of users:",
+                        "items": [
+                            "<b>Privacy Protection Officer:</b> Komission Privacy Team",
+                            "<b>Email:</b> privacy@komission.ai",
+                            "<b>Phone:</b> 02-0000-0000"
+                        ]
+                    },
+                    "9": {
+                        "title": "Article 9 (Changes to Privacy Policy)",
+                        "content": "This Privacy Policy is effective from December 23, 2024. If there are additions, deletions, or corrections to the changes in accordance with laws and policies, we will notify you through notices within the service or by email 7 days before the implementation of the changes."
+                    }
+                }
+            },
+            "terms": {
+                "title": "TERMS & CONDITIONS",
+                "lastUpdated": "Last Updated: December 23, 2024",
+                "sections": {
+                    "1": {
+                        "title": "Article 1 (Purpose)",
+                        "content": "These Terms and Conditions aim to regulate the terms and conditions of use and procedures of the viral content intelligence platform service (hereinafter referred to as the 'Service') provided by Komission (hereinafter referred to as the 'Company'), and the rights, obligations, and responsibilities of the Company and users."
+                    },
+                    "2": {
+                        "title": "Article 2 (Content of Service)",
+                        "content": "The services provided by the Company are as follows:",
+                        "items": [
+                            "Viral content analysis and pattern discovery service",
+                            "AI-based content remix and optimization recommendation",
+                            "Content Genealogy tracking and visualization",
+                            "Creator loyalty and reward system",
+                            "O2O (Online to Offline) campaign linkage service",
+                            "Real-time trend analysis and insight provision"
+                        ]
+                    },
+                    "3": {
+                        "title": "Article 3 (Obligations of Users)",
+                        "content": "Users shall not engage in the following acts:",
+                        "items": [
+                            "Act of stealing other people's information or registering false information",
+                            "Act of using information obtained using the service commercially without the Company's prior consent",
+                            "Act of infringing on the intellectual property rights of the Company or a third party",
+                            "Act of interfering with the normal operation of the service",
+                            "Unauthorized access using automated means (bots, scrapers, etc.)"
+                        ]
+                    },
+                    "4": {
+                        "title": "Article 4 (Content and Intellectual Property Rights)",
+                        "content1": "Copyright for content uploaded or requested for analysis by users on the service belongs to the original author. Users can strictly register content for which they have legitimate rights or have received permission to use.",
+                        "content2": "The Company may use anonymized analysis data for service improvement and AI learning purposes, and the user's personal information is not processed in this process."
+                    },
+                    "5": {
+                        "title": "Article 5 (Points and Loyalty)",
+                        "content": "The Company may pay K-Point (hereinafter referred to as 'Point') according to the user's activities. Points are accumulated based on the following criteria:",
+                        "items": [
+                            "Royalty payment to original author when original content is Forked (remixed)",
+                            "Bonus points when content view milestones are achieved",
+                            "Reward upon O2O campaign participation and mission completion",
+                            "Reward for consecutive attendance and daily mission completion"
+                        ],
+                        "note": "※ Cash conversion, validity period, and usage conditions of points are subject to separate notices."
+                    },
+                    "6": {
+                        "title": "Article 6 (Disclaimer)",
+                        "content": "The Company is not responsible if it cannot provide services due to force majeure reasons such as natural disasters, system failures, or malicious acts by third parties. In addition, AI analysis results are provided as reference materials, and the Company is not responsible for user decisions based on them."
+                    },
+                    "7": {
+                        "title": "Article 7 (Dispute Resolution)",
+                        "content": "Disputes arising in connection with these Terms and Conditions shall be governed by the laws of the Republic of Korea, and the Seoul Central District Court shall be the court of first instance."
+                    }
+                }
+            }
+        },
+        "empty": {
+            "noResults": "No results",
+            "noData": "No data available",
+            "noAccess": "Access Denied",
+            "accessDenied": "Access Denied",
+            "loginRequired": "Login required to view this page.",
+            "login": "Login",
+            "home": "Home"
+        },
+        "virloVideoCard": {
+            "embedNotAvailable": "Embed not available",
+            "viewOn": "View on {platform}",
+            "topComment": "Top Comment",
+            "peakEngagement": "Peak engagement at {sec}s",
+            "hookDuration": "{sec}s hook",
+            "promote": "Promote"
+        },
+        "patternAnswerCard": {
+            "tiktok": "TikTok",
+            "youtube": "YouTube Shorts",
+            "instagram": "Reels",
+            "tierSuffix": "-Tier",
+            "resurfaced": "Resurfaced",
+            "hook": "Hook",
+            "timing": "Timing",
+            "audio": "Audio",
+            "aiAnalysis": "AI Data Analysis",
+            "analyzedVideos": "Analyzed",
+            "countSuffix": "",
+            "avgViews": "Avg Views",
+            "viewsSuffix": "0k",
+            "topPercentile": "Top",
+            "expectedFilming": "Est. Time",
+            "minsSuffix": "m",
+            "fitScore": "Fit Score",
+            "evidence": "Evidence",
+            "startGuide": "Start Guide"
+        },
+        "simpleCreatorGuide": {
+            "notFound": "Pattern not found",
+            "guideTitle": "Creator Guide",
+            "patternSuffix": "Pattern",
+            "variationCount": "{count} Variations",
+            "invariantTitle": "Non-negotiables",
+            "noInvariant": "No rules",
+            "variableTitle": "Be Creative Here!",
+            "noVariable": "No variation points",
+            "startFilming": "Start Filming"
+        },
+        "loading": {
+            "loading": "Loading...",
+            "pleaseWait": "Please wait"
+        },
+        "error": {
+            "somethingWentWrong": "Something went wrong",
+            "tryAgain": "Try Again",
+            "goBack": "Go Back",
+            "networkError": "Network Error",
+            "serverError": "Server Error"
+        },
+        "languageToggle": {
+            "korean": "한국어",
+            "english": "English",
+            "switchTo": "Switch Language"
+        },
+        "viralGuide": {
+            "title": "Viral Guide",
+            "hook": "Hook",
+            "timing": "Timing",
+            "audio": "Audio",
+            "invariants": "Invariants",
+            "variables": "Variables",
+            "doNot": "Do Not",
+            "shotlist": "Shotlist",
+            "bestComments": "Best Comments"
+        },
+        "evidence": {
+            "title": "Evidence",
+            "viewEvidence": "View Evidence",
+            "recurrence": "Recurrence Pattern",
+            "historicalLift": "Historical Lift",
+            "originYear": "Origin Year"
+        },
+        "feedback": {
+            "helpful": "Helpful",
+            "notHelpful": "Not Helpful",
+            "submit": "Submit",
+            "thanks": "Thanks for your feedback!"
+        }
+    },
+    "meta": {
+        "title": "Komission | Viral Content Intelligence",
+        "description": "Hybrid AI-powered meme evolution and commerce platform"
+    }
+}

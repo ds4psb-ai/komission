@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Filter, Loader2, AlertCircle, Inbox } from 'lucide-react';

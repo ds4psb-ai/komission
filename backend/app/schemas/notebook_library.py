@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class NotebookLibraryCreate(BaseModel):
@@ -34,6 +34,4 @@ class NotebookLibraryResponse(BaseModel):
     burstiness_index: Optional[float] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
+    model_config = ConfigDict(from_attributes=True)

@@ -1,6 +1,14 @@
+# Komission Docker Compose (Production-Ready)
+#
+# 개선사항:
+# 1. Host bind mount로 데이터 영속성 보장 (Colima 재시작에도 유지)
+# 2. healthcheck 추가
+# 3. restart policy 추가
+
 services:
   postgres:
     image: postgis/postgis:16-3.4
+    container_name: komission-postgres-1
     ports:
       - "5434:5432"
     environment:
@@ -8,26 +16,45 @@ services:
       POSTGRES_PASSWORD: kmeme_password
       POSTGRES_DB: kmeme_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Host bind mount for data persistence (survives Colima restart)
+      - /Users/ted/komission/.docker-data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U kmeme_user -d kmeme_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   neo4j:
     image: neo4j:5.15-community
+    container_name: komission-neo4j-1
     ports:
       - "7474:7474"
       - "7687:7687"
     environment:
       NEO4J_AUTH: neo4j/kmeme_password
+      NEO4J_PLUGINS: '["apoc"]'
     volumes:
-      - neo4j_data:/data
+      - /Users/ted/komission/.docker-data/neo4j:/data
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:7474" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
+    container_name: komission-redis-1
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - /Users/ted/komission/.docker-data/redis:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
-volumes:
-  postgres_data:
-  neo4j_data:
-  redis_data:
+# Named volumes removed - using host bind mounts instead

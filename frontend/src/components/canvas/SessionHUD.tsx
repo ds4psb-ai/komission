@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';

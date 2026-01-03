@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * EmptyState - 빈 상태 표시 컴포넌트 (PEGL v1.0)
@@ -66,6 +67,7 @@ export function EmptyState({
     className = '',
 }: EmptyStateProps) {
     const config = VARIANT_CONFIG[variant];
+    const t = useTranslations('components.empty');
 
     return (
         <div className={`flex flex-col items-center justify-center py-16 px-6 text-center ${config.bg} rounded-2xl border border-white/5 ${className}`}>
@@ -107,9 +109,9 @@ export function EmptyState({
                                 onClick={action.onClick}
                                 className={`flex items-center gap-2 ${baseClass}`}
                             >
-                                {action.label === '새로고침' && <RefreshCw className="w-4 h-4" />}
-                                {action.label === '홈으로' && <Home className="w-4 h-4" />}
-                                {action.label}
+                                {action.label === 'Refresh' && <RefreshCw className="w-4 h-4" />}
+                                {action.label === 'Home' && <Home className="w-4 h-4" />}
+                                {(action.label === 'Home' || action.label === '홈으로') ? t('home') : action.label}
                             </button>
                         );
                     })}
@@ -123,12 +125,13 @@ export function EmptyState({
  * NoResults - 검색 결과 없음 (간단한 버전)
  */
 export function NoResults({ query, onReset }: { query?: string; onReset?: () => void }) {
+    const t = useTranslations('components.empty');
     return (
         <EmptyState
             variant="search"
-            title="검색 결과가 없습니다"
-            description={query ? `"${query}"에 대한 결과를 찾을 수 없습니다.` : '검색어를 입력해주세요.'}
-            actions={onReset ? [{ label: '필터 초기화', onClick: onReset, variant: 'secondary' }] : []}
+            title={t('noResults')}
+            description={query ? `No results for "${query}".` : 'Enter a search term.'}
+            actions={onReset ? [{ label: 'Reset Filters', onClick: onReset, variant: 'secondary' }] : []}
         />
     );
 }
@@ -137,20 +140,21 @@ export function NoResults({ query, onReset }: { query?: string; onReset?: () => 
  * ErrorState - 에러 상태 (간단한 버전)
  */
 export function ErrorState({
-    message = '문제가 발생했습니다',
+    message = 'Something went wrong',
     onRetry
 }: {
     message?: string;
     onRetry?: () => void
 }) {
+    const t = useTranslations('components.error');
     return (
         <EmptyState
             variant="error"
-            title="오류 발생"
+            title={t('somethingWentWrong')}
             description={message}
             actions={[
-                ...(onRetry ? [{ label: '다시 시도', onClick: onRetry, variant: 'primary' as const }] : []),
-                { label: '홈으로', href: '/', variant: 'secondary' as const },
+                ...(onRetry ? [{ label: t('tryAgain'), onClick: onRetry, variant: 'primary' as const }] : []),
+                { label: t('home'), href: '/', variant: 'secondary' as const },
             ]}
         />
     );
@@ -160,14 +164,15 @@ export function ErrorState({
  * NoAccess - 접근 권한 없음
  */
 export function NoAccess({ message }: { message?: string }) {
+    const t = useTranslations('components.empty');
     return (
         <EmptyState
             variant="no-access"
-            title="접근 권한이 없습니다"
-            description={message || '이 페이지를 보려면 로그인이 필요합니다.'}
+            title={t('accessDenied')}
+            description={message || t('loginRequired')}
             actions={[
-                { label: '로그인', href: '/login', variant: 'primary' },
-                { label: '홈으로', href: '/', variant: 'secondary' },
+                { label: t('login'), href: '/login', variant: 'primary' },
+                { label: t('home'), href: '/', variant: 'secondary' },
             ]}
         />
     );

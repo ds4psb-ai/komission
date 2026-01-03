@@ -48,25 +48,39 @@
 
 ## 2. WebSocket 연결
 
+### 세션 생성 (REST)
+
+`POST /api/v1/coaching/sessions` 응답에 `session_id`와 `websocket_url`이 포함됩니다.  
+클라이언트는 응답의 `websocket_url`을 그대로 사용하세요.
+
+```json
+{
+  "session_id": "sess_...",
+  "websocket_url": "wss://api.komission.ai/api/v1/ws/coaching/sess_...",
+  "status": "created"
+}
+```
+
 ### 연결 URL
 
 ```
-wss://[서버주소]/ws/coaching/{session_id}
+wss://[서버주소]/api/v1/ws/coaching/{session_id}
 ```
 
 ### 쿼리 파라미터
 
 | 파라미터 | 타입 | 필수 | 설명 | 기본값 |
 |----------|------|------|------|--------|
-| `output_mode` | string | ✅ | 출력 모드 | `"graphic"` |
-| `persona` | string | ✅ | 코칭 페르소나 | `"chill_guide"` |
-| `tier` | string | ✅ | 코칭 티어 | `"pro"` |
+| `output_mode` | string |  | 출력 모드 | `"graphic"` |
+| `persona` | string |  | 코칭 페르소나 | `"chill_guide"` (alias: `calm_mentor`) |
+| `language` | string |  | 코칭 언어 | `"ko"` |
+| `voice_style` | string |  | 음성 톤 | `"friendly"` |
 
 ### 연결 예시 (Swift)
 
 ```swift
-let sessionId = UUID().uuidString
-let wsURL = URL(string: "wss://api.komission.app/ws/coaching/\(sessionId)?output_mode=graphic&persona=chill_guide&tier=pro")!
+let createResponse = try await api.createSession()
+let wsURL = URL(string: "\(createResponse.websocket_url)?output_mode=graphic&persona=chill_guide&language=ko&voice_style=friendly")!
 let webSocket = URLSession.shared.webSocketTask(with: wsURL)
 webSocket.resume()
 ```
@@ -74,8 +88,8 @@ webSocket.resume()
 ### 연결 예시 (Kotlin)
 
 ```kotlin
-val sessionId = UUID.randomUUID().toString()
-val wsUrl = "wss://api.komission.app/ws/coaching/$sessionId?output_mode=graphic&persona=chill_guide&tier=pro"
+val createResponse = api.createSession()
+val wsUrl = "${createResponse.websocket_url}?output_mode=graphic&persona=chill_guide&language=ko&voice_style=friendly"
 val client = OkHttpClient()
 val request = Request.Builder().url(wsUrl).build()
 val webSocket = client.newWebSocket(request, listener)
@@ -102,6 +116,8 @@ val webSocket = client.newWebSocket(request, listener)
 | 찐친 | `bestie` | 옆자리 친구 ✨ | 다정하고 자연스러움 |
 | 릴렉스 가이드 | `chill_guide` | ASMR 급 차분함 🧘 | 느리고 여유 (기본) |
 | 하이퍼 부스터 | `hype_coach` | 텐션 200% ⚡ | 빠르고 에너지 넘침 |
+
+레거시 키도 허용됩니다: `strict_pd`, `close_friend`, `calm_mentor`, `energetic`.
 
 ### UI 구현 예시
 
@@ -134,20 +150,35 @@ struct CoachingModeSelector: View {
 ### 수신 메시지: `vdg_coaching_data`
 
 촬영 시작(start action) 직후 전송됨
+`keyframes`는 Ghost Overlay UI를 위한 선택적 데이터입니다.
 
 ```json
 {
   "type": "vdg_coaching_data",
   "shotlist_sequence": [
-    {"shot_id": 1, "description": "후킹 샷", "duration_sec": 3},
-    {"shot_id": 2, "description": "메인 컨텐츠", "duration_sec": 10}
+    {"index": 0, "t_window": [0, 5], "guide": "후킹 샷"},
+    {"index": 1, "t_window": [5, 15], "guide": "메인 컨텐츠"}
   ],
   "kick_timings": [
-    {"type": "punch", "t_ms": 2000, "description": "첫 반전"},
-    {"type": "end", "t_ms": 15000, "description": "마무리"}
+    {"t_sec": 2.0, "type": "punch", "cue": "beat-1", "message": "첫 반전", "pre_alert_sec": 0.3},
+    {"t_sec": 15.0, "type": "end", "cue": "beat-2", "message": "마무리", "pre_alert_sec": 0.3}
   ],
   "mise_en_scene_guides": [
-    {"element": "outfit_color", "suggestion": "노란색 계열 권장"}
+    {"element": "outfit_color", "value": "yellow", "guide": "outfit_color: yellow 유지", "priority": "medium", "evidence": "댓글 예시"}
+  ],
+  "keyframes": [
+    {
+      "t_ms": 2300,
+      "role": "PEAK",
+      "kick_type": "punch",
+      "kick_index": 0,
+      "kick_mechanism": "hook_punch_reaction",
+      "image_url": "/api/frames/{content_id}/2300.jpg",
+      "what_to_see": "표정 반전 순간",
+      "invariant_elements": ["hook", "pacing"],
+      "coaching_tip": "이 순간 표정 변화를 정확히 맞추세요",
+      "confidence": 0.82
+    }
   ],
   "timestamp": "2026-01-03T01:00:00Z"
 }
@@ -164,7 +195,7 @@ struct ShotlistOverlay: View {
     var body: some View {
         VStack {
             // 현재 샷 표시
-            Text("📍 \(sequence[currentShot].description)")
+            Text("📍 \(sequence[currentShot].guide)")
             
             // 타임라인 바
             ProgressView(value: currentTime / totalDuration)
@@ -406,17 +437,6 @@ class CoachingSession {
     "rules_evaluated": 12,
     "interventions_sent": 5,
     "ended_at": "2026-01-03T01:00:00Z"
-  },
-  "tracking_stats": {
-    "signals_tracked": 8,
-    "outcomes_recorded": 5,
-    "promotion_ready": 1,
-    "axis_metrics": {
-      "compliance_lift": 0.18,
-      "outcome_lift": 0.05,
-      "is_promotion_ready": true
-    },
-    "assignment": "coached"
   }
 }
 ```
@@ -430,11 +450,13 @@ class CoachingSession {
 | 타입 | Phase | 설명 |
 |------|-------|------|
 | `session_status` | - | 세션 상태 변경 |
-| `coaching_feedback` | 1 | 기본 코칭 피드백 |
+| `feedback` | 1 | 기본 코칭 피드백 |
 | `graphic_guide` | 1 | 그래픽 오버레이 가이드 |
 | `text_coach` | 1 | 텍스트 코칭 메시지 |
 | `audio_feedback` | 4 | TTS 오디오 (페르소나별) |
+| `audio_response` | 4 | Gemini Live 오디오 응답 |
 | `vdg_coaching_data` | 2 | VDG 데이터 (shotlist, kicks) |
+| `frame_ack` | 2 | 프레임 RTT 측정 응답 |
 | `adaptive_response` | 3 | 적응형 코칭 응답 |
 | `signal_promotion` | 5+ | 자동학습 승격 알림 |
 | `rule_update` | - | 규칙 상태 업데이트 |
@@ -446,8 +468,10 @@ class CoachingSession {
 | 타입 | 설명 |
 |------|------|
 | `control` | 세션 제어 (start/pause/stop) |
-| `frame` | 프레임 데이터 전송 |
-| `audio` | 오디오 데이터 전송 |
+| `video_frame` | 프레임 데이터 전송 (frame_b64, t_sec, t_ms, codec) |
+| `audio` | 오디오 데이터 전송 (base64 PCM) |
+| `metric` | 클라이언트 측정값 전송 (rule_id, value, t_sec) |
+| `timing` | 녹화 시간 동기화 (t_sec) |
 | `user_feedback` | 사용자 피드백 (Phase 3) |
 | `ping` | 연결 유지 |
 

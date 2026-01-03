@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * GhostOverlay - 오마쥬 모드 불변 요소 복제 가이드

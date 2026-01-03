@@ -34,7 +34,7 @@
                  ↓
 ┌─────────────────────────────────────┐
 │  Director Pack Compiler             │
-│  - Contract-First (heuristic 폴백)  │
+│  - Contract-First + heuristic 보강 │
 │  - Metric Validation                │
 │  → DirectorPack v1.0.2              │
 └────────────────┬────────────────────┘
@@ -59,7 +59,7 @@
 | **Analysis Plan** | 예산/병합/클램프 → 비용 통제 |
 | **분포 저장** | 평균 + 분산 → 미래 재사용 |
 | **Evidence 통합** | URI/해시/타임코드 → 규칙 근거 추적 |
-| **Contract-First** | VDG → Pack 연결고리 고정 |
+| **Contract-First** | VDG → Pack 연결고리 고정 (heuristic 보강/폴백 포함) |
 
 ---
 
@@ -161,7 +161,7 @@ class DirectorPack(BaseModel):
 
 ### Coaching System Phase 1-5+ (Added 2026-01-03) ⭐ NEW
 - ✅ 출력 모드 4종: graphic | text | audio | graphic_audio
-- ✅ 페르소나 4종: drill_sergeant | bestie | chill_guide | hype_coach
+- ✅ 페르소나 4종: drill_sergeant | bestie | chill_guide | hype_coach (aliases: strict_pd | close_friend | calm_mentor | energetic)
 - ✅ LLM 기반 적응형 코칭 (`AdaptiveCoachingService`)
 - ✅ VDG 데이터 활용 (shotlist, kicks, mise_en_scene)
 - ✅ 고급 자동학습 (`AdvancedSessionAnalyzer`, `WeightedSignal`, `LiveAxisMetrics`)
@@ -259,9 +259,19 @@ Lift = (Variant_metric - Parent_metric) / Parent_metric
 ```
 
 ### 8.2 API Endpoints
-- `POST /coaching/sessions` - 세션 생성
-- `GET /coaching/sessions/{id}` - 상태 조회
-- `POST /coaching/sessions/{id}/feedback` - 피드백 제출
+- `POST /api/v1/coaching/sessions` - 세션 생성
+- `GET /api/v1/coaching/sessions` - 세션 목록 (Admin)
+- `GET /api/v1/coaching/sessions/{session_id}` - 상태 조회
+- `POST /api/v1/coaching/sessions/{session_id}/feedback` - 피드백 제출
+- `POST /api/v1/coaching/sessions/{session_id}/events/rule-evaluated` - 규칙 평가 로깅
+- `POST /api/v1/coaching/sessions/{session_id}/events/intervention` - 개입 로깅
+- `POST /api/v1/coaching/sessions/{session_id}/events/outcome` - 결과 로깅
+- `GET /api/v1/coaching/sessions/{session_id}/events` - 이벤트 조회
+- `GET /api/v1/coaching/sessions/{session_id}/summary` - 세션 요약
+- `POST /api/v1/coaching/sessions/{session_id}/end` - 세션 종료 (JSON body 지원)
+- `DELETE /api/v1/coaching/sessions/{session_id}` - 세션 종료
+
+> Legacy alias: `/coaching/*` (non-versioned)도 노출되어 있으나, 문서/연동은 `/api/v1/coaching/*` 사용을 권장합니다.
 
 ---
 

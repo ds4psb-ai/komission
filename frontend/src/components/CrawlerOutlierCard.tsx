@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 import React from 'react';
 import { ExternalLink, Zap, Eye, Heart, TrendingUp, Star, Award, Diamond, BarChart } from 'lucide-react';
@@ -138,6 +139,10 @@ export function CrawlerOutlierCard({
     onPromote,
     compact = false
 }: CrawlerOutlierCardProps) {
+    const t = useTranslations('components.card');
+    const tTime = useTranslations('components.time');
+
+    // Tier Config with translated labels
     const tierConfig = item.outlier_tier ? TIER_CONFIG[item.outlier_tier] : null;
     const platformConfig = PLATFORM_CONFIG[item.platform];
     const TierIcon = tierConfig?.icon || BarChart;
@@ -147,6 +152,21 @@ export function CrawlerOutlierCard({
         : 0;
 
     const isPromoted = item.status === 'promoted';
+
+    // Helper for relative time using translations
+    const getRelativeTime = (dateString: string) => {
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) return '-';
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffHours < 1) return tTime('justNow');
+        if (diffHours < 24) return tTime('hoursAgo', { hours: diffHours });
+        if (diffDays < 7) return tTime('daysAgo', { days: diffDays });
+        return date.toLocaleDateString();
+    };
 
     return (
         <div
@@ -210,7 +230,7 @@ export function CrawlerOutlierCard({
                         )}
                         {isPromoted && (
                             <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/50 text-[10px] font-bold text-emerald-300">
-                                ✓ Promoted
+                                ✓ {t('promoted')}
                             </span>
                         )}
                     </div>
@@ -246,7 +266,7 @@ export function CrawlerOutlierCard({
                     {/* Creator Baseline Comparison */}
                     {!compact && item.creator_avg_views > 0 && (
                         <div className="mt-2 text-[10px] text-white/40">
-                            크리에이터 평균: {formatNumber(item.creator_avg_views)} views
+                            {t('creatorAvg')}: {formatNumber(item.creator_avg_views)} views
                         </div>
                     )}
                 </div>
@@ -262,7 +282,7 @@ export function CrawlerOutlierCard({
                         {item.category}
                     </span>
                     <span>•</span>
-                    <span>{formatRelativeTime(item.crawled_at)}</span>
+                    <span>{getRelativeTime(item.crawled_at)}</span>
                 </div>
 
                 {/* Action Buttons */}
@@ -273,7 +293,7 @@ export function CrawlerOutlierCard({
                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-all"
                         >
                             <ExternalLink className="w-3.5 h-3.5" />
-                            <span>View</span>
+                            <span>{t('view')}</span>
                         </button>
                     )}
                     {onPromote && !isPromoted && (
@@ -288,7 +308,7 @@ export function CrawlerOutlierCard({
                             `}
                         >
                             <Star className="w-3.5 h-3.5" />
-                            <span>Promote</span>
+                            <span>{t('promote')}</span>
                         </button>
                     )}
                 </div>

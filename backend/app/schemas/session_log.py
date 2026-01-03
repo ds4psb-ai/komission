@@ -54,9 +54,6 @@ class SessionLog(BaseModel):
     
     # Device/Environment (optional - P2)
     device_type: Optional[str] = None
-    
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 # ====================

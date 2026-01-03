@@ -11,6 +11,28 @@ interface ApiErrorPayload {
     message?: string;
 }
 
+/**
+ * 보호된 페이지 목록 (401 시 로그인 리다이렉트)
+ * 이 목록에 없는 페이지에서는 401이 발생해도 리다이렉트하지 않음
+ */
+const PROTECTED_PATHS = [
+    '/my',           // 마이페이지
+    '/ops',          // Ops Console (관리자)
+    '/session',      // 촬영하기
+    '/collabs/apply', // 체험단 신청
+    '/calibration',  // 취향 캘리브레이션
+    '/curation',     // 큐레이션 (로그인 필요)
+];
+
+/**
+ * 현재 페이지가 보호된 페이지인지 확인
+ */
+function isProtectedPage(): boolean {
+    if (typeof window === 'undefined') return false;
+    const path = window.location.pathname;
+    return PROTECTED_PATHS.some(p => path.startsWith(p));
+}
+
 export class ApiClient {
     private token: string | null = null;
 
@@ -66,10 +88,9 @@ export class ApiClient {
                 console.warn('[API] Token expired or invalid, logging out...');
                 this.clearToken();
 
-                // Redirect to login page (only in browser)
+                // 보호된 페이지에서만 리다이렉트 (PUBLIC 페이지에서는 에러만 표시)
                 if (typeof window !== 'undefined') {
-                    // Avoid redirect loop if already on login page
-                    if (!window.location.pathname.includes('/login')) {
+                    if (isProtectedPage() && !window.location.pathname.includes('/login')) {
                         window.location.href = '/login?expired=true';
                     }
                 }
@@ -298,38 +319,6 @@ export class ApiClient {
         let url = '/api/v1/remix/pattern-suggestions';
         if (category) url += `?category=${category}`;
         return this.request<PatternSuggestionResponse>(url);
-    }
-
-    // O2O Locations
-    async listO2OLocations() {
-        return this.request<O2OLocation[]>('/api/v1/o2o/locations');
-    }
-
-    async listO2OCampaigns() {
-        return this.request<O2OCampaign[]>('/api/v1/o2o/campaigns');
-    }
-
-    async applyO2OCampaign(campaignId: string) {
-        return this.request<O2OApplication>(`/api/v1/o2o/campaigns/${campaignId}/apply`, {
-            method: 'POST',
-        });
-    }
-
-    async listMyO2OApplications() {
-        return this.request<O2OApplication[]>('/api/v1/o2o/applications/me');
-    }
-
-    async verifyLocation(locationId: string, lat: number, lng: number) {
-        return this.request<{
-            status: string;
-            points_awarded: number;
-            total_points: number;
-            distance: number;
-            message: string;
-        }>('/api/v1/o2o/verify', {
-            method: 'POST',
-            body: JSON.stringify({ location_id: locationId, lat, lng }),
-        });
     }
 
     // Quest Matching (Expert Recommendation)
@@ -613,6 +602,14 @@ export class ApiClient {
             method: 'POST',
         });
     }
+
+    async rejectOutlier(itemId: string, reason?: string, notes?: string): Promise<{ rejected: boolean; item_id: string }> {
+        return this.request<{ rejected: boolean; item_id: string }>(`/api/v1/outliers/items/${itemId}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({ reason, notes }),
+        });
+    }
+
 
     async createOutlierManual(data: {
         video_url: string;
@@ -1560,6 +1557,8 @@ export interface OutlierItem {
     outlier_score: number;
     outlier_tier: string;
     creator_avg_views: number;
+    creator_username?: string | null;
+    upload_date?: string | null;  // Original video upload date from platform
     engagement_rate: number;
     crawled_at: string | null;
     status: 'pending' | 'selected' | 'rejected' | 'promoted';

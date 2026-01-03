@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * OutlierMetrics - Display view/like/share counts and outlier score
@@ -31,6 +32,7 @@ export function OutlierMetrics({
     layout = 'horizontal',
     className = '',
 }: OutlierMetricsProps) {
+    const t = useTranslations('components.metrics');
     if (layout === 'compact') {
         return (
             <div className={`flex items-center gap-2 text-[10px] ${className}`}>
@@ -52,17 +54,17 @@ export function OutlierMetrics({
                 <div className="p-3 bg-white/5 rounded-xl text-center">
                     <Eye className="w-5 h-5 mx-auto text-cyan-400 mb-1" />
                     <div className="text-lg font-black text-white">{formatNumber(viewCount)}</div>
-                    <div className="text-[10px] text-white/40">조회수</div>
+                    <div className="text-[10px] text-white/40">{t('views')}</div>
                 </div>
                 <div className="p-3 bg-white/5 rounded-xl text-center">
                     <Heart className="w-5 h-5 mx-auto text-pink-400 mb-1" />
                     <div className="text-lg font-black text-white">{typeof likeCount === 'number' ? formatNumber(likeCount) : '-'}</div>
-                    <div className="text-[10px] text-white/40">좋아요</div>
+                    <div className="text-[10px] text-white/40">{t('likes')}</div>
                 </div>
                 <div className="p-3 bg-white/5 rounded-xl text-center">
                     <MessageCircle className="w-5 h-5 mx-auto text-emerald-400 mb-1" />
                     <div className="text-lg font-black text-white">{commentCount ?? 0}</div>
-                    <div className="text-[10px] text-white/40">댓글</div>
+                    <div className="text-[10px] text-white/40">{t('comments')}</div>
                 </div>
             </div>
         );

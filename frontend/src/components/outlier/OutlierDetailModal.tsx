@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * OutlierDetailModal - Unified detail view modal for outlier items
@@ -27,6 +28,7 @@ interface OutlierDetailModalProps {
     onClose: () => void;
     onPromote?: (id: string, campaignEligible?: boolean) => void;
     onApprove?: (id: string) => void;
+    onReject?: (id: string) => void;
     actionLoading?: string | null;
 }
 
@@ -35,8 +37,10 @@ export function OutlierDetailModal({
     onClose,
     onPromote,
     onApprove,
+    onReject,
     actionLoading,
 }: OutlierDetailModalProps) {
+    const t = useTranslations('components.outlierDetailModal');
     const stage = getPipelineStage(item.status, item.analysis_status);
     const vdgData = item.vdg_analysis as VDGData | undefined;
 
@@ -73,7 +77,7 @@ export function OutlierDetailModal({
                         <TierBadge tier={item.outlier_tier} size="md" />
                         {typeof item.outlier_score === 'number' && (
                             <span className="text-pink-400 font-mono text-sm">
-                                {item.outlier_score.toFixed(1)}x 아웃라이어
+                                {item.outlier_score.toFixed(1)}x {t('outlier')}
                             </span>
                         )}
                         <PipelineStatus
@@ -85,7 +89,7 @@ export function OutlierDetailModal({
 
                     {/* Title */}
                     <h2 className="text-xl font-bold text-white mb-4 leading-tight">
-                        {item.title || '(제목 없음)'}
+                        {item.title || t('noTitle')}
                     </h2>
 
                     {/* Performance Metrics */}
@@ -108,7 +112,7 @@ export function OutlierDetailModal({
                     {/* VDG Analysis Card (when completed) */}
                     {stage === 'completed' && vdgData && (
                         <div className="mb-6">
-                            <h3 className="text-sm font-bold text-white/60 mb-2">🧬 VDG 분석 상세</h3>
+                            <h3 className="text-sm font-bold text-white/60 mb-2">{t('vdgAnalysis')}</h3>
                             <VDGCard vdg={vdgData} className="border-0" />
                         </div>
                     )}
@@ -116,11 +120,11 @@ export function OutlierDetailModal({
                     {/* Details */}
                     <div className="space-y-3 mb-6 text-sm border-t border-white/10 pt-4">
                         <div className="flex justify-between">
-                            <span className="text-white/50">플랫폼</span>
+                            <span className="text-white/50">{t('platform')}</span>
                             <span className="text-white font-medium">{item.platform}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-white/50">카테고리</span>
+                            <span className="text-white/50">{t('category')}</span>
                             <span className="text-white font-medium">{item.category}</span>
                         </div>
                         {item.external_id && (
@@ -132,33 +136,52 @@ export function OutlierDetailModal({
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-3 pt-4 border-t border-white/10">
-                        {/* Promote Button (pending stage) */}
-                        {stage === 'pending' && onPromote && (
-                            <div className="flex-1 flex gap-2">
-                                <button
-                                    onClick={() => onPromote(item.id, false)}
-                                    disabled={actionLoading === item.id}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 rounded-xl font-bold transition-colors disabled:opacity-50"
-                                >
-                                    {actionLoading === item.id ? (
-                                        <RefreshCw className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <ArrowUpRight className="w-4 h-4" />
-                                    )}
-                                    리믹스 승격
-                                </button>
-                                <button
-                                    onClick={() => onPromote(item.id, true)}
-                                    disabled={actionLoading === item.id}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-xl font-bold transition-colors disabled:opacity-50"
-                                    title="오거닉 바이럴 후보로 등록"
-                                >
-                                    <Gift className="w-4 h-4" />
-                                    오거닉 바이럴
-                                </button>
-                            </div>
+                    <div className="flex flex-col gap-3 pt-4 border-t border-white/10">
+                        {/* Promote/Reject Buttons (pending stage) */}
+                        {stage === 'pending' && (
+                            <>
+                                {onPromote && (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => onPromote(item.id, false)}
+                                            disabled={actionLoading === item.id}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 rounded-xl font-bold transition-colors disabled:opacity-50"
+                                        >
+                                            {actionLoading === item.id ? (
+                                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <ArrowUpRight className="w-4 h-4" />
+                                            )}
+                                            {t('remixPromote')}
+                                        </button>
+                                        <button
+                                            onClick={() => onPromote(item.id, true)}
+                                            disabled={actionLoading === item.id}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-xl font-bold transition-colors disabled:opacity-50"
+                                            title={t('organicViralTitle')}
+                                        >
+                                            <Gift className="w-4 h-4" />
+                                            {t('organicViral')}
+                                        </button>
+                                    </div>
+                                )}
+                                {onReject && (
+                                    <button
+                                        onClick={() => onReject(item.id)}
+                                        disabled={actionLoading === item.id}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                                    >
+                                        {actionLoading === item.id ? (
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <X className="w-4 h-4" />
+                                        )}
+                                        {t('discard')}
+                                    </button>
+                                )}
+                            </>
                         )}
+
 
                         {/* Approve VDG Button (promoted stage) */}
                         {stage === 'promoted' && onApprove && (
@@ -172,7 +195,7 @@ export function OutlierDetailModal({
                                 ) : (
                                     <Play className="w-4 h-4" />
                                 )}
-                                VDG 분석 시작
+                                {t('startVdg')}
                             </button>
                         )}
 
@@ -184,7 +207,7 @@ export function OutlierDetailModal({
                             className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 text-white/70 rounded-xl transition-colors"
                         >
                             <ExternalLink className="w-4 h-4" />
-                            원본 보기
+                            {t('viewOriginal')}
                         </a>
                     </div>
 
@@ -194,7 +217,7 @@ export function OutlierDetailModal({
                             href={`/remix/${item.promoted_to_node_id}`}
                             className="mt-4 block text-center text-sm text-emerald-400 hover:text-emerald-300 py-2"
                         >
-                            🎬 리믹스 스튜디오에서 열기 →
+                            {t('openRemixStudio')}
                         </a>
                     )}
                 </div>

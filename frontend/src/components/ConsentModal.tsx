@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 /**
  * ConsentModal - MCP Tool 실행 동의 UI

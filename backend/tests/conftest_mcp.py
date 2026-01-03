@@ -111,5 +111,7 @@ def patch_async_session(mock_db_session):
 def event_loop():
     """pytest-asyncio용 이벤트 루프"""
     loop = asyncio.get_event_loop_policy().new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
+    asyncio.set_event_loop(None)
     loop.close()

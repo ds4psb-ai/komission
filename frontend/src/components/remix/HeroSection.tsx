@@ -1,5 +1,6 @@
 // frontend/src/components/remix/HeroSection.tsx
 "use client";
+import { useTranslations } from 'next-intl';
 
 /**
  * HeroSection - Detail page hero with video preview and hook highlight

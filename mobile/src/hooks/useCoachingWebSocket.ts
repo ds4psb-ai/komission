@@ -383,7 +383,7 @@ export function useCoachingWebSocket(
         setStatus('connecting');  // H1: Update status
 
         // H1: Add language, voice_style, output_mode, persona to URL
-        const wsUrl = `${WS_BASE_URL}/api/v1/coaching/live/${sessionId}?language=${language}&voice_style=${voiceStyle}&output_mode=${outputMode}&persona=${persona}`;
+        const wsUrl = `${WS_BASE_URL}/api/v1/ws/coaching/${sessionId}?language=${language}&voice_style=${voiceStyle}&output_mode=${outputMode}&persona=${persona}`;
         console.log('[WS] Connecting to:', wsUrl);
 
         try {

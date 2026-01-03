@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 /**
  * Manual Outlier Input - Ops Page
  * 
@@ -21,14 +23,14 @@ const PLATFORMS = [
 ];
 
 const CATEGORIES = [
-    { id: 'meme', label: '밈/리액션' },
-    { id: 'review', label: '리뷰/체험' },
-    { id: 'beauty', label: '뷰티' },
-    { id: 'food', label: 'F&B/맛집' },
-    { id: 'fitness', label: '피트니스' },
-    { id: 'lifestyle', label: '라이프스타일' },
-    { id: 'unboxing', label: '언박싱/하울' },
-    { id: 'other', label: '기타' },
+    { id: 'meme', label: 'Meme/Reaction' },
+    { id: 'review', label: 'Review/Experience' },
+    { id: 'beauty', label: 'Beauty' },
+    { id: 'food', label: 'F&B/Restaurant' },
+    { id: 'fitness', label: 'Fitness' },
+    { id: 'lifestyle', label: 'Lifestyle' },
+    { id: 'unboxing', label: 'Unboxing/Haul' },
+    { id: 'other', label: 'Other' },
 ];
 
 interface SubmitResult {
@@ -80,7 +82,7 @@ export default function ManualOutlierPage() {
                 if (isMountedRef.current) {
                     setResult({
                         success: true,
-                        message: `✅ 등록 완료! ${data.title || 'Outlier'} (${data.outlier_tier || 'N/A'}-Tier)`,
+                        message: `✅ Registered! ${data.title || 'Outlier'} (${data.outlier_tier || 'N/A'}-Tier)`,
                         itemId: data.id,
                     });
                     setVideoUrl("");
@@ -89,7 +91,7 @@ export default function ManualOutlierPage() {
                 if (isMountedRef.current) {
                     setResult({
                         success: false,
-                        message: data.detail || "등록 실패",
+                        message: data.detail || "Registration failed",
                     });
                 }
             }
@@ -97,7 +99,7 @@ export default function ManualOutlierPage() {
             if (isMountedRef.current) {
                 setResult({
                     success: false,
-                    message: "네트워크 오류",
+                    message: "Network error",
                 });
             }
         } finally {
@@ -116,8 +118,8 @@ export default function ManualOutlierPage() {
                         <ArrowLeft className="w-5 h-5" />
                     </Link>
                     <div>
-                        <h1 className="text-lg font-bold">수동 아웃라이어 등록</h1>
-                        <p className="text-xs text-white/50">TikTok/Shorts URL을 직접 등록</p>
+                        <h1 className="text-lg font-bold">Manual Outlier Input</h1>
+                        <p className="text-xs text-white/50">Register TikTok/Shorts URLs directly</p>
                     </div>
                 </div>
             </header>
@@ -129,7 +131,7 @@ export default function ManualOutlierPage() {
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-white/80 flex items-center gap-2">
                             <Link2 className="w-4 h-4" />
-                            영상 URL
+                            Video URL
                         </label>
                         <div className="relative">
                             <input
@@ -149,7 +151,7 @@ export default function ManualOutlierPage() {
                             )}
                         </div>
                         <p className="text-xs text-white/40">
-                            TikTok, YouTube Shorts, Instagram Reels URL 지원
+                            Supports TikTok, YouTube Shorts, Instagram Reels URLs
                         </p>
                     </div>
 
@@ -157,7 +159,7 @@ export default function ManualOutlierPage() {
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-white/80 flex items-center gap-2">
                             <Tag className="w-4 h-4" />
-                            카테고리
+                            Category
                         </label>
                         <div className="grid grid-cols-4 gap-2">
                             {CATEGORIES.map((cat) => (
@@ -180,17 +182,17 @@ export default function ManualOutlierPage() {
                     <button
                         type="submit"
                         disabled={!videoUrl.trim() || !detectedPlatform || isSubmitting}
-                        className="w-full py-4 bg-gradient-to-r from-violet-500 to-pink-500 text-white font-bold rounded-xl hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-[#c1ff00] hover:bg-white text-black font-black uppercase tracking-wider rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(193,255,0,0.3)] hover:shadow-[0_0_25px_rgba(255,255,255,0.5)]"
                     >
                         {isSubmitting ? (
                             <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                메타데이터 추출 중...
+                                Extracting metadata...
                             </>
                         ) : (
                             <>
                                 <Sparkles className="w-5 h-5" />
-                                아웃라이어 등록
+                                Register Outlier
                             </>
                         )}
                     </button>
@@ -215,7 +217,7 @@ export default function ManualOutlierPage() {
                                         href={`/video/${result.itemId}`}
                                         className="text-xs text-violet-400 hover:text-violet-300 mt-1 inline-block"
                                     >
-                                        → 상세 보기
+                                        → View Details
                                     </Link>
                                 )}
                             </div>
@@ -227,13 +229,13 @@ export default function ManualOutlierPage() {
                 <div className="mt-8 p-4 bg-white/5 border border-white/10 rounded-xl">
                     <div className="flex items-center gap-2 mb-3">
                         <Video className="w-4 h-4 text-cyan-400" />
-                        <span className="text-sm font-bold text-white">등록 팁</span>
+                        <span className="text-sm font-bold text-white">Registration Tips</span>
                     </div>
                     <ul className="space-y-2 text-xs text-white/60">
-                        <li>• TikTok: 브라우저에서 공유 → 링크 복사</li>
-                        <li>• YouTube Shorts: 영상 공유 → 링크 복사</li>
-                        <li>• Instagram: Reels 공유 → 링크 복사</li>
-                        <li>• 중복 URL은 자동으로 감지됩니다</li>
+                        <li>• TikTok: Share from browser → Copy link</li>
+                        <li>• YouTube Shorts: Share video → Copy link</li>
+                        <li>• Instagram: Share Reels → Copy link</li>
+                        <li>• Duplicate URLs are automatically detected</li>
                     </ul>
                 </div>
             </main>

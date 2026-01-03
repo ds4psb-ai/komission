@@ -1,0 +1,1050 @@
+{
+    "common": {
+        "login": "로그인",
+        "logout": "로그아웃",
+        "save": "저장",
+        "cancel": "취소",
+        "loading": "로딩 중...",
+        "error": "오류가 발생했습니다",
+        "back": "뒤로",
+        "next": "다음",
+        "previous": "이전",
+        "submit": "제출",
+        "confirm": "확인",
+        "close": "닫기",
+        "search": "검색",
+        "filter": "필터",
+        "all": "전체",
+        "more": "더 보기",
+        "less": "접기",
+        "share": "공유",
+        "copy": "복사",
+        "copied": "복사됨",
+        "delete": "삭제",
+        "edit": "편집",
+        "create": "만들기",
+        "apply": "지원하기",
+        "start": "시작",
+        "stop": "중지",
+        "pause": "일시정지",
+        "resume": "재개",
+        "refresh": "새로고침",
+        "retry": "다시 시도",
+        "viewAll": "전체 보기",
+        "seeMore": "더 보기",
+        "guest": "게스트",
+        "continueAsGuest": "게스트로 계속하기",
+        "loginRequired": "로그인이 필요합니다",
+        "category": "카테고리",
+        "platform": "플랫폼",
+        "views": "조회수",
+        "growthRate": "성장률",
+        "score": "점수"
+    },
+    "header": {
+        "home": "홈",
+        "feed": "피드",
+        "discover": "발견",
+        "forYou": "맞춤 추천",
+        "knowledge": "지식",
+        "boards": "보드",
+        "collabs": "콜라보",
+        "myPage": "마이페이지",
+        "ops": "운영",
+        "notifications": "알림",
+        "settings": "설정"
+    },
+    "sidebar": {
+        "home": "홈",
+        "content": "콘텐츠",
+        "knowledge": "지식",
+        "ops": "운영",
+        "mainFeed": "메인 피드",
+        "discover": "발견",
+        "forYou": "추천",
+        "viralGuides": "바이럴 가이드",
+        "hookPatterns": "훅 패턴",
+        "hooks": "훅 라이브러리",
+        "patterns": "패턴 분석",
+        "patternLibrary": "패턴 라이브러리",
+        "boards": "실험 보드",
+        "collabs": "콜라보",
+        "myPage": "마이페이지",
+        "performance": "퍼포먼스",
+        "royalty": "로열티",
+        "opsConsole": "Ops Console",
+        "pipelines": "파이프라인",
+        "crawlers": "크롤러",
+        "outliers": "아웃라이어",
+        "canvas": "캔버스",
+        "session": "세션",
+        "wizard": "위자드",
+        "account": "계정",
+        "profile": "프로필",
+        "history": "로열티 내역",
+        "kakao": "카카오톡 상담",
+        "support": "고객 지원",
+        "consult": "상담 시작하기",
+        "supportDesc": "궁금한 점을 1:1로 상담하세요"
+    },
+    "pages": {
+        "home": {
+            "title": "바이럴 콘텐츠 피드",
+            "subtitle": "트렌딩 아웃라이어 영상을 발견하세요",
+            "filter": {
+                "all": "전체",
+                "tiktok": "틱톡",
+                "youtube": "유튜브",
+                "instagram": "인스타그램"
+            },
+            "emptyState": "아직 콘텐츠가 없습니다",
+            "loadMore": "더 불러오기"
+        },
+        "login": {
+            "title": "로그인",
+            "welcomeBack": "환영합니다",
+            "subtitle": "계정으로 로그인하여 당신의 바이럴 유전자를 발견하세요",
+            "googleLogin": "Google로 시작하기",
+            "orContinueAsGuest": "또는 게스트로 계속하기",
+            "sessionExpired": "세션이 만료되었습니다. 다시 로그인해 주세요.",
+            "loginFailed": "로그인에 실패했습니다.",
+            "terms": "이용약관",
+            "privacy": "개인정보처리방침",
+            "agreeToTerms": "로그인하면 Komission의 이용약관 및 개인정보처리방침에 동의하게 됩니다."
+        },
+        "myPage": {
+            "title": "마이페이지",
+            "dashboard": "대시보드",
+            "quickActions": "빠른 실행",
+            "account": "계정",
+            "stats": {
+                "totalViews": "총 조회수",
+                "totalLikes": "총 좋아요",
+                "avgEngagement": "평균 참여율",
+                "contentCount": "콘텐츠 수"
+            },
+            "actions": {
+                "startCanvas": "캔버스 시작",
+                "viewCollabs": "콜라보 보기",
+                "exploreFeed": "피드 탐색"
+            },
+            "performance": {
+                "title": "📊 성과 확인하기",
+                "subtitle": "업로드한 영상의 URL을 입력하면\n조회수와 성과를 자동으로 확인해요",
+                "inputPlaceholder": "TikTok 또는 YouTube Shorts URL 붙여넣기",
+                "checkButton": "성과 확인하기",
+                "checking": "성과 가져오는 중...",
+                "supportedPlatforms": "지원 플랫폼",
+                "errors": {
+                    "enterUrl": "URL을 입력해주세요",
+                    "invalidUrl": "TikTok 또는 YouTube Shorts URL을 입력해주세요",
+                    "extractFailed": "추출 실패",
+                    "extractError": "성과 추출에 실패했습니다"
+                },
+                "metrics": {
+                    "views": "조회수",
+                    "likes": "좋아요",
+                    "comments": "댓글",
+                    "shares": "공유"
+                },
+                "comparison": {
+                    "patternAvg": "패턴 평균",
+                    "myVideo": "내 영상",
+                    "vsPatternAvg": "대비"
+                },
+                "actions": {
+                    "myPage": "My 페이지",
+                    "newVideo": "새 영상 만들기"
+                },
+                "emptyState": "영상 업로드 후 URL을 입력하면\n성과를 자동으로 분석해드려요"
+            }
+        },
+        "video": {
+            "title": "영상 상세",
+            "viralGuide": "바이럴 가이드",
+            "hookPattern": "훅 패턴",
+            "shotlist": "샷리스트",
+            "timing": "타이밍",
+            "doNot": "하지 말 것",
+            "invariants": "불변 요소 (절대 유지)",
+            "variables": "가변 요소 (창의성 발휘)",
+            "storyboard": "스토리보드",
+            "viralKicks": "바이럴 킥",
+            "aiCoaching": "AI 코칭",
+            "startCoaching": "코칭 시작",
+            "viewOriginal": "원본 보기",
+            "campaign": "캠페인",
+            "launchCampaign": "캠페인 시작",
+            "applyNow": "지금 지원하기",
+            "bestComments": "베스트 댓글",
+            "processingLink": "링크 처리 중...",
+            "playExternal": "외부에서 재생",
+            "videoNotFound": "영상을 찾을 수 없습니다",
+            "backToFeed": "피드로 돌아가기"
+        },
+        "ops": {
+            "title": "운영 콘솔",
+            "subtitle": "Komission 운영 대시보드",
+            "loginRequired": "운영 콘솔 접근",
+            "loginRequiredDesc": "운영 기능을 사용하려면 로그인이 필요합니다",
+            "stats": {
+                "totalOutliers": "총 아웃라이어",
+                "awaitingReview": "검토 대기",
+                "processedToday": "오늘 처리",
+                "avgConfidence": "평균 신뢰도",
+                "activePipelines": "활성 파이프라인"
+            },
+            "quickActions": {
+                "pipelines": "파이프라인 관리",
+                "pipelinesDesc": "Virlo/TikTok에서 아웃라이어를 크롤링하고 클러스터를 생성하세요",
+                "outliers": "아웃라이어 큐레이션",
+                "outliersDesc": "AI가 발굴한 아웃라이어를 검증하고 태그하세요",
+                "canvas": "비주얼 캔버스",
+                "canvasDesc": "영상 분석과 리믹스를 시각적으로 관리하세요",
+                "crawlers": "크롤러 설정",
+                "crawlersDesc": "소스 플랫폼과 크롤링 규칙을 설정하세요"
+            },
+            "outliersPage": {
+                "title": "아웃라이어 관리",
+                "subtitle": "클릭해서 TikTok 영상 재생 + 메타데이터 보기",
+                "inputPlaceholder": "TikTok/Instagram/YouTube 링크 붙여넣기...",
+                "register": "등록",
+                "refresh": "새로고침",
+                "accessDenied": "접근 권한 없음",
+                "accessDeniedDesc": "이 페이지는 큐레이터 또는 관리자 권한이 필요합니다.",
+                "goHome": "홈으로 이동",
+                "retry": "다시 시도",
+                "urlSubmitFailed": "URL 등록 실패",
+                "promotionFailed": "승격 실패",
+                "rejectionFailed": "거절 실패",
+                "error": "오류",
+                "noOutliers": "수집된 아웃라이어가 없습니다.",
+                "noItemsInStage": "'{stage}' 단계에 항목이 없습니다.",
+                "sort": {
+                    "outlierScore": "아웃라이어 점수",
+                    "viewCount": "조회수",
+                    "latest": "최신순"
+                },
+                "stages": {
+                    "all": "전체",
+                    "pending": "🆕 크롤됨",
+                    "promoted": "📦 승격됨",
+                    "analyzing": "🔬 분석중",
+                    "completed": "✅ 완료"
+                },
+                "platforms": {
+                    "all": "전체",
+                    "tiktok": "TikTok",
+                    "youtube": "YouTube",
+                    "instagram": "Instagram"
+                }
+            }
+        },
+        "collabs": {
+            "title": "콜라보 마켓플레이스",
+            "subtitle": "브랜드와 크리에이터를 연결합니다",
+            "heroTitle": "크리에이터와 함께하는 바이럴 캠페인",
+            "heroSubtitle": "아웃라이어 패턴을 활용한 캠페인에 참여하세요",
+            "liveCampaigns": "진행 중인 캠페인",
+            "viewDetails": "자세히 보기",
+            "applyNow": "지원하기",
+            "spots": "자리",
+            "reward": "보상",
+            "deadline": "마감",
+            "noCampaigns": "현재 진행 중인 캠페인이 없습니다"
+        },
+        "collabsMap": {
+            "title": "브랜드 협찬",
+            "subtitle": "바이럴 레퍼런스로 촬영하면\n브랜드에서 리워드를 드려요!",
+            "offline": "오프라인 상태입니다",
+            "locationDenied": "매장 방문 인증을 위해 위치 권한이 필요해요",
+            "locationDeniedDesc": "브라우저 설정에서 위치 권한을 허용해주세요",
+            "emptyTitle": "진행 중인 협찬이 없어요",
+            "emptyDesc": "곧 새로운 브랜드 협찬이 오픈됩니다!\n알림을 켜두면 가장 먼저 알려드려요.",
+            "retry": "새로고침",
+            "loading": "협찬 캠페인 불러오는 중...",
+            "reward": "리워드",
+            "checkIn": "위치 확인 중...",
+            "cta": {
+                "visit": "GPS 체크인",
+                "apply": "신청하기",
+                "join": "참여하기"
+            },
+            "meta": {
+                "product": "제품 체험",
+                "instant": "즉시 참여",
+                "visit": "매장 방문",
+                "productDesc": "무료 제품 배송 + 리워드",
+                "instantDesc": "바로 촬영 가능",
+                "visitDesc": "방문 인증 시 리워드"
+            }
+        },
+        "session": {
+            "title": "촬영 세션",
+            "input": {
+                "title": "세션 설정",
+                "selectCategory": "카테고리 선택",
+                "selectPlatform": "플랫폼 선택",
+                "startSession": "세션 시작",
+                "whatProduct": "어떤 제품인가요?",
+                "productPlaceholder": "예: 립틴트, 헤어팩, 쿠션...",
+                "getRecommendation": "패턴 추천받기"
+            },
+            "shoot": {
+                "title": "촬영 가이드",
+                "startShooting": "촬영 시작",
+                "stopShooting": "촬영 종료",
+                "phaseGuide": "페이즈 가이드",
+                "shotlist": "샷리스트",
+                "shootOrder": "촬영 순서",
+                "shootTip": "촬영 팁",
+                "complete": "촬영 완료!",
+                "nextStep": "다음 단계",
+                "reshoot": "다시 촬영",
+                "goToMyPage": "My 페이지",
+                "offline": "오프라인 상태입니다",
+                "noPattern": "패턴을 선택하지 않았습니다",
+                "loadingGuide": "가이드 불러오는 중...",
+                "loadFailed": "가이드 로딩 실패",
+                "timeout": "서버 응답 시간 초과"
+            },
+            "consentDemo": {
+                "title": "동의 UI 데모",
+                "subtitle": "MCP Tools 실행 전 사용자 동의 요청 테스트",
+                "requiresConsent": "동의 필요 작업",
+                "sourcePack": {
+                    "title": "Source Pack 생성",
+                    "description": "데이터 생성 필요"
+                },
+                "vdgReanalyze": {
+                    "title": "VDG 재분석",
+                    "description": "비용 발생 (~$0.05-0.10)"
+                },
+                "customConsent": {
+                    "title": "커스텀 동의 요청",
+                    "description": "외부 API 호출",
+                    "name": "커스텀 작업",
+                    "requestDesc": "이것은 커스텀 동의 요청 예시입니다."
+                },
+                "results": {
+                    "sourcePackComplete": "Source Pack 생성 완료",
+                    "vdgQueued": "VDG 재분석 요청됨",
+                    "cancelled": "사용자가 취소했습니다.",
+                    "consented": "동의함",
+                    "rejected": "거부함"
+                },
+                "history": {
+                    "title": "동의 이력",
+                    "consent": "동의",
+                    "reject": "거부"
+                }
+            },
+            "result": {
+                "title": "추천 패턴",
+                "congratulations": "촬영 완료!",
+                "viewResult": "결과 보기",
+                "generating": "생성 중...",
+                "generateSourcePack": "NotebookLM 소스팩 생성",
+                "sourcePackDesc": "심층 분석을 위해 소스 데이터를 NotebookLM으로 전송합니다.",
+                "sourcePackComplete": "소스팩 생성 완료!",
+                "downloadJson": "JSON 다운로드",
+                "notebookLmTip": "NotebookLM에서 '소스 추가' → '파일 업로드'로 사용하세요.",
+                "regenerate": "다시 생성하기",
+                "patternNotFound": "패턴을 찾을 수 없습니다",
+                "loadPatternFailed": "패턴을 불러올 수 없습니다.",
+                "checkInternet": "인터넷 연결을 확인해주세요.",
+                "mcpServerError": "MCP 서버에 연결할 수 없습니다.",
+                "serverTimeout": "서버 응답 시간이 초과되었습니다."
+            }
+        },
+        "wizard": {
+            "title": "O2O 미션",
+            "selectMission": "미션 선택",
+            "nextStep": "다음 단계",
+            "prevStep": "이전 단계",
+            "complete": "완료",
+            "step1": "Step 1: 미션 확인",
+            "step1Desc": "아래 장소를 방문하고 인증하세요!",
+            "step2": "Step 2: 촬영",
+            "step2Desc": "장소에서 영상이나 사진을 촬영하세요",
+            "step3": "Step 3: 위치 인증",
+            "step3Desc": "GPS로 현재 위치를 확인합니다",
+            "nextCapture": "다음: 촬영하기 →",
+            "nextVerify": "다음: 위치 인증 →",
+            "captureInstructions": "카메라 앱에서 촬영 후 돌아와서 인증하세요",
+            "verifying": "인증 중...",
+            "verifyLocation": "위치 인증하기",
+            "verifySuccess": "인증 성공!",
+            "verifyFailed": "인증 실패",
+            "retryVerify": "다시 시도",
+            "noMission": "진행 중인 미션이 없습니다",
+            "noMissionDesc": "주변에 새로운 챌린지가 생기면 알려드릴게요!",
+            "goHome": "홈으로 돌아가기",
+            "kPointsEarned": "K-Points 획득!",
+            "gpsNotSupported": "이 브라우저는 위치 인증을 지원하지 않습니다.",
+            "gpsError": "위치 정보를 가져올 수 없습니다. GPS를 확인하세요."
+        },
+        "leaderboards": {
+            "title": "리더보드",
+            "subtitle": "이번 주 최고 크리에이터",
+            "rank": "순위",
+            "creator": "크리에이터",
+            "views": "조회수",
+            "engagement": "참여율",
+            "startRemix": "리믹스 시작"
+        },
+        "boards": {
+            "title": "보드",
+            "newBoard": "새 보드",
+            "emptyState": "아직 보드가 없습니다",
+            "detail": {
+                "loading": "로딩중...",
+                "notFound": "보드를 찾을 수 없습니다",
+                "back": "뒤로",
+                "settings": "설정",
+                "addItem": "아이템 추가",
+                "addCandidate": "후보 추가",
+                "delete": "삭제",
+                "noTitle": "제목 없음",
+                "source": "소스",
+                "status": {
+                    "draft": "초안",
+                    "active": "진행중",
+                    "concluded": "완료"
+                },
+                "sidebar": {
+                    "kpiTarget": "KPI 목표",
+                    "notSet": "설정 안됨",
+                    "description": "설명",
+                    "noDescription": "설명 없음",
+                    "conclusion": "결론",
+                    "conclusionPending": "결론 대기중..."
+                },
+                "stats": {
+                    "title": "보드 통계",
+                    "totalItems": "총 아이템",
+                    "count": "개",
+                    "createdAt": "생성일"
+                },
+                "experiments": {
+                    "title": "실험 아이템",
+                    "comparing": "개 후보 비교중"
+                }
+            }
+        },
+        "terms": {
+            "title": "이용약관",
+            "lastUpdated": "최종 수정일"
+        },
+        "privacy": {
+            "title": "개인정보처리방침",
+            "lastUpdated": "최종 수정일"
+        },
+        "forYou": {
+            "title": "맞춤 추천",
+            "subtitle": "당신을 위한 트렌드 패턴",
+            "viewDetails": "자세히 보기",
+            "startRemix": "리믹스 시작",
+            "noPatterns": "추천 패턴이 없습니다",
+            "loading": "패턴 로딩 중...",
+            "confidence": "신뢰도",
+            "sampleCount": "샘플 수",
+            "avgRetention": "평균 리텐션"
+        },
+        "knowledge": {
+            "patterns": {
+                "title": "패턴 라이브러리",
+                "subtitle": "NotebookLM Pattern Engine에서 추출한 고성과 패턴 컬렉션.\n각 패턴의 불변 규칙과 변주 전략을 참고하세요.",
+                "all": "전체",
+                "stats": {
+                    "patterns": "개 패턴",
+                    "platforms": "개 플랫폼"
+                },
+                "emptyState": "아직 패턴이 없습니다.",
+                "emptyStateHint": "NotebookLM Data Tables를 가져와서 패턴을 생성하세요.",
+                "invariantRules": "불변 규칙",
+                "mutationStrategy": "변주 전략",
+                "more": "개 더...",
+                "applyInCanvas": "캔버스에서 적용"
+            }
+        }
+    },
+    "categories": {
+        "all": "전체",
+        "beauty": "뷰티",
+        "food": "푸드",
+        "fnb": "F&B",
+        "fashion": "패션",
+        "tech": "테크",
+        "lifestyle": "라이프",
+        "entertainment": "엔터",
+        "meme": "밈",
+        "trending": "트렌딩",
+        "fitness": "피트니스",
+        "art": "예술"
+    },
+    "platforms": {
+        "all": "전체",
+        "tiktok": "틱톡",
+        "youtube": "유튜브 쇼츠",
+        "instagram": "인스타 릴스",
+        "shorts": "쇼츠",
+        "reels": "릴스"
+    },
+    "tiers": {
+        "all": "전체 등급",
+        "s": "S등급",
+        "a": "A등급",
+        "b": "B등급",
+        "c": "C등급"
+    },
+    "components": {
+        "card": {
+            "views": "조회수",
+            "likes": "좋아요",
+            "engagement": "참여율",
+            "tier": "티어",
+            "outlier": "아웃라이어",
+            "creatorAvg": "크리에이터 평균",
+            "promote": "승격",
+            "promoted": "승격됨",
+            "view": "보기"
+        },
+        "errorBoundary": {
+            "title": "문제가 발생했습니다",
+            "unknown": "알 수 없는 오류가 발생했습니다.",
+            "retry": "다시 시도"
+        },
+        "pipeline": {
+            "emptyCanvas": "캔버스가 비어있습니다!",
+            "untitled": "제목 없는 파이프라인",
+            "enterName": "파이프라인 이름을 입력하세요:",
+            "confirmPublic": "이 파이프라인을 커뮤니티에 공개할까요?",
+            "updateSuccess": "파이프라인 업데이트 완료!",
+            "saveSuccess": "파이프라인 저장 완료!",
+            "saveFail": "파이프라인 저장 실패",
+            "loadListFail": "파이프라인 목록 로드 실패",
+            "confirmLoad": "저장하지 않은 변경사항이 있습니다. 그래도 로드할까요?",
+            "loadSuccess": "로드 완료",
+            "loadFail": "파이프라인 로드 실패"
+        },
+        "genealogy": {
+            "title": "바이럴 계보 (Genealogy)",
+            "depth": "세대 깊이",
+            "loading": "계보 로딩 중...",
+            "parentNode": "부모 노드",
+            "performance": "성과",
+            "currentNode": "현재 노드",
+            "masterOrigin": "마스터 오리진",
+            "evolvedMutation": "진화된 변이",
+            "organic": "유기적",
+            "accelerated": "가속화된",
+            "trackingMessage": "이 노드는 현재 {type} 성장을 추적중입니다."
+        },
+        "outlierDetailModal": {
+            "outlier": "아웃라이어",
+            "noTitle": "(제목 없음)",
+            "vdgAnalysis": "🧬 VDG 분석 상세",
+            "platform": "플랫폼",
+            "category": "카테고리",
+            "remixPromote": "리믹스 승격",
+            "organicViral": "오거닉 바이럴",
+            "organicViralTitle": "오거닉 바이럴 후보로 등록",
+            "discard": "버리기 (Discard)",
+            "startVdg": "VDG 분석 시작",
+            "viewOriginal": "원본 보기",
+            "openRemixStudio": "🎬 리믹스 스튜디오에서 열기 →"
+        },
+        "time": {
+            "justNow": "방금 전",
+            "hoursAgo": "{hours}시간 전",
+            "daysAgo": "{days}일 전"
+        },
+        "filmingGuide": {
+            "title": "촬영 가이드",
+            "mobileOnlyTitle": "모바일에서만 촬영 가능",
+            "mobileOnlyDesc": "촬영 기능은 모바일 웹에서만 사용할 수 있습니다.<br />스마트폰에서 이 페이지를 열어주세요.",
+            "close": "닫기",
+            "open": "열기",
+            "recording": "녹화중",
+            "beatTimer": "{bpm} BPM",
+            "syncTitle": "오디오 싱크 조절",
+            "syncDesc": "영상과 소리가 안 맞으면 슬라이더로 조절하세요",
+            "syncFast": "소리가 빠름 (-0.5s)",
+            "syncSlow": "소리가 느림 (+0.5s)",
+            "download": "다운로드 (외부 편집용)",
+            "downloadDesc": "CapCut, InShot 등에서 편집 후 나중에 업로드",
+            "downloadStart": "다운로드 시작!",
+            "downloadFail": "다운로드에 실패했습니다.\n브라우저 설정을 확인해주세요.",
+            "retry": "다시 촬영",
+            "saveLater": "나중에",
+            "saveSuccess": "세션 정보가 저장되었습니다.\n\n영상은 다운로드하여 편집 후\nMy 페이지에서 업로드하세요.",
+            "finish": "이대로 완료",
+            "finishDesc": "편집 없이 바로 사용",
+            "ghostOverlay": "Ghost Overlay 활성화 - 가이드 영상을 따라 촬영하세요",
+            "cameraDenied": "카메라 접근이 거부되었습니다. 권한을 확인해주세요.",
+            "noVideo": "저장된 영상이 없습니다.",
+            "vdg": {
+                "label": "VDG 연동",
+                "default": "기본",
+                "analyzing": "VDG 분석 중...",
+                "pending": "승격 후 VDG 분석 완료 시 활성화됩니다",
+                "hookSummary": "이 영상의 핵심 훅"
+            },
+            "steps": {
+                "default": {
+                    "step1": {
+                        "title": "훅 시작",
+                        "desc": "첫 3초 안에 시선을 사로잡으세요"
+                    },
+                    "step2": {
+                        "title": "핵심 전달",
+                        "desc": "원본의 핵심 패턴을 따라하세요"
+                    },
+                    "step3": {
+                        "title": "CTA 마무리",
+                        "desc": "팔로우, 좋아요, 댓글 유도"
+                    }
+                },
+                "pattern_break": {
+                    "step1": {
+                        "title": "예상 설정",
+                        "desc": "시청자가 예상하는 상황 연출"
+                    },
+                    "step2": {
+                        "title": "반전 순간",
+                        "desc": "예상을 깨는 충격적 전환"
+                    },
+                    "step3": {
+                        "title": "리액션",
+                        "desc": "반전 후 감정 표현으로 마무리"
+                    }
+                },
+                "visual_reaction": {
+                    "step1": {
+                        "title": "자극 제시",
+                        "desc": "반응할 대상/상황을 보여주기"
+                    },
+                    "step2": {
+                        "title": "표정 연기",
+                        "desc": "과장된 리액션으로 감정 전달"
+                    },
+                    "step3": {
+                        "title": "공감 유도",
+                        "desc": "시청자도 같은 감정 느끼게"
+                    }
+                },
+                "transformation": {
+                    "step1": {
+                        "title": "Before",
+                        "desc": "변화 전 상태 강조"
+                    },
+                    "step2": {
+                        "title": "과정/전환",
+                        "desc": "변화 과정 드라마틱하게"
+                    },
+                    "step3": {
+                        "title": "After",
+                        "desc": "극적인 결과 공개"
+                    }
+                },
+                "reveal": {
+                    "step1": {
+                        "title": "티저",
+                        "desc": "숨겨진 것에 대한 궁금증 유발"
+                    },
+                    "step2": {
+                        "title": "빌드업",
+                        "desc": "기대감 고조시키기"
+                    },
+                    "step3": {
+                        "title": "공개",
+                        "desc": "드라마틱하게 드러내기"
+                    }
+                },
+                "challenge": {
+                    "step1": {
+                        "title": "규칙 설명",
+                        "desc": "챌린지 룰을 명확히"
+                    },
+                    "step2": {
+                        "title": "도전",
+                        "desc": "직접 시도하는 모습"
+                    },
+                    "step3": {
+                        "title": "결과",
+                        "desc": "성공/실패 결과와 리액션"
+                    }
+                }
+            }
+        },
+        "coaching": {
+            "selectMode": "촬영 모드 선택",
+            "homage": "오마쥬",
+            "homageDesc": "기존 영상의 오디오/구도를 따라합니다",
+            "variation": "변주",
+            "variationDesc": "기존 아이디어를 변형하여 촬영합니다",
+            "campaign": "체험단",
+            "campaignDesc": "제품/서비스 홍보 영상을 촬영합니다",
+            "original": "오리지널",
+            "originalDesc": "새로운 아이디어로 촬영합니다",
+            "feedback": "피드백",
+            "rule": "규칙",
+            "score": "점수",
+            "errorTitle": "오류 발생",
+            "close": "닫기",
+            "controlGroup": "실험군",
+            "controlGroupDesc": "코칭 없이 촬영 (인과 추론용)",
+            "holdoutGroup": "승격 판단 제외",
+            "aiConnected": "AI 연결",
+            "local": "로컬",
+            "currentCoaching": "현재 코칭",
+            "waiting": "대기 중...",
+            "feedbackHistory": "피드백 히스토리",
+            "noFeedback": "아직 피드백이 없습니다",
+            "checklist": "체험단 체크리스트",
+            "controlGroupNotice": "🔬 인과 추론용 대조군 촬영 중",
+            "coachingChecklist": "코칭 체크리스트",
+            "sessionStats": "세션 통계",
+            "recordingTime": "녹화시간",
+            "progress": "진행률",
+            "voiceOn": "음성 코칭 켜기",
+            "voiceOff": "음성 코칭 끄기",
+            "aiHelper": "🎙️ AI 코치가 실시간으로 촬영을 도와드립니다",
+            "listening": "듣는 중...",
+            "speaking": "말하는 중...",
+            "endSession": "세션 종료",
+            "aiCoach": "AI 코치",
+            "startCoaching": "코칭 시작",
+            "stopCoaching": "코칭 종료"
+        },
+        "coachingSelector": {
+            "title": "코칭 설정",
+            "credits": "크레딧",
+            "creditsPerMin": "크레딧/분",
+            "outputMode": "출력 모드",
+            "coachingStyle": "코칭 스타일",
+            "audioWarning": "잡음",
+            "audioWarningFull": "촬영 중 잡음 주의",
+            "tiers": {
+                "basic": {
+                    "name": "Basic",
+                    "description": "규칙 기반 코칭"
+                },
+                "pro": {
+                    "name": "Pro",
+                    "description": "AI 대화형 코칭"
+                }
+            },
+            "outputModes": {
+                "graphic": {
+                    "name": "그래픽",
+                    "description": "화면 오버레이 (잡음 X)"
+                },
+                "text": {
+                    "name": "텍스트",
+                    "description": "조용한 자막"
+                },
+                "audio": {
+                    "name": "음성",
+                    "description": "TTS 코칭"
+                },
+                "graphic_audio": {
+                    "name": "그래픽+음성",
+                    "description": "오버레이 + TTS"
+                }
+            },
+            "personas": {
+                "drill_sergeant": {
+                    "name": "빡센 디렉터",
+                    "description": "날카로운 촬영 감독"
+                },
+                "bestie": {
+                    "name": "찐친",
+                    "description": "옆자리 친구 바이브"
+                },
+                "chill_guide": {
+                    "name": "릴렉스 가이드",
+                    "description": "ASMR 급 차분함"
+                },
+                "hype_coach": {
+                    "name": "하이퍼 부스터",
+                    "description": "텐션 200%"
+                }
+            }
+        },
+        "pipelineStatus": {
+            "pending": "크롤됨",
+            "promoted": "승격됨",
+            "comments": "댓글 대기",
+            "analyzing": "분석중",
+            "completed": "완료"
+        },
+        "metrics": {
+            "views": "조회수",
+            "likes": "좋아요",
+            "comments": "댓글",
+            "shares": "공유"
+        },
+        "legal": {
+            "backHome": "홈으로 돌아가기",
+            "loginPage": "로그인 페이지",
+            "gotoTerms": "이용약관",
+            "gotoPrivacy": "개인정보처리방침",
+            "privacy": {
+                "title": "개인정보처리방침",
+                "lastUpdated": "최종 수정일: 2024년 12월 23일",
+                "sections": {
+                    "1": {
+                        "title": "제1조 (개인정보의 수집 항목 및 방법)",
+                        "content": "Komission(이하 '회사')은 서비스 제공을 위해 다음과 같은 개인정보를 수집합니다:",
+                        "reqTitle": "필수 수집 항목",
+                        "reqItems": [
+                            "이메일 주소 (Google OAuth 연동 시)",
+                            "프로필 이름 및 프로필 이미지",
+                            "서비스 이용 기록 및 접속 로그"
+                        ],
+                        "optTitle": "선택 수집 항목",
+                        "optItems": [
+                            "위치 정보 (O2O 캠페인 참여 시)",
+                            "연락처 정보 (리워드 지급 및 이벤트 당첨 시)"
+                        ]
+                    },
+                    "2": {
+                        "title": "제2조 (개인정보의 수집 및 이용 목적)",
+                        "content": "회사는 수집한 개인정보를 다음의 목적으로 이용합니다:",
+                        "items": [
+                            "<b>회원 관리:</b> 회원 식별, 가입 의사 확인, 불량 회원 부정 이용 방지",
+                            "<b>서비스 제공:</b> 바이럴 분석 결과 제공, 콘텐츠 계보 추적, 맞춤형 추천",
+                            "<b>포인트/로열티 관리:</b> K-Point 적립·사용 내역 관리, 리워드 지급",
+                            "<b>마케팅 및 이벤트:</b> 신규 기능 안내, 이벤트 정보 제공 (동의 시)",
+                            "<b>서비스 개선:</b> 이용 통계 분석, AI 모델 개선을 위한 익명화 데이터 활용"
+                        ]
+                    },
+                    "3": {
+                        "title": "제3조 (개인정보의 보유 및 이용 기간)",
+                        "content": "회사는 개인정보 수집 및 이용 목적이 달성된 후에는 해당 정보를 지체 없이 파기합니다. 단, 관련 법령에 따라 보존할 필요가 있는 경우 아래와 같이 보관합니다:",
+                        "items": [
+                            {
+                                "label": "계약 또는 청약철회 등에 관한 기록",
+                                "value": "5년"
+                            },
+                            {
+                                "label": "대금결제 및 재화 등의 공급에 관한 기록",
+                                "value": "5년"
+                            },
+                            {
+                                "label": "소비자의 불만 또는 분쟁처리에 관한 기록",
+                                "value": "3년"
+                            },
+                            {
+                                "label": "웹사이트 방문 기록 (로그 데이터)",
+                                "value": "3개월"
+                            }
+                        ]
+                    },
+                    "4": {
+                        "title": "제4조 (개인정보의 제3자 제공)",
+                        "content": "회사는 이용자의 동의 없이 개인정보를 제3자에게 제공하지 않습니다. 다만, 다음의 경우에는 예외로 합니다:",
+                        "items": [
+                            "이용자가 사전에 동의한 경우",
+                            "법령의 규정에 의거하거나, 수사 목적으로 법령에 정해진 절차와 방법에 따라 수사기관의 요구가 있는 경우",
+                            "O2O 파트너 브랜드에게 캠페인 참여 확인 정보 제공 (최소한의 정보만 제공)"
+                        ]
+                    },
+                    "5": {
+                        "title": "제5조 (개인정보의 안전성 확보 조치)",
+                        "content": "회사는 개인정보의 안전성 확보를 위해 다음과 같은 조치를 취하고 있습니다:",
+                        "items": [
+                            "<b>데이터 암호화:</b> 전송 중 및 저장 시 AES-256 암호화 적용",
+                            "<b>접근 제한:</b> 개인정보 처리 직원의 최소화 및 접근 권한 관리",
+                            "<b>보안 프로그램:</b> 해킹, 악성코드 방지를 위한 보안 시스템 운영",
+                            "<b>정기 점검:</b> 개인정보 처리 시스템 취약점 정기 점검"
+                        ]
+                    },
+                    "6": {
+                        "title": "제6조 (이용자의 권리와 행사 방법)",
+                        "content": "이용자는 언제든지 다음의 권리를 행사할 수 있습니다:",
+                        "items": [
+                            "개인정보 열람 요청",
+                            "오류 등이 있을 경우 정정 요청",
+                            "삭제 요청 (단, 법령에 따른 보관 의무가 있는 경우 제외)",
+                            "처리 정지 요청"
+                        ],
+                        "note": "※ 권리 행사는 서비스 내 '마이페이지 → 계정 설정'에서 직접 처리하거나, 고객센터(support@komission.ai)로 문의해 주세요."
+                    },
+                    "7": {
+                        "title": "제7조 (쿠키의 사용)",
+                        "content": "회사는 이용자에게 개인화된 서비스를 제공하기 위해 쿠키(Cookie)를 사용합니다. 쿠키는 웹사이트 운영에 이용되는 서버가 이용자의 브라우저에 보내는 아주 작은 텍스트 파일로, 이용자의 컴퓨터 하드디스크에 저장됩니다. 이용자는 브라우저 설정을 통해 쿠키 수신을 거부하거나, 쿠키가 저장될 때마다 경고를 받도록 설정할 수 있습니다."
+                    },
+                    "8": {
+                        "title": "제8조 (개인정보 보호책임자)",
+                        "content": "회사는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 이용자의 불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다:",
+                        "items": [
+                            "<b>개인정보 보호책임자:</b> Komission Privacy Team",
+                            "<b>이메일:</b> privacy@komission.ai",
+                            "<b>전화:</b> 02-0000-0000"
+                        ]
+                    },
+                    "9": {
+                        "title": "제9조 (개인정보처리방침의 변경)",
+                        "content": "본 개인정보처리방침은 2024년 12월 23일부터 적용됩니다. 법령 및 방침에 따른 변경 내용의 추가, 삭제 및 정정이 있는 경우에는 변경 사항의 시행 7일 전부터 서비스 내 공지사항 또는 이메일을 통해 고지할 것입니다."
+                    }
+                }
+            },
+            "terms": {
+                "title": "TERMS & CONDITIONS",
+                "lastUpdated": "최종 수정일: 2024년 12월 23일",
+                "sections": {
+                    "1": {
+                        "title": "제1조 (목적)",
+                        "content": "본 약관은 Komission(이하 '회사')이 제공하는 바이럴 콘텐츠 인텔리전스 플랫폼 서비스(이하 '서비스')의 이용조건 및 절차, 회사와 이용자의 권리·의무 및 책임사항 등을 규정함을 목적으로 합니다."
+                    },
+                    "2": {
+                        "title": "제2조 (서비스의 내용)",
+                        "content": "회사가 제공하는 서비스는 다음과 같습니다:",
+                        "items": [
+                            "바이럴 콘텐츠 분석 및 패턴 발굴 서비스",
+                            "AI 기반 콘텐츠 리믹스 및 최적화 추천",
+                            "콘텐츠 계보(Genealogy) 추적 및 시각화",
+                            "크리에이터 로열티 및 리워드 시스템",
+                            "O2O(Online to Offline) 캠페인 연동 서비스",
+                            "실시간 트렌드 분석 및 인사이트 제공"
+                        ]
+                    },
+                    "3": {
+                        "title": "제3조 (이용자의 의무)",
+                        "content": "이용자는 다음 행위를 하여서는 안 됩니다:",
+                        "items": [
+                            "타인의 정보를 도용하거나 허위 정보를 등록하는 행위",
+                            "서비스를 이용하여 얻은 정보를 회사의 사전 승낙 없이 상업적으로 이용하는 행위",
+                            "회사 또는 제3자의 지적재산권을 침해하는 행위",
+                            "서비스의 정상적인 운영을 방해하는 행위",
+                            "자동화된 수단(봇, 스크래퍼 등)을 이용한 무단 접근 행위"
+                        ]
+                    },
+                    "4": {
+                        "title": "제4조 (콘텐츠 및 지적재산권)",
+                        "content1": "이용자가 서비스에 업로드하거나 분석 요청하는 콘텐츠에 대한 저작권은 원저작자에게 귀속됩니다. 이용자는 본인이 적법한 권리를 보유하거나 이용 허락을 받은 콘텐츠만을 서비스에 등록할 수 있습니다.",
+                        "content2": "회사는 서비스 개선 및 AI 학습 목적으로 익명화된 분석 데이터를 활용할 수 있으며, 이 과정에서 이용자의 개인정보는 처리되지 않습니다."
+                    },
+                    "5": {
+                        "title": "제5조 (포인트 및 로열티)",
+                        "content": "회사는 이용자의 활동에 따라 K-Point(이하 '포인트')를 지급할 수 있습니다. 포인트는 다음과 같은 기준으로 적립됩니다:",
+                        "items": [
+                            "원본 콘텐츠가 Fork(리믹스)될 때 원작자에게 로열티 지급",
+                            "콘텐츠 조회수 마일스톤 달성 시 보너스 포인트",
+                            "O2O 캠페인 참여 및 미션 완료 시 리워드",
+                            "연속 출석 및 일일 미션 완료 보상"
+                        ],
+                        "note": "※ 포인트의 현금 전환, 유효기간 및 사용 조건은 별도 공지에 따릅니다."
+                    },
+                    "6": {
+                        "title": "제6조 (면책조항)",
+                        "content": "회사는 천재지변, 시스템 장애, 제3자의 악의적 행위 등 불가항력적인 사유로 인해 서비스를 제공할 수 없는 경우 책임을 지지 않습니다. 또한, AI 분석 결과는 참고 자료로서 제공되며, 이를 기반으로 한 이용자의 의사결정에 대해 회사는 책임을 지지 않습니다."
+                    },
+                    "7": {
+                        "title": "제7조 (분쟁 해결)",
+                        "content": "본 약관과 관련하여 발생하는 분쟁은 대한민국 법률을 준거법으로 하며, 서울중앙지방법원을 제1심 관할법원으로 합니다."
+                    }
+                }
+            }
+        },
+        "empty": {
+            "noResults": "결과가 없습니다",
+            "noData": "데이터가 없습니다",
+            "tryAgain": "다시 시도해 주세요",
+            "noOutliers": "아웃라이어가 없습니다",
+            "noContent": "아직 콘텐츠가 없습니다",
+            "noAccess": "접근 권한이 없습니다",
+            "accessDenied": "접근 거부됨",
+            "loginRequired": "이 페이지를 보려면 로그인이 필요합니다.",
+            "login": "로그인",
+            "home": "홈으로"
+        },
+        "virloVideoCard": {
+            "embedNotAvailable": "임베드를 사용할 수 없습니다",
+            "viewOn": "{platform}에서 보기",
+            "topComment": "베스트 댓글",
+            "peakEngagement": "{sec}초에 참여도 최고",
+            "hookDuration": "{sec}초 훅",
+            "promote": "홍보하기"
+        },
+        "patternAnswerCard": {
+            "tiktok": "틱톡",
+            "youtube": "유튜브 쇼츠",
+            "instagram": "인스타 릴스",
+            "tierSuffix": "티어",
+            "resurfaced": "재등장",
+            "hook": "훅",
+            "timing": "타이밍",
+            "audio": "오디오",
+            "aiAnalysis": "AI 데이터 기반 분석",
+            "analyzedVideos": "분석 영상",
+            "countSuffix": "개",
+            "avgViews": "평균 조회수",
+            "viewsSuffix": "만",
+            "topPercentile": "성과 상위",
+            "expectedFilming": "예상 촬영",
+            "minsSuffix": "분",
+            "fitScore": "적합도",
+            "evidence": "증거",
+            "startGuide": "촬영 가이드 시작"
+        },
+        "simpleCreatorGuide": {
+            "notFound": "패턴을 찾을 수 없습니다",
+            "guideTitle": "Creator Guide",
+            "patternSuffix": "패턴",
+            "variationCount": "변주 {count}개",
+            "invariantTitle": "이건 꼭 지켜주세요",
+            "noInvariant": "규칙 없음",
+            "variableTitle": "여기서 창의력 발휘!",
+            "noVariable": "변주 포인트 없음",
+            "startFilming": "촬영 시작하기"
+        },
+        "loading": {
+            "loading": "로딩 중...",
+            "pleaseWait": "잠시만 기다려 주세요"
+        },
+        "error": {
+            "somethingWentWrong": "문제가 발생했습니다",
+            "tryAgain": "다시 시도",
+            "goBack": "돌아가기",
+            "networkError": "네트워크 오류",
+            "serverError": "서버 오류"
+        },
+        "languageToggle": {
+            "korean": "한국어",
+            "english": "English",
+            "switchTo": "언어 변경"
+        },
+        "viralGuide": {
+            "title": "바이럴 가이드",
+            "hook": "훅",
+            "timing": "타이밍",
+            "audio": "오디오",
+            "invariants": "불변 요소",
+            "variables": "가변 요소",
+            "doNot": "하지 말 것",
+            "shotlist": "샷리스트",
+            "bestComments": "베스트 댓글"
+        },
+        "evidence": {
+            "title": "에비던스",
+            "viewEvidence": "에비던스 보기",
+            "recurrence": "반복 패턴",
+            "historicalLift": "역사적 상승률",
+            "originYear": "원년"
+        },
+        "feedback": {
+            "helpful": "도움이 됐어요",
+            "notHelpful": "아쉬워요",
+            "submit": "제출",
+            "thanks": "피드백 감사합니다!"
+        }
+    },
+    "meta": {
+        "title": "Komission | 바이럴 콘텐츠 인텔리전스",
+        "description": "하이브리드 AI 기반 밈 진화 및 커머스 플랫폼"
+    }
+}

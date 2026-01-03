@@ -108,6 +108,7 @@ async def list_outliers(
 
 
 
+@router.get("/", response_model=List[RemixNodeResponse])
 @router.get("", response_model=List[RemixNodeResponse])
 async def list_remix_nodes(
     skip: int = Query(0, ge=0),
@@ -182,10 +183,11 @@ async def get_remix_node(
     )
 
 
+@router.post("/", response_model=RemixNodeResponse, status_code=status.HTTP_201_CREATED)
 @router.post("", response_model=RemixNodeResponse, status_code=status.HTTP_201_CREATED)
 async def create_remix_node(
     data: RemixNodeCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new master remix node (Admin only)"""
@@ -226,7 +228,7 @@ async def create_remix_node(
 @router.post("/{node_id}/analyze")
 async def analyze_node_video(
     node_id: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Run Gemini analysis + Claude Planning on a node's source video (Admin only)"""

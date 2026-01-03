@@ -67,3 +67,5 @@ tiktok_bundle.tgz
 backend/token.json
 backend/oauth_client.json
 backend/tiktok_cookies_auto.json
+.docker-data/
+backups/

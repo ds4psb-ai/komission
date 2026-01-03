@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 /**
  * ConsentDemo - 동의 UI 테스트 페이지
  */
@@ -9,6 +11,7 @@ import { Database, RefreshCw, AlertCircle } from 'lucide-react';
 
 export default function ConsentDemoPage() {
     const { requestConsent, executeWithConsent, consentHistory, isPending } = useConsent();
+    const t = useTranslations('pages.session.consentDemo');
     const [result, setResult] = useState<string | null>(null);
     const isMountedRef = useRef(true);
 
@@ -31,9 +34,9 @@ export default function ConsentDemoPage() {
 
         if (isMountedRef.current) {
             if (success) {
-                setResult(`Source Pack 생성 완료: ${JSON.stringify(success)}`);
+                setResult(`${t('results.sourcePackComplete')}: ${JSON.stringify(success)}`);
             } else {
-                setResult('사용자가 취소했습니다.');
+                setResult(t('results.cancelled'));
             }
         }
     };
@@ -50,9 +53,9 @@ export default function ConsentDemoPage() {
 
         if (isMountedRef.current) {
             if (success) {
-                setResult(`VDG 재분석 요청됨: ${JSON.stringify(success)}`);
+                setResult(`${t('results.vdgQueued')}: ${JSON.stringify(success)}`);
             } else {
-                setResult('사용자가 취소했습니다.');
+                setResult(t('results.cancelled'));
             }
         }
     };
@@ -60,17 +63,17 @@ export default function ConsentDemoPage() {
     // 커스텀 동의 요청
     const handleCustomConsent = async () => {
         const consented = await requestConsent('custom_action', {
-            name: '커스텀 작업',
-            description: '이것은 커스텀 동의 요청 예시입니다.',
+            name: t('customConsent.name'),
+            description: t('customConsent.requestDesc'),
             type: 'external_api',
             details: ['외부 서비스에 데이터 전송', '응답 시간은 상황에 따라 다름'],
         });
 
         if (isMountedRef.current) {
             if (consented) {
-                setResult('커스텀 작업: 동의함');
+                setResult(`${t('customConsent.name')}: ${t('results.consented')}`);
             } else {
-                setResult('커스텀 작업: 거부함');
+                setResult(`${t('customConsent.name')}: ${t('results.rejected')}`);
             }
         }
     };
@@ -80,17 +83,17 @@ export default function ConsentDemoPage() {
             <main className="max-w-lg mx-auto px-4 py-8 space-y-8">
                 <div>
                     <h1 className="text-2xl font-bold text-white mb-2">
-                        동의 UI 데모
+                        {t('title')}
                     </h1>
                     <p className="text-white/60">
-                        MCP Tools 실행 전 사용자 동의 요청 테스트
+                        {t('subtitle')}
                     </p>
                 </div>
 
                 {/* Test Buttons */}
                 <div className="space-y-4">
                     <h2 className="text-sm font-medium text-white/40 uppercase tracking-wider">
-                        동의 필요 작업
+                        {t('requiresConsent')}
                     </h2>
 
                     <button
@@ -102,8 +105,8 @@ export default function ConsentDemoPage() {
                             <Database className="w-5 h-5 text-blue-400" />
                         </div>
                         <div className="text-left">
-                            <p className="font-medium text-white">Source Pack 생성</p>
-                            <p className="text-sm text-white/50">데이터 생성 필요</p>
+                            <p className="font-medium text-white">{t('sourcePack.title')}</p>
+                            <p className="text-sm text-white/50">{t('sourcePack.description')}</p>
                         </div>
                     </button>
 
@@ -116,8 +119,8 @@ export default function ConsentDemoPage() {
                             <RefreshCw className="w-5 h-5 text-amber-400" />
                         </div>
                         <div className="text-left">
-                            <p className="font-medium text-white">VDG 재분석</p>
-                            <p className="text-sm text-white/50">비용 발생 (~$0.05-0.10)</p>
+                            <p className="font-medium text-white">{t('vdgReanalyze.title')}</p>
+                            <p className="text-sm text-white/50">{t('vdgReanalyze.description')}</p>
                         </div>
                     </button>
 
@@ -130,8 +133,8 @@ export default function ConsentDemoPage() {
                             <AlertCircle className="w-5 h-5 text-purple-400" />
                         </div>
                         <div className="text-left">
-                            <p className="font-medium text-white">커스텀 동의 요청</p>
-                            <p className="text-sm text-white/50">외부 API 호출</p>
+                            <p className="font-medium text-white">{t('customConsent.title')}</p>
+                            <p className="text-sm text-white/50">{t('customConsent.description')}</p>
                         </div>
                     </button>
                 </div>
@@ -147,7 +150,7 @@ export default function ConsentDemoPage() {
                 {consentHistory.length > 0 && (
                     <div className="space-y-3">
                         <h2 className="text-sm font-medium text-white/40 uppercase tracking-wider">
-                            동의 이력
+                            {t('history.title')}
                         </h2>
                         <div className="space-y-2">
                             {consentHistory.slice(-5).reverse().map((item, i) => (
@@ -157,7 +160,7 @@ export default function ConsentDemoPage() {
                                 >
                                     <span className="text-sm text-white/70">{item.actionId}</span>
                                     <span className={`text-xs ${item.consented ? 'text-green-400' : 'text-red-400'}`}>
-                                        {item.consented ? '동의' : '거부'}
+                                        {item.consented ? t('history.consent') : t('history.reject')}
                                     </span>
                                 </div>
                             ))}

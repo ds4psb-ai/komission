@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 /**
  * /outliers → /ops/outliers 리다이렉트
  * 

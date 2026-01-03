@@ -22,6 +22,7 @@ import {
     Camera, Mic, Film, Users, Truck, MapPin, Calendar,
     ChevronRight, Award, Star, Lock, Rocket, Video
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 // ==================
 // Types
@@ -189,10 +190,10 @@ function VideoEmbed({ video }: { video: VideoDetail }) {
     // Loading state for short link resolution
     if (isShortLink && isResolving) {
         return (
-            <div className="relative w-full h-full flex items-center justify-center bg-zinc-950/50 rounded-2xl">
-                <div className="relative w-full max-w-[340px] aspect-[9/16] bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col items-center justify-center p-6">
-                    <div className="w-8 h-8 border-2 border-white/20 border-t-pink-500 rounded-full animate-spin mb-4" />
-                    <p className="text-white/60 text-sm">링크 처리 중...</p>
+            <div className="relative w-full h-full flex items-center justify-center rounded-2xl">
+                <div className="relative w-full max-w-[340px] aspect-[9/16] bg-black border border-white/10 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col items-center justify-center p-6">
+                    <div className="w-8 h-8 border-2 border-white/20 border-t-[#c1ff00] rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(193,255,0,0.3)]" />
+                    <p className="text-white/60 text-sm font-mono uppercase tracking-widest">Processing Link...</p>
                 </div>
             </div>
         );
@@ -201,7 +202,7 @@ function VideoEmbed({ video }: { video: VideoDetail }) {
     // Fallback if no video ID found
     if (!videoId) {
         return (
-            <div className="relative w-full h-full flex items-center justify-center bg-zinc-950/50 rounded-2xl">
+            <div className="relative w-full h-full flex items-center justify-center rounded-2xl">
                 <div className="relative w-full max-w-[340px] aspect-[9/16] bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col items-center justify-center p-6">
                     <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="text-center">
                         <Play className="w-16 h-16 text-white/40 mx-auto mb-4" />
@@ -216,11 +217,12 @@ function VideoEmbed({ video }: { video: VideoDetail }) {
         // Use TikTokPlayer component with unmute button (Virlo-style UX)
         const { TikTokPlayer } = require('@/components/outlier/TikTokPlayer');
         return (
-            <div className="relative w-full h-full flex items-center justify-center bg-zinc-950/50 rounded-2xl">
+            <div className="relative w-full h-full flex items-center justify-center rounded-2xl">
                 <div className="relative w-full max-w-[340px] aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-2xl">
                     <TikTokPlayer
                         videoUrl={video.video_url}
                         videoId={videoId}
+                        size="full"
                         autoplay={false}
                         loop={true}
                         showControls={true}
@@ -234,7 +236,7 @@ function VideoEmbed({ video }: { video: VideoDetail }) {
 
     // YouTube with loop enabled
     return (
-        <div className="relative w-full h-full flex items-center justify-center bg-zinc-950/50 rounded-2xl">
+        <div className="relative w-full h-full flex items-center justify-center rounded-2xl">
             <div className="relative w-full max-w-[340px] aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-2xl">
                 <iframe
                     src={`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&loop=1&playlist=${videoId}`}
@@ -255,161 +257,85 @@ function ViralGuidePanel({ analysis }: { analysis?: VideoAnalysis }) {
     if (!analysis) return null;
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-4">
             {/* Hook - 핵심 훅 요약 */}
-            <div className="p-4 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-xl">
-                <div className="flex items-center justify-between mb-2">
+            <div className="p-5 bg-black/40 backdrop-blur-md border border-[#c1ff00]/20 rounded-3xl relative overflow-hidden">
+                <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                        <Target className="w-4 h-4 text-cyan-400" />
-                        <span className="text-sm font-bold text-white">🎣 훅 패턴</span>
+                        <Target className="w-4 h-4 text-[#c1ff00]" />
+                        <span className="text-xs font-black tracking-wider text-[#c1ff00] uppercase">Hook Pattern</span>
                     </div>
                     {typeof analysis.hook_score === 'number' && (
-                        <span className="px-2 py-0.5 bg-cyan-500/20 rounded text-xs text-cyan-300 font-mono">
-                            {analysis.hook_score < 1
-                                ? `${(analysis.hook_score * 10).toFixed(1)}/10`
-                                : `${analysis.hook_score}/10`}
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black font-mono ${analysis.hook_score >= 8 ? 'bg-[#c1ff00] text-black' : 'bg-white/10 text-white'
+                            }`}>
+                            {analysis.hook_score}/10
                         </span>
                     )}
                 </div>
-                <div className="text-lg font-bold text-white mb-1">
-                    {analysis.hook_pattern === 'pattern_break' ? '패턴 브레이크' :
-                        analysis.hook_pattern === 'visual_reaction' ? '시각적 리액션' :
-                            analysis.hook_pattern === 'unboxing' ? '언박싱' :
+                <div className="text-2xl font-black text-white mb-2 leading-none">
+                    {analysis.hook_pattern === 'pattern_break' ? 'PATTERN BREAK' :
+                        analysis.hook_pattern === 'visual_reaction' ? 'VISUAL REACTION' :
+                            analysis.hook_pattern === 'unboxing' ? 'UNBOXING' :
                                 analysis.hook_pattern || '-'}
                 </div>
                 {typeof analysis.hook_duration_sec === 'number' && (
-                    <div className="flex items-center gap-1 text-xs text-white/60">
-                        <Clock className="w-3 h-3" />
-                        처음 {analysis.hook_duration_sec}초 안에 시청자 잡기
+                    <div className="flex items-center gap-1.5 text-xs text-white/40 font-mono">
+                        <Clock className="w-3 h-3 text-[#c1ff00]" />
+                        Capture within <span className="text-[#c1ff00] font-bold">{analysis.hook_duration_sec}s</span>
                     </div>
                 )}
             </div>
 
-            {/* Timing - 타이밍 가이드 */}
-            {analysis.timing && analysis.timing.length > 0 && (
-                <div className="p-3 bg-gradient-to-br from-purple-500/10 to-violet-500/10 border border-purple-500/30 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Clock className="w-3.5 h-3.5 text-purple-400" />
-                        <span className="text-xs font-bold text-purple-300">⏱️ 타이밍 가이드</span>
-                        <span className="ml-auto px-1.5 py-0.5 bg-purple-500/20 rounded text-[10px] text-purple-300 font-mono">
-                            {analysis.timing.length}개 포인트
-                        </span>
-                    </div>
-                    <div className="space-y-1">
-                        {analysis.timing.slice(0, 4).map((t, i) => (
-                            <div key={i} className="text-[11px] text-white/80 flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-purple-500/50" />
-                                <span className="font-mono text-purple-200">{t}</span>
-                            </div>
-                        ))}
-                        {analysis.timing.length > 4 && (
-                            <div className="text-[10px] text-white/40">+{analysis.timing.length - 4}개 더...</div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Shotlist - 샷리스트 */}
-            {analysis.shotlist && analysis.shotlist.length > 0 && (
-                <div className="p-3 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/30 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Camera className="w-3.5 h-3.5 text-blue-400" />
-                        <span className="text-xs font-bold text-blue-300">🎬 샷리스트</span>
-                        <span className="ml-auto px-1.5 py-0.5 bg-blue-500/20 rounded text-[10px] text-blue-300 font-mono">
-                            {analysis.shotlist.length}개 샷
-                        </span>
-                    </div>
-                    <div className="space-y-2">
-                        {analysis.shotlist.slice(0, 3).map((shot, i) => (
-                            <div key={i} className="text-[11px] text-white/80 p-2 bg-white/5 rounded-lg border border-white/10">
-                                <span className="text-blue-300">{i + 1}.</span> {typeof shot === 'string' ? shot : (shot as { description?: string })?.description || ''}
-                            </div>
-                        ))}
-                        {analysis.shotlist.length > 3 && (
-                            <div className="text-[10px] text-white/40 text-center">+{analysis.shotlist.length - 3}개 더...</div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Visual + Audio 통합 */}
-            <div className="grid grid-cols-2 gap-2">
-                {/* Visual */}
-                {analysis.visual_patterns && analysis.visual_patterns.length > 0 && (
-                    <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
-                        <div className="flex items-center gap-1.5 mb-2">
-                            <Camera className="w-3.5 h-3.5 text-pink-400" />
-                            <span className="text-xs font-bold text-white">📷 영상 기법</span>
+            {/* Timing & Shotlist Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Timing */}
+                {analysis.timing && analysis.timing.length > 0 && (
+                    <div className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-[#c1ff00]/30 transition-colors group">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Clock className="w-4 h-4 text-[#c1ff00]" />
+                            <span className="text-xs font-bold text-white uppercase tracking-wider">Timing</span>
                         </div>
-                        <div className="flex flex-wrap gap-1">
-                            {analysis.visual_patterns.slice(0, 4).map((p, i) => (
-                                <span key={i} className="px-1.5 py-0.5 bg-pink-500/10 border border-pink-500/30 rounded text-[10px] text-pink-300">
-                                    {p}
-                                </span>
+                        <div className="space-y-1.5">
+                            {analysis.timing.slice(0, 4).map((t, i) => (
+                                <div key={i} className="text-[11px] text-white/60 flex items-center gap-2 font-mono group-hover:text-white transition-colors">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#c1ff00]" />
+                                    {t}
+                                </div>
                             ))}
                         </div>
                     </div>
                 )}
 
-                {/* Audio */}
-                {analysis.audio_pattern && (
-                    <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
-                        <div className="flex items-center gap-1.5 mb-2">
-                            <Mic className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-xs font-bold text-white">🎵 오디오</span>
+                {/* Shotlist */}
+                {analysis.shotlist && analysis.shotlist.length > 0 && (
+                    <div className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-[#c1ff00]/30 transition-colors group">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Camera className="w-4 h-4 text-[#c1ff00]" />
+                            <span className="text-xs font-bold text-white uppercase tracking-wider">Shotlist</span>
                         </div>
-                        <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded text-[10px] text-emerald-300">
-                            {analysis.audio_pattern}
-                        </span>
+                        <div className="space-y-2">
+                            {analysis.shotlist.slice(0, 3).map((shot, i) => (
+                                <div key={i} className="text-[10px] text-white/60 leading-relaxed font-mono">
+                                    <span className="text-[#c1ff00] font-bold mr-1">{i + 1}.</span>
+                                    {typeof shot === 'string' ? shot : (shot as any)?.description || ''}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
 
-            {/* 주의사항 */}
-            {analysis.do_not && analysis.do_not.length > 0 && (
-                <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-xl">
-                    <div className="text-xs text-red-300 font-bold mb-1">⛔ 주의</div>
-                    {analysis.do_not.map((item, i) => (
-                        <div key={i} className="text-xs text-red-300/70">• {item}</div>
-                    ))}
-                </div>
-            )}
-
-            {/* Invariant - 절대 유지 */}
+            {/* Invariant & Variable */}
             {analysis.invariant && analysis.invariant.length > 0 && (
-                <div className="p-3 bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-xl">
+                <div className="p-4 bg-black/40 border border-[#c1ff00]/20 rounded-2xl hover:border-[#c1ff00]/50 transition-colors">
                     <div className="flex items-center gap-2 mb-2">
-                        <Lock className="w-3.5 h-3.5 text-orange-400" />
-                        <span className="text-xs font-bold text-orange-300">🔒 핵심 유지 요소</span>
-                        <span className="ml-auto px-1.5 py-0.5 bg-orange-500/20 rounded text-[10px] text-orange-300 font-mono">
-                            {analysis.invariant.length}개
-                        </span>
+                        <Lock className="w-3.5 h-3.5 text-[#c1ff00]" />
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">Invariants (Do Not Change)</span>
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 pl-1">
                         {analysis.invariant.map((item, i) => (
-                            <div key={i} className="text-[11px] text-white/80 flex items-start gap-1.5">
-                                <span className="text-orange-400">•</span>
-                                <span>{item}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Variable - 창의성 발휘 */}
-            {analysis.variable && analysis.variable.length > 0 && (
-                <div className="p-3 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-xs font-bold text-emerald-300">✨ 변주 가능 요소</span>
-                        <span className="ml-auto px-1.5 py-0.5 bg-emerald-500/20 rounded text-[10px] text-emerald-300 font-mono">
-                            {analysis.variable.length}개
-                        </span>
-                    </div>
-                    <div className="space-y-1">
-                        {analysis.variable.map((item, i) => (
-                            <div key={i} className="text-[11px] text-white/80 flex items-start gap-1.5">
-                                <span className="text-emerald-400">✓</span>
+                            <div key={i} className="text-[11px] text-white/70 flex items-start gap-2 font-mono">
+                                <span className="text-[#c1ff00]/50">•</span>
                                 <span>{item}</span>
                             </div>
                         ))}
@@ -428,44 +354,48 @@ function CampaignPanel({ video }: { video: VideoDetail }) {
     const [selectedType, setSelectedType] = useState<'product' | 'visit' | 'delivery'>(video.campaignType || 'product');
 
     return (
-        <div className="p-4 bg-gradient-to-br from-violet-500/10 to-pink-500/10 border border-violet-500/30 rounded-xl">
-            <div className="flex items-center gap-2 mb-4">
-                <Users className="w-4 h-4 text-violet-400" />
-                <span className="text-sm font-bold text-white">숏폼 체험단</span>
-                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded-full">모집중</span>
+        <div className="p-5 bg-black/40 border border-[#c1ff00]/20 rounded-3xl relative overflow-hidden group hover:border-[#c1ff00]/40 transition-colors">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#c1ff00] blur-[100px] opacity-10 group-hover:opacity-20 transition-opacity" />
+
+            <div className="flex items-center gap-2 mb-6 relative">
+                <Users className="w-5 h-5 text-[#c1ff00]" />
+                <span className="text-base font-black italic text-white">CAMPAIGN</span>
+                <span className="px-2 py-0.5 bg-[#c1ff00] text-black text-[10px] font-black rounded-full animate-pulse">LIVE</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-3 gap-2 mb-6 relative">
                 {[
-                    { type: 'product', icon: Truck, label: '제품 배송' },
-                    { type: 'visit', icon: MapPin, label: '방문 체험' },
-                    { type: 'delivery', icon: Calendar, label: '촬영 예약' },
+                    { type: 'product', icon: Truck, label: 'SHIPPING' },
+                    { type: 'visit', icon: MapPin, label: 'VISIT' },
+                    { type: 'delivery', icon: Calendar, label: 'BOOKING' },
                 ].map(({ type, icon: Icon, label }) => (
                     <button
                         key={type}
                         onClick={() => setSelectedType(type as any)}
-                        className={`p-3 rounded-lg border text-center transition-all ${selectedType === type
-                            ? 'bg-violet-500/20 border-violet-500/50 text-violet-300'
-                            : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+                        className={`p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all duration-300 ${selectedType === type
+                            ? 'bg-[#c1ff00] border-[#c1ff00] text-black shadow-[0_0_15px_rgba(193,255,0,0.4)] scale-105'
+                            : 'bg-black/40 border-white/10 text-white/40 hover:text-white hover:border-white/30'
                             }`}
                     >
-                        <Icon className="w-5 h-5 mx-auto mb-1" />
-                        <span className="text-[10px] font-bold">{label}</span>
+                        <Icon className="w-5 h-5" />
+                        <span className="text-[10px] font-black tracking-wider">{label}</span>
                     </button>
                 ))}
             </div>
 
-            <div className="space-y-2 mb-4 text-xs">
-                <div className="flex justify-between"><span className="text-white/60">참여</span><span className="text-white font-bold">12/20명</span></div>
-                <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full w-3/5 bg-gradient-to-r from-violet-500 to-pink-500 rounded-full" />
+            <div className="space-y-3 mb-6 text-xs relative">
+                <div className="flex justify-between"><span className="text-white/40 font-bold uppercase">Participation</span><span className="text-white font-bold font-mono">12/20</span></div>
+                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full w-3/5 bg-[#c1ff00] rounded-full shadow-[0_0_10px_rgba(193,255,0,0.5)]" />
                 </div>
-                <div className="flex justify-between"><span className="text-white/60">예상 노출</span><span className="text-emerald-400 font-bold">500K~2M</span></div>
+                <div className="flex justify-between"><span className="text-white/40 font-bold uppercase">Est. Reach</span><span className="text-[#c1ff00] font-bold font-mono">500K~2M</span></div>
             </div>
 
-            <button className="w-full py-3 bg-gradient-to-r from-violet-500 to-pink-500 text-white text-sm font-bold rounded-xl hover:brightness-110 transition-all flex items-center justify-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                캠페인 참여 신청
+            <button className="w-full py-4 bg-white text-black text-sm font-black uppercase tracking-wider rounded-2xl hover:bg-[#c1ff00] transition-colors flex items-center justify-center gap-2 shadow-lg relative overflow-hidden group/btn">
+                <span className="relative z-10 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    APPLY NOW
+                </span>
             </button>
         </div>
     );
@@ -561,6 +491,7 @@ export default function VideoDetailPage() {
     const params = useParams();
     const router = useRouter();
     const videoId = params?.id as string;
+    const t = useTranslations('components.coaching');
 
     const [video, setVideo] = useState<VideoDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -570,6 +501,7 @@ export default function VideoDetailPage() {
     const [showCoaching, setShowCoaching] = useState(false);
     const [coachingMode, setCoachingMode] = useState<'homage' | 'variation' | 'campaign'>('variation');
     const [showModeSelector, setShowModeSelector] = useState(false);
+
 
     useEffect(() => {
         return () => {
@@ -691,7 +623,7 @@ export default function VideoDetailPage() {
                 <div className="text-center">
                     <div className="text-4xl mb-4">🎬</div>
                     <p className="text-white/60">영상을 찾을 수 없습니다</p>
-                    <Link href="/" className="mt-4 inline-block text-violet-400 hover:text-violet-300">← 홈으로</Link>
+                    <Link href="/" className="mt-4 inline-block text-[#c1ff00] hover:text-white transition-colors tracking-wide text-sm font-bold">← BACK TO FEED</Link>
                 </div>
             </div>
         );
@@ -711,19 +643,19 @@ export default function VideoDetailPage() {
             <AppHeader />
 
             {/* Header */}
-            <div className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-lg border-b border-white/10">
+            <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-[#c1ff00]/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
                 <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-                    <button onClick={() => router.back()} className="flex items-center gap-2 text-white/60 hover:text-white">
-                        <ArrowLeft className="w-5 h-5" />
-                        <span className="text-sm">뒤로</span>
+                    <button onClick={() => router.back()} className="flex items-center gap-2 group">
+                        <div className="p-2 rounded-full bg-white/5 group-hover:bg-[#c1ff00] transition-colors">
+                            <ArrowLeft className="w-4 h-4 text-white group-hover:text-black" />
+                        </div>
+                        <span className="text-sm font-bold text-white/60 group-hover:text-white transition-colors">BACK</span>
                     </button>
 
                     <div className="flex items-center gap-2">
-                        <button onClick={handleCopyLink} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white">
-                            {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                        <button className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white">
-                            <Bookmark className="w-4 h-4" />
+                        <button onClick={handleCopyLink} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 hover:border-[#c1ff00]/50 transition-all group">
+                            {copied ? <Check className="w-3.5 h-3.5 text-[#c1ff00]" /> : <Copy className="w-3.5 h-3.5 text-white/60 group-hover:text-white" />}
+                            <span className="text-xs font-bold text-white/60 group-hover:text-white">{copied ? 'COPIED' : 'SHARE'}</span>
                         </button>
                     </div>
                 </div>
@@ -735,10 +667,17 @@ export default function VideoDetailPage() {
                     {/* Left: Video */}
                     <div className="lg:col-span-5">
                         <div className="sticky top-20">
-                            <VideoEmbed video={video} />
+                            <div className="relative group">
+                                <div className="absolute -inset-1 bg-gradient-to-br from-[#c1ff00] to-purple-600 rounded-3xl opacity-20 group-hover:opacity-40 blur-xl transition-opacity duration-500" />
+                                <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-black shadow-2xl w-full max-w-[340px] mx-auto">
+                                    <VideoEmbed video={video} />
+                                </div>
+                            </div>
 
-                            <div className="mt-4 space-y-3">
-                                <h1 className="text-xl font-bold text-white">{video.title}</h1>
+                            <div className="mt-6 space-y-4 px-2">
+                                <h1 className="text-2xl font-black italic tracking-tight text-white leading-tight uppercase">
+                                    {video.title}
+                                </h1>
 
                                 <div className="flex items-center gap-3">
                                     {video.creator && (
@@ -790,11 +729,11 @@ export default function VideoDetailPage() {
                         */}
 
                         <div>
-                            <div className="flex items-center gap-2 mb-4">
-                                <Sparkles className="w-5 h-5 text-cyan-400" />
-                                <h2 className="text-lg font-bold text-white">바이럴 가이드</h2>
-                                <ChevronRight className="w-4 h-4 text-white/40" />
-                                <span className="text-sm text-white/50">{video.category}</span>
+                            <div className="flex items-center gap-2 mb-4 group cursor-default">
+                                <Sparkles className="w-5 h-5 text-[#c1ff00] animate-pulse" />
+                                <h2 className="text-lg font-black italic text-white uppercase tracking-tight group-hover:text-[#c1ff00] transition-colors">VIRAL GUIDE</h2>
+                                <ChevronRight className="w-4 h-4 text-white/20" />
+                                <span className="px-2 py-0.5 bg-white/10 rounded-full text-[10px] font-bold text-white/60 uppercase tracking-wider">{video.category}</span>
                             </div>
                             <ViralGuidePanel analysis={video.analysis} />
                         </div>
@@ -804,12 +743,12 @@ export default function VideoDetailPage() {
                             <StoryboardPanel rawVdg={video.rawVdg} defaultExpanded={true} />
                         ) : video.viral_kicks && video.viral_kicks.length > 0 ? (
                             /* P1-1: Viral Kicks from normalized DB table */
-                            <div className="p-4 bg-gradient-to-br from-pink-500/10 to-orange-500/10 border border-pink-500/30 rounded-xl">
+                            <div className="p-4 bg-[#c1ff00]/5 border border-[#c1ff00]/20 rounded-xl group hover:border-[#c1ff00]/40 transition-colors">
                                 <div className="flex items-center gap-2 mb-4">
-                                    <Film className="w-4 h-4 text-pink-400" />
-                                    <span className="text-sm font-bold text-white">🎬 바이럴 킥 포인트</span>
-                                    <span className="px-2 py-0.5 bg-pink-500/20 text-pink-300 text-[10px] font-bold rounded-full">
-                                        {video.viral_kicks.length}개
+                                    <Film className="w-4 h-4 text-[#c1ff00]" />
+                                    <span className="text-sm font-bold text-white uppercase tracking-wider">VIRAL KICKS</span>
+                                    <span className="px-2 py-0.5 bg-[#c1ff00]/20 text-[#c1ff00] text-[10px] font-black rounded-full">
+                                        {video.viral_kicks.length} DETECTED
                                     </span>
                                 </div>
                                 <div className="space-y-3">
@@ -857,20 +796,22 @@ export default function VideoDetailPage() {
                                 <CampaignPanel video={video} />
                             </div>
                         ) : (
-                            <div className="p-4 bg-gradient-to-br from-violet-500/5 to-pink-500/5 border border-violet-500/20 rounded-xl">
+                            <div className="p-4 bg-white/5 border border-white/10 rounded-xl hover:border-[#c1ff00]/30 transition-colors group">
                                 <div className="flex items-center gap-2 mb-3">
-                                    <Users className="w-4 h-4 text-violet-400" />
-                                    <span className="text-sm font-bold text-white">체험단 캠페인</span>
+                                    <Users className="w-4 h-4 text-[#c1ff00]" />
+                                    <span className="text-sm font-bold text-white uppercase tracking-wider">Remix Campaign</span>
                                 </div>
-                                <p className="text-xs text-white/50 mb-4">이 영상으로 체험단을 모집하고 싶으신가요?</p>
+                                <p className="text-xs text-white/50 mb-4">Want to launch a remix campaign with this outlier?</p>
                                 <button
                                     onClick={() => router.push(`/o2o/campaigns/create?video_id=${video.id}`)}
-                                    className="w-full py-3 bg-gradient-to-r from-violet-500 to-pink-500 text-white text-sm font-bold rounded-xl hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                                    className="w-full py-3 bg-[#c1ff00] text-black text-sm font-black uppercase tracking-wider rounded-xl hover:bg-white transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(193,255,0,0.3)]"
                                 >
                                     <Rocket className="w-4 h-4" />
-                                    체험단 열기
+                                    LAUNCH CAMPAIGN
                                 </button>
-                                <p className="text-[10px] text-white/30 mt-2 text-center">크리에이터들이 이 영상을 오마주합니다</p>
+                                <p className="text-[10px] text-white/30 mt-3 text-center font-mono">
+                                    Creators are ready to remix this logic
+                                </p>
                             </div>
                         )}
 
@@ -898,32 +839,33 @@ export default function VideoDetailPage() {
                         )}
 
                         {/* 🎙️ AI Coaching CTA - NEW */}
-                        <div className="p-4 bg-gradient-to-br from-cyan-500/10 to-emerald-500/10 border border-cyan-500/30 rounded-xl">
+                        <div className="p-4 bg-black/40 border border-[#c1ff00]/20 rounded-2xl hover:border-[#c1ff00]/40 transition-colors group">
                             <div className="flex items-center gap-2 mb-3">
-                                <Video className="w-4 h-4 text-cyan-400" />
-                                <span className="text-sm font-bold text-white">AI 코칭 촬영</span>
-                                <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 text-[10px] font-bold rounded-full">NEW</span>
+                                <Video className="w-4 h-4 text-[#c1ff00]" />
+                                <span className="text-sm font-black italic text-white uppercase tracking-wider">AI COACHING</span>
+                                <span className="px-2 py-0.5 bg-[#c1ff00] text-black text-[10px] font-black uppercase rounded-sm animate-pulse">NEW</span>
                             </div>
-                            <p className="text-xs text-white/50 mb-4">AI가 실시간으로 촬영을 도와드립니다</p>
+                            <p className="text-xs text-white/50 mb-4 font-mono">Real-time AI camera direction & feedback</p>
 
                             <button
                                 onClick={() => setShowModeSelector(true)}
-                                className="w-full py-3 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white text-sm font-bold rounded-xl hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-[#c1ff00] text-black text-sm font-black uppercase tracking-wider rounded-xl hover:bg-white transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(193,255,0,0.3)] hover:shadow-[0_0_20px_rgba(255,255,255,0.5)] group/btn"
                             >
-                                <Mic className="w-4 h-4" />
-                                🎬 촬영 시작하기
+                                <Mic className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                                START COACHING
                             </button>
                         </div>
 
+                        {/* View Original Button - Virlo-style at bottom of sidebar */}
                         {/* View Original Button - Virlo-style at bottom of sidebar */}
                         <a
                             href={video.video_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 hover:text-white transition-all"
+                            className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#c1ff00]/50 rounded-xl text-white/40 hover:text-white transition-all group"
                         >
-                            <ExternalLink className="w-4 h-4" />
-                            <span className="text-sm font-medium">원본 보기</span>
+                            <ExternalLink className="w-4 h-4 group-hover:text-[#c1ff00] transition-colors" />
+                            <span className="text-xs font-bold uppercase tracking-widest">View Original</span>
                         </a>
                     </div>
                 </div>
@@ -940,9 +882,9 @@ export default function VideoDetailPage() {
 
                         <div className="space-y-3 mb-6">
                             {[
-                                { mode: 'homage' as const, icon: '🎯', label: '오마쥬', desc: '원본을 최대한 따라하기' },
-                                { mode: 'variation' as const, icon: '✨', label: '변주', desc: '핵심은 유지, 나만의 스타일로' },
-                                { mode: 'campaign' as const, icon: '📦', label: '체험단', desc: '제품/장소 홍보 촬영' },
+                                { mode: 'homage' as const, icon: '🎯', label: t('homage'), desc: t('homageDesc') },
+                                { mode: 'variation' as const, icon: '✨', label: t('variation'), desc: t('variationDesc') },
+                                { mode: 'campaign' as const, icon: '📦', label: t('campaign'), desc: t('campaignDesc') },
                             ].map(({ mode, icon, label, desc }) => (
                                 <button
                                     key={mode}

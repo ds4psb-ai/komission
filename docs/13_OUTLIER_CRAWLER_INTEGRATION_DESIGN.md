@@ -195,13 +195,13 @@ Outlier Node ─────────────────▶ Parent Node
 
 **Key Principle**: DB = Source of Record, Sheets = 공유 버스
 
-### 4.2 API Endpoints [PROPOSED]
+### 4.2 API Endpoints
 
 ```
 GET  /api/v1/outliers              # List with filters
-GET  /api/v1/outliers/{id}         # Detail view
-POST /api/v1/outliers/{id}/promote # Promote to Parent
-POST /api/v1/crawlers/run          # Trigger crawl (admin)
+GET  /api/v1/outliers/items/{item_id}         # Detail view
+POST /api/v1/outliers/items/{item_id}/promote # Promote to Parent
+POST /api/v1/crawlers/run          # Trigger crawl (curator/admin)
 GET  /api/v1/crawlers/status       # Crawl status
 ```
 
@@ -281,21 +281,21 @@ IG_BUSINESS_ACCOUNT_ID=xxx
 - [x] Schema with outlier metrics
 
 ### Phase 2: API & DB Integration
-- [ ] REST API endpoints for outliers
-- [ ] Promotion logic (outlier → parent)
-- [ ] Sheet sync script completion
+- [x] REST API endpoints for outliers
+- [x] Promotion logic (outlier → parent)
+- [x] Sheet sync script exists (manual execution)
 
 ### Phase 3: UI Components (✅ Complete)
 - [x] `CrawlerOutlierCard` component → `frontend/src/components/CrawlerOutlierCard.tsx`
-- [x] Outlier list view with filters → `/outliers` page
+- [x] Outlier list view with filters → `/` (홈) / `/ops/outliers` (Ops)
 - [x] `CrawlerOutlierNode` for Canvas → `frontend/src/components/canvas/CustomNodes.tsx`
 - [x] `CrawlerOutlierSelector` modal → `frontend/src/components/canvas/CrawlerOutlierSelector.tsx`
 - [x] Promotion flow UX (placeholder, pending backend API)
 
 ### Phase 4: Automation
-- [ ] Scheduled crawler runs (cron/n8n)
-- [ ] Real-time Sheet sync
-- [ ] Notification on new S-tier outliers
+- [ ] Scheduled crawler runs (cron/n8n) — cron example exists, deployment TBD
+- [ ] Real-time Sheet sync — script exists, automation TBD
+- [x] Notification on new S-tier outliers (Slack/Email if configured)
 
 ---
 

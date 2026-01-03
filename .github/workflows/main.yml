@@ -5,10 +5,12 @@ on:
     branches: [ "main", "develop" ]
     paths:
       - 'backend/**'
+      - 'scripts/**'
   pull_request:
     branches: [ "main", "develop" ]
     paths:
       - 'backend/**'
+      - 'scripts/**'
 
 defaults:
   run:
@@ -69,11 +71,27 @@ jobs:
         POSTGRES_USER: kmeme_user
         POSTGRES_PASSWORD: kmeme_password
         POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
         POSTGRES_DB: kmeme_db
         REDIS_HOST: localhost
         ENVIRONMENT: test
       run: |
         pytest --cov=app --cov-report=xml tests/
+
+    - name: Smoke Test Coaching WebSocket
+      env:
+        POSTGRES_USER: kmeme_user
+        POSTGRES_PASSWORD: kmeme_password
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        POSTGRES_DB: kmeme_db
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+        GEMINI_API_KEY: local_dummy
+        SKIP_GEMINI_LIVE: "1"
+        ENVIRONMENT: development
+      run: |
+        ../scripts/smoke_coaching_ws.sh
 
     - name: Upload Coverage
       uses: codecov/codecov-action@v4

@@ -3,14 +3,21 @@ Audio Coach API Router
 
 DirectorPack 기반 실시간 오디오 코칭 세션 관리
 
-Endpoints:
-- POST /coaching/sessions - 새 코칭 세션 생성 (with control group assignment)
-- GET /coaching/sessions/{session_id} - 세션 상태 조회
-- DELETE /coaching/sessions/{session_id} - 세션 종료
-- POST /coaching/sessions/{session_id}/feedback - 사용자 피드백
-- POST /coaching/sessions/{session_id}/events - 이벤트 로깅 (P1)
-- GET /coaching/sessions/{session_id}/events - 이벤트 조회 (P1)
-- GET /coaching/sessions/{session_id}/summary - 세션 요약 (P1)
+Endpoints (primary /api/v1/coaching, legacy /coaching):
+- POST /api/v1/coaching/sessions - 새 코칭 세션 생성 (with control group assignment)
+- GET /api/v1/coaching/sessions - 세션 목록 (Admin)
+- GET /api/v1/coaching/sessions/{session_id} - 세션 상태 조회
+- DELETE /api/v1/coaching/sessions/{session_id} - 세션 종료
+- POST /api/v1/coaching/sessions/{session_id}/end - 세션 종료 (JSON body 지원)
+- POST /api/v1/coaching/sessions/{session_id}/feedback - 사용자 피드백
+- POST /api/v1/coaching/sessions/{session_id}/events/rule-evaluated - 규칙 평가 로깅
+- POST /api/v1/coaching/sessions/{session_id}/events/intervention - 개입 로깅
+- POST /api/v1/coaching/sessions/{session_id}/events/outcome - 결과 로깅
+- GET /api/v1/coaching/sessions/{session_id}/events - 이벤트 조회
+- GET /api/v1/coaching/sessions/{session_id}/summary - 세션 요약
+- GET /api/v1/coaching/stats/all-sessions - 세션 통계 (Admin)
+- GET /api/v1/coaching/quality/report - 로그 품질 리포트 (Admin)
+- GET /api/v1/coaching/quality/session/{session_id} - 세션 품질 (Admin)
 """
 import logging
 from datetime import timedelta
@@ -35,6 +42,7 @@ from app.services.credit_service import (
     get_user_credits, check_sufficient_credits, 
     CoachingCreditManager, COACHING_COSTS
 )
+from app.routers.auth import require_admin, User
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/coaching", tags=["coaching"])
@@ -100,6 +108,11 @@ class FeedbackResponse(BaseModel):
     """피드백 응답"""
     recorded: bool
     message: str
+
+
+class EndSessionRequest(BaseModel):
+    """세션 종료 요청 (JSON body)"""
+    duration_sec: float = 0
 
 
 # ====================
@@ -225,7 +238,7 @@ async def create_session(
     )
     
     # WebSocket URL 생성 (실제 환경에서는 도메인 설정 필요)
-    websocket_url = f"wss://api.komission.ai/v1/coaching/sessions/{session_id}/ws"
+    websocket_url = f"wss://api.komission.ai/api/v1/ws/coaching/{session_id}"
     
     return SessionResponse(
         session_id=session_id,
@@ -251,7 +264,7 @@ async def get_session_status(session_id: str):
     return SessionResponse(
         session_id=session["session_id"],
         status=session["status"],
-        websocket_url=f"wss://api.komission.ai/v1/coaching/sessions/{session_id}/ws",
+        websocket_url=f"wss://api.komission.ai/api/v1/ws/coaching/{session_id}",
         created_at=session["created_at"],
         expires_at=session["expires_at"],
         pattern_id=session["pattern_id"],
@@ -302,6 +315,12 @@ async def end_session(
     }
 
 
+@router.post("/sessions/{session_id}/end")
+async def end_session_post(session_id: str, request: EndSessionRequest):
+    """세션 종료 (JSON body 지원)"""
+    return await end_session(session_id, request.duration_sec)
+
+
 
 @router.post("/sessions/{session_id}/feedback", response_model=FeedbackResponse)
 async def submit_feedback(session_id: str, request: FeedbackRequest):
@@ -333,6 +352,7 @@ async def submit_feedback(session_id: str, request: FeedbackRequest):
 async def list_sessions(
     status: Optional[Literal["created", "active", "ended"]] = None,
     limit: int = 20,
+    current_user: User = Depends(require_admin),
 ):
     """활성 세션 목록 조회 (관리용)"""
     sessions = list(_sessions.values())
@@ -349,7 +369,7 @@ async def list_sessions(
             SessionResponse(
                 session_id=s["session_id"],
                 status=s["status"],
-                websocket_url=f"wss://api.komission.ai/v1/coaching/sessions/{s['session_id']}/ws",
+                websocket_url=f"wss://api.komission.ai/api/v1/ws/coaching/{s['session_id']}",
                 created_at=s["created_at"],
                 expires_at=s["expires_at"],
                 pattern_id=s["pattern_id"],
@@ -526,14 +546,14 @@ async def get_session_summary(session_id: str):
 
 
 @router.get("/stats/all-sessions")
-async def get_all_sessions_stats():
+async def get_all_sessions_stats(current_user: User = Depends(require_admin)):
     """P1: 전체 세션 통계 (Control Group 비율 검증용)"""
     session_logger = get_session_logger()
     return session_logger.get_all_sessions_summary()
 
 
 @router.get("/quality/report")
-async def get_log_quality_report():
+async def get_log_quality_report(current_user: User = Depends(require_admin)):
     """
     P1: 로그 품질 검증 리포트
     
@@ -571,7 +591,7 @@ async def get_log_quality_report():
 
 
 @router.get("/quality/session/{session_id}")
-async def get_session_quality(session_id: str):
+async def get_session_quality(session_id: str, current_user: User = Depends(require_admin)):
     """P1: 개별 세션 로그 품질 검증"""
     get_session(session_id)  # Verify session exists
     
@@ -752,4 +772,3 @@ async def grant_campaign_credits_to_creator(
         "granted": request.amount,
         "balance": balance,
     }
-

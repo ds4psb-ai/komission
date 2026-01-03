@@ -1,4 +1,6 @@
 "use client";
+
+import { useTranslations } from 'next-intl';
 /**
  * Kick Curation Page (P1-2)
  * 

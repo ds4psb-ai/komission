@@ -34,8 +34,8 @@ Capsule 실행 → O2O 연결 → 성과 측정
 | **Backend** | Python 3.12+, FastAPI, SQLAlchemy |
 | **Frontend** | Next.js 16, React 19, Tailwind CSS |
 | **DB** | PostgreSQL, Redis, Neo4j |
-| **AI** | Gemini 2.0 Pro |
-| **Auth** | Firebase Auth |
+| **AI** | Gemini 3.0 Pro |
+| **Auth** | Google OAuth + JWT |
 
 ## ⚡ Quick Start
 
@@ -59,12 +59,20 @@ bun install && bun run dev
 ## 🧪 테스트
 
 ```bash
-# E2E 테스트
-cd frontend
-npm run test:e2e
+# 백엔드
+cd backend
+venv/bin/pytest
 
-# 린트
-npm run lint
+# 코칭 WS 스모크
+cd ..
+scripts/smoke_coaching_ws.sh
+
+# 프론트엔드 E2E
+cd frontend
+bun run test:e2e
+
+# 프론트엔드 린트
+bun run lint
 ```
 
 ## 📁 프로젝트 구조
@@ -97,8 +105,8 @@ komission/
 | [00_EXECUTIVE_SUMMARY](docs/00_EXECUTIVE_SUMMARY.md) | 요약 |
 | [01_VDG_SYSTEM](docs/01_VDG_SYSTEM.md) | VDG 시스템 |
 | [03_IMPLEMENTATION_ROADMAP](docs/03_IMPLEMENTATION_ROADMAP.md) | 로드맵 |
-| [15_FINAL_ARCHITECTURE](docs/15_FINAL_ARCHITECTURE.md) | 최종 아키텍처 |
-| [16_PDR](docs/16_PDR.md) | 제품 요구사항 |
+| [ARCHITECTURE_FINAL](docs/ARCHITECTURE_FINAL.md) | 최종 아키텍처 |
+| [14_PDR](docs/14_PDR.md) | 제품 요구사항 |
 
 ## 📊 KPI
 

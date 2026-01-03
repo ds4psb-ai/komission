@@ -56,6 +56,7 @@ curl -X POST "https://tiktok-extractor-ubwbuq6kaa-du.a.run.app/extract?url=...&i
 ## 2.6) 수동 댓글 검토 (신규)
 
 **대상**: S/A 티어 아이템 중 댓글 추출 실패
+**권한**: Curator/Admin
 
 **프로세스**:
 1. 댓글 실패 시 자동으로 `comments_pending_review` 상태
@@ -71,11 +72,62 @@ curl -H "Authorization: Bearer $TOKEN" \
 curl -X PATCH -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"comments": [{"text": "완전 대박", "likes": 1500}]}' \
-  "https://komission-api-xxx.run.app/api/v1/outliers/items/{id}/comments"
+  "https://komission-api-xxx.run.app/api/v1/outliers/items/{item_id}/comments"
 
 # 3. VDG 분석 재시도
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-  "https://komission-api-xxx.run.app/api/v1/outliers/items/{id}/approve"
+  "https://komission-api-xxx.run.app/api/v1/outliers/items/{item_id}/approve"
+```
+
+---
+
+## 2.7) Admin 권한 부여 (운영)
+
+**원칙**: 운영 확장성을 위해 DB role 기반(`role=admin`)을 기본으로 사용하고,  
+`SUPER_ADMIN_EMAILS`는 부트스트랩/긴급 복구용으로만 사용한다.
+
+**절차**:
+1. 대상 직원이 Google 로그인으로 계정을 1회 생성한다.
+2. DB에서 role을 admin으로 승격한다.
+
+```sql
+-- Promote to admin
+UPDATE users SET role = 'admin' WHERE email = 'someone@example.com';
+
+-- Rollback to user
+UPDATE users SET role = 'user' WHERE email = 'someone@example.com';
+```
+
+**Break-glass**:
+- 환경변수 `SUPER_ADMIN_EMAILS`에 콤마로 이메일을 추가하면 DB 변경 없이 관리자 권한을 부여할 수 있다.
+
+---
+
+## 2.8) 코칭 로그 품질 / WS 상태 점검 (운영)
+
+**목적**: 세션 로그 품질과 WebSocket 상태를 빠르게 점검한다.
+**권한**: Admin
+
+```bash
+# 전체 세션 요약
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://komission-api-xxx.run.app/api/v1/coaching/stats/all-sessions"
+
+# 로그 품질 리포트
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://komission-api-xxx.run.app/api/v1/coaching/quality/report"
+
+# 개별 세션 품질
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://komission-api-xxx.run.app/api/v1/coaching/quality/session/{session_id}"
+
+# WebSocket 헬스
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://komission-api-xxx.run.app/api/v1/coaching/ws/health"
+
+# 활성 WebSocket 세션
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://komission-api-xxx.run.app/api/v1/coaching/ws/sessions"
 ```
 
 ---
@@ -107,7 +159,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 ```bash
 # campaign_eligible=true 아이템 목록
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://komission-api-xxx.run.app/api/v1/outliers/items?campaign_eligible=true"
+  "https://komission-api-xxx.run.app/api/v1/outliers?campaign_eligible=true"
 ```
 
 ---

@@ -56,12 +56,12 @@
 
 ---
 
-## 2) 아카이브된 문서
+## 2) 레거시 문서 (참조용, 업데이트 중단)
 
-`_archive_20260102/` 폴더로 이동:
+아래 문서는 **참조용으로만 유지**됩니다. 구조/의존성 기준은 `ARCHITECTURE_FINAL.md` 및 `03_IMPLEMENTATION_ROADMAP.md`가 우선입니다.
 
-| 문서 | 아카이브 이유 |
-|------|--------------|
+| 문서 | 상태 |
+|------|------|
 | `VDG_2PASS_CONSULTING_REQUEST.md` | 작업 완료 |
 | `VDG_REFACTORING_CONSULTING_REQUEST.md` | 작업 완료 |
 | `VDG_UNIFIED_PASS_IMPLEMENTATION.md` | ARCHITECTURE로 통합 |

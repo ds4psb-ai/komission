@@ -22,8 +22,8 @@
 │    /Users/ted/komission/backend              │
 │                                              │
 │  ┌─────────────────────────────────────┐    │
-│  │ WebSocket: /coaching/live           │◄───┼──── 웹/앱 공통 사용
-│  │ REST API: /api/v1/*                 │    │
+│  │ WebSocket: /api/v1/ws/coaching/{session_id}      │◄───┼──── 웹/앱 공통 사용
+│  │ REST API: /api/v1                   │    │
 │  └─────────────────────────────────────┘    │
 └─────────────────────────────────────────────┘
            │                    │
@@ -61,9 +61,9 @@
 │   │   │   ├── coaching_repository.py  # DB 레포지토리 (33KB)
 │   │   │   └── frame_analyzer.py
 │   │   ├── mcp/                # MCP 서버
-│   │   │   ├── tools/          # 6 analysis tools
-│   │   │   ├── resources/      # 5 data resources
-│   │   │   └── prompts/        # 4 prompt templates
+│   │   │   ├── tools/          # MCP tools (VDG + STPF)
+│   │   │   ├── resources/      # MCP resources (komission + STPF)
+│   │   │   └── prompts/        # MCP prompt templates
 │   │   ├── models.py           # CoachingSession, Intervention 등 (2036 lines)
 │   │   └── schemas/            # 17 files
 │   └── requirements.txt
@@ -135,7 +135,7 @@
 | 항목 | 내용 |
 |------|------|
 | **목표** | 코칭 품질 향상 + 체험단 기능 |
-| **기술** | Next.js 14 + Tailwind |
+| **기술** | Next.js 16 + Tailwind (next-intl i18n) |
 | **폴더** | `/frontend` |
 
 #### Phase 1: 코칭 품질 향상
@@ -162,12 +162,37 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
+로컬 코칭 WS 스모크 테스트:
+```bash
+scripts/smoke_coaching_ws.sh
+```
+기본값은 `SKIP_GEMINI_LIVE=1`로 Gemini Live 연결을 생략하며, `session_status=recording`까지 확인합니다.
+
+백엔드 테스트:
+```bash
+backend/venv/bin/pytest
+```
+
+### 인증 (Google OAuth + JWT)
+- 프로덕션 로그인: `POST /api/v1/auth/google`
+- 로컬 테스트: `ALLOW_DEV_LOGIN=true`일 때만 `POST /api/v1/auth/token` 사용
+- 현재 사용자: `GET /api/v1/auth/me`
+- 토큰 갱신: `POST /api/v1/auth/refresh`
+- 로그아웃: `POST /api/v1/auth/logout` (클라이언트에서 토큰 폐기)
+- 필수 환경변수: `GOOGLE_CLIENT_ID`, `JWT_SECRET_KEY` (비개발 환경)
+
+### 권한/관리자
+- 기본 운영: `users.role = 'admin'` (DB role 기반)
+- 부트스트랩/긴급: `SUPER_ADMIN_EMAILS` 환경변수
+- 상세 절차는 `docs/08_OPERATIONS_RUNBOOK.md` 참고
+
 ### 프론트엔드
 ```bash
 cd /Users/ted/komission/frontend
-npm install
-npm run dev  # localhost:3000
+bun install
+bun run dev  # localhost:3000
 ```
+로케일 메시지는 `frontend/messages/{locale}.json`에 있으며 `NEXT_LOCALE` 쿠키로 전환됩니다 (ko/en).
 
 ### 모바일 ✅
 ```bash
@@ -182,8 +207,9 @@ npx expo run:ios --device
 ## 🔌 공유 인터페이스
 
 ### WebSocket 엔드포인트
+`session_id`는 `POST /api/v1/coaching/sessions` 응답에서 획득합니다.
 ```
-ws://localhost:8000/api/v1/coaching/live/{session_id}
+ws://localhost:8000/api/v1/ws/coaching/{session_id}
 ```
 
 ### 주요 메시지 타입
@@ -194,7 +220,7 @@ type Feedback = {
   message: string;
   audio_b64?: string;
   rule_id?: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  priority?: 'low' | 'medium' | 'high' | 'critical';
 };
 
 // Phase 2: 프레임 ACK

@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 /**
  * Storyboard Panel - VDG 분석 데이터를 씬별 스토리보드 카드로 시각화
@@ -82,17 +83,17 @@ function SceneCard({ scene, isFirst }: { scene: SceneData; isFirst: boolean }) {
 
     // Role color mapping
     const roleColors: Record<string, string> = {
-        "훅": "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
-        "Hook": "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
-        "액션": "bg-orange-500/20 text-orange-300 border-orange-500/30",
-        "Action": "bg-orange-500/20 text-orange-300 border-orange-500/30",
-        "리액션": "bg-violet-500/20 text-violet-300 border-violet-500/30",
-        "Reaction": "bg-violet-500/20 text-violet-300 border-violet-500/30",
-        "셋업": "bg-blue-500/20 text-blue-300 border-blue-500/30",
-        "Setup": "bg-blue-500/20 text-blue-300 border-blue-500/30",
+        "훅": "bg-[#c1ff00]/10 text-[#c1ff00] border-[#c1ff00]/30",
+        "Hook": "bg-[#c1ff00]/10 text-[#c1ff00] border-[#c1ff00]/30",
+        "액션": "bg-white/5 text-white border-white/20",
+        "Action": "bg-white/5 text-white border-white/20",
+        "리액션": "bg-white/5 text-white border-white/20",
+        "Reaction": "bg-white/5 text-white border-white/20",
+        "셋업": "bg-white/5 text-white border-white/20",
+        "Setup": "bg-white/5 text-white border-white/20",
     };
 
-    const roleColor = roleColors[scene.role] || roleColors[scene.role_en] || "bg-zinc-500/20 text-zinc-300 border-zinc-500/30";
+    const roleColor = roleColors[scene.role] || roleColors[scene.role_en] || "bg-white/5 text-white/50 border-white/10";
 
     return (
         <div className="bg-zinc-900/50 border border-white/10 rounded-xl overflow-hidden">
@@ -102,8 +103,8 @@ function SceneCard({ scene, isFirst }: { scene: SceneData; isFirst: boolean }) {
                 className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors text-left"
             >
                 {/* Scene number */}
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/30 to-pink-500/30 flex items-center justify-center shrink-0">
-                    <span className="text-white font-bold text-sm">{scene.scene_number}</span>
+                <div className="w-8 h-8 rounded bg-[#c1ff00] flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(193,255,0,0.4)]">
+                    <span className="text-black font-black text-sm">{scene.scene_number}</span>
                 </div>
 
                 {/* Timing */}
@@ -114,7 +115,7 @@ function SceneCard({ scene, isFirst }: { scene: SceneData; isFirst: boolean }) {
                 </div>
 
                 {/* Role badge */}
-                <span className={`px-2 py-0.5 rounded text-xs font-bold border ${roleColor}`}>
+                <span className={`px-2 py-0.5 rounded-sm text-xs font-bold border uppercase tracking-wider ${roleColor}`}>
                     {scene.role || scene.role_en}
                 </span>
 
@@ -269,13 +270,13 @@ export function StoryboardPanel({ rawVdg, defaultExpanded = true }: StoryboardPa
             {/* Header */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between p-3 bg-gradient-to-br from-violet-500/10 to-pink-500/10 border border-violet-500/30 rounded-xl hover:border-violet-500/50 transition-colors"
+                className="w-full flex items-center justify-between p-4 bg-black/40 border border-[#c1ff00]/20 rounded-xl hover:border-[#c1ff00]/50 transition-colors group"
             >
                 <div className="flex items-center gap-3">
-                    <Clapperboard className="w-5 h-5 text-violet-400" />
-                    <span className="text-white font-bold">스토리보드</span>
-                    <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-white/60 font-mono">
-                        {rawVdg.scene_count}개 씬 • {rawVdg.total_duration.toFixed(1)}초
+                    <Clapperboard className="w-5 h-5 text-[#c1ff00]" />
+                    <span className="text-white font-black uppercase tracking-wider">Storyboard</span>
+                    <span className="px-2 py-0.5 bg-[#c1ff00]/10 border border-[#c1ff00]/20 rounded text-xs text-[#c1ff00] font-mono font-bold">
+                        {rawVdg.scene_count} SCENES • {rawVdg.total_duration.toFixed(1)}s
                     </span>
                 </div>
                 <div className="text-white/40">

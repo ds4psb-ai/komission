@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * TemporalPhaseGuide - 오마쥬 비율 가이드

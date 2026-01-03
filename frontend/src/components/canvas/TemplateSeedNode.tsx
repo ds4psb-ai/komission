@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 /**
  * TemplateSeedNode.tsx
  * 

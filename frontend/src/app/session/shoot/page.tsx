@@ -14,6 +14,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Camera, Play, CheckCircle, Clock, Music, Lightbulb, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { useSessionOptional } from '@/contexts/SessionContext';
 import { FilmingGuide } from '@/components/FilmingGuide';
+import { useTranslations } from 'next-intl';
 
 // ==================
 // TYPES
@@ -239,6 +240,7 @@ function ShootPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const session = useSessionOptional();
+    const t = useTranslations('pages.session.shoot');
 
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
@@ -248,6 +250,7 @@ function ShootPageContent() {
     const [retryCount, setRetryCount] = useState(0);
     const [isOffline, setIsOffline] = useState(false);
     const [noPatternWarning, setNoPatternWarning] = useState(false);
+
 
     // Get pattern/outlier ID from session or URL
     const patternId = searchParams.get('pattern') || session?.state.selected_pattern?.pattern_id;
@@ -362,14 +365,14 @@ function ShootPageContent() {
                 console.error('Director Pack load error:', err);
 
                 // 구체적인 에러 메시지
-                let errorMessage = '가이드 로딩 실패';
+                let errorMessage = t('loadFailed');
                 if (!navigator.onLine) {
-                    errorMessage = '인터넷 연결을 확인해주세요';
+                    errorMessage = t('offline');
                 } else if (err instanceof Error) {
                     if (err.name === 'AbortError' || err.message.includes('timeout')) {
-                        errorMessage = '서버 응답 시간 초과';
+                        errorMessage = t('timeout');
                     } else if (err.message.includes('fetch')) {
-                        errorMessage = '서버에 연결할 수 없습니다';
+                        errorMessage = 'Cannot connect to server';
                     } else {
                         errorMessage = err.message;
                     }
@@ -396,7 +399,7 @@ function ShootPageContent() {
 
     const handleRetry = () => {
         if (retryCount >= MAX_RETRY_COUNT) {
-            alert('최대 재시도 횟수에 도달했습니다.\n페이지를 새로고침해주세요.');
+            alert('Max retry count reached. Please refresh the page.');
             return;
         }
         setRetryCount(prev => prev + 1);
@@ -658,7 +661,7 @@ function ShootPageContent() {
                     <section className="pt-4 animate-slideUp" style={{ animationDelay: '150ms' }}>
                         <button
                             onClick={() => setIsGuideOpen(true)}
-                            className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 text-white font-bold text-lg hover:shadow-lg hover:shadow-violet-500/20 transition-all"
+                            className="w-full flex items-center justify-center gap-2 py-4 rounded-lg bg-[#c1ff00] hover:bg-white text-black font-black uppercase tracking-wider text-lg shadow-[0_0_15px_rgba(193,255,0,0.3)] hover:shadow-[0_0_25px_rgba(255,255,255,0.5)] transition-all"
                         >
                             <Play className="w-5 h-5" />
                             촬영 시작하기

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * PatternGuidePanel - P0/P2 E2E Integration
@@ -35,8 +36,7 @@ export function PatternGuidePanel({ patternId, onClose }: PatternGuidePanelProps
     const [submitting, setSubmitting] = useState(false);
     const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-    // Phase 6: O2O campaigns and performance stats
-    const [relatedCampaigns, setRelatedCampaigns] = useState<any[]>([]);
+    // Pattern performance stats
     const [performanceStats, setPerformanceStats] = useState<{
         avgViews: number;
         successRate: string;
@@ -105,51 +105,29 @@ export function PatternGuidePanel({ patternId, onClose }: PatternGuidePanelProps
         };
     }, [patternId]);
 
-    // Phase 6: Load related O2O campaigns and performance stats
+    // Phase 6: Load performance stats from pattern's mutation_strategy
     useEffect(() => {
-        let cancelled = false;
-        if (!pattern) return;
+        if (!pattern) {
+            setPerformanceStats(null);
+            return;
+        }
 
-        setRelatedCampaigns([]);
-        setPerformanceStats(null);
+        // Extract performance from mutation_strategy._creator_feedback
+        const feedback = pattern.mutation_strategy?._creator_feedback;
+        if (Array.isArray(feedback) && feedback.length > 0) {
+            const totalViews = feedback.reduce((sum: number, f: any) => sum + (f.views || 0), 0);
+            const avgViews = Math.round(totalViews / feedback.length);
+            const successCount = feedback.filter((f: any) =>
+                f.performance && f.performance.startsWith('+')
+            ).length;
+            const successRate = `${Math.round((successCount / feedback.length) * 100)}%`;
 
-        const loadCampaignsAndStats = async () => {
-            try {
-                // Fetch O2O campaigns matching pattern category
-                const campaigns = await api.listO2OCampaigns();
-                const filtered = campaigns.filter((c: any) =>
-                    c.status === 'recruiting' &&
-                    (!c.category || c.category === pattern.category)
-                );
-                if (cancelled) return;
-                setRelatedCampaigns(filtered.slice(0, 3));
-
-                // Extract performance from mutation_strategy._creator_feedback
-                const feedback = pattern.mutation_strategy?._creator_feedback;
-                if (Array.isArray(feedback) && feedback.length > 0) {
-                    const totalViews = feedback.reduce((sum: number, f: any) => sum + (f.views || 0), 0);
-                    const avgViews = Math.round(totalViews / feedback.length);
-                    const successCount = feedback.filter((f: any) =>
-                        f.performance && f.performance.startsWith('+')
-                    ).length;
-                    const successRate = `${Math.round((successCount / feedback.length) * 100)}%`;
-
-                    if (cancelled) return;
-                    setPerformanceStats({
-                        avgViews,
-                        successRate,
-                        totalSubmissions: feedback.length,
-                    });
-                }
-            } catch (e) {
-                console.error('Failed to load campaigns/stats:', e);
-            }
-        };
-
-        loadCampaignsAndStats();
-        return () => {
-            cancelled = true;
-        };
+            setPerformanceStats({
+                avgViews,
+                successRate,
+                totalSubmissions: feedback.length,
+            });
+        }
     }, [pattern]);
 
     if (!patternId) return null;
@@ -346,27 +324,6 @@ export function PatternGuidePanel({ patternId, onClose }: PatternGuidePanelProps
                                             <div className="text-lg font-bold text-white">{performanceStats.totalSubmissions}</div>
                                             <div className="text-[10px] text-white/50">제출 수</div>
                                         </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Phase 6: Related O2O Campaigns */}
-                            {relatedCampaigns.length > 0 && (
-                                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                                    <div className="text-xs font-bold text-amber-400 mb-2">🎁 참여 가능한 캠페인</div>
-                                    <div className="space-y-2">
-                                        {relatedCampaigns.map((campaign: any) => (
-                                            <a
-                                                key={campaign.id}
-                                                href={`/o2o?campaign=${campaign.id}`}
-                                                className="block p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-                                            >
-                                                <div className="text-xs font-medium text-white">{campaign.title}</div>
-                                                <div className="text-[10px] text-white/50">
-                                                    {campaign.brand_name} • {campaign.campaign_type}
-                                                </div>
-                                            </a>
-                                        ))}
                                     </div>
                                 </div>
                             )}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 /**
  * Ops Crawler Dashboard
  * 
@@ -10,6 +12,7 @@
  * - Quota usage display
  */
 import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
     ArrowLeft, RefreshCw, Play, CheckCircle, AlertCircle, Clock,
@@ -43,12 +46,12 @@ interface JobStatus {
 }
 
 const STRATEGIES = [
-    { id: 'meme_reaction', label: '밈/리액션', icon: '😂', description: '밈, 리액션, 표정챌린지' },
-    { id: 'product_review', label: '제품 리뷰', icon: '📦', description: '솔직후기, 언박싱, 하울', o2o: true },
-    { id: 'food_cafe', label: '맛집/카페', icon: '☕', description: '카페투어, 맛집, 먹방', o2o: true },
-    { id: 'beauty', label: '뷰티', icon: '💄', description: 'GRWM, 스킨케어', o2o: true },
-    { id: 'fitness', label: '피트니스', icon: '💪', description: '운동루틴, 홈트', o2o: true },
-    { id: 'lifestyle', label: '라이프', icon: '🏠', description: '일상브이로그, 루틴', o2o: true },
+    { id: 'meme_reaction', label: 'Meme/Reaction', icon: '😂', description: 'Meme, reactions, expression challenges' },
+    { id: 'product_review', label: 'Product Review', icon: '📦', description: 'Honest reviews, unboxing, haul', o2o: true },
+    { id: 'food_cafe', label: 'Food/Cafe', icon: '☕', description: 'Cafe tours, restaurants, mukbang', o2o: true },
+    { id: 'beauty', label: 'Beauty', icon: '💄', description: 'GRWM, skincare', o2o: true },
+    { id: 'fitness', label: 'Fitness', icon: '💪', description: 'Workout routines, home training', o2o: true },
+    { id: 'lifestyle', label: 'Lifestyle', icon: '🏠', description: 'Daily vlogs, routines', o2o: true },
 ];
 
 const PLATFORMS = [
@@ -58,19 +61,20 @@ const PLATFORMS = [
 ];
 
 function formatTimeAgo(dateStr: string | null): string {
-    if (!dateStr) return '없음';
+    if (!dateStr) return 'Never';
     const date = new Date(dateStr);
-    if (Number.isNaN(date.getTime())) return '없음';
+    if (Number.isNaN(date.getTime())) return 'Never';
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    if (diffHours < 1) return '방금 전';
-    if (diffHours < 24) return `${diffHours}시간 전`;
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}일 전`;
+    return `${diffDays}d ago`;
 }
 
 export default function CrawlerDashboard() {
+    const pathname = usePathname();  // 라우트 변경 감지
     const [status, setStatus] = useState<CrawlerStatus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [runningJobs, setRunningJobs] = useState<Record<string, JobStatus>>({});
@@ -92,7 +96,7 @@ export default function CrawlerDashboard() {
         fetchStatus();
         const interval = setInterval(fetchStatus, 30000); // Refresh every 30s
         return () => clearInterval(interval);
-    }, []);
+    }, [pathname]);  // pathname 추가: 라우트 변경 시 refetch
 
     async function fetchStatus() {
         try {
@@ -205,7 +209,7 @@ export default function CrawlerDashboard() {
                         <div>
                             <h1 className="text-lg font-bold flex items-center gap-2">
                                 <Database className="w-5 h-5 text-cyan-400" />
-                                크롤러 대시보드
+                                Crawler Dashboard
                             </h1>
                             <p className="text-xs text-white/50">TikTok, YouTube Shorts, Instagram</p>
                         </div>
@@ -227,7 +231,7 @@ export default function CrawlerDashboard() {
                         <div className="flex items-center gap-2 mb-2">
                             <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
                             <span className="text-sm font-bold text-cyan-300">
-                                {activeJobs.length}개 작업 실행 중
+                                {activeJobs.length} job(s) running
                             </span>
                         </div>
                         <div className="space-y-1">
@@ -245,19 +249,19 @@ export default function CrawlerDashboard() {
                     <div className="grid grid-cols-4 gap-3">
                         <div className="p-4 bg-white/5 border border-white/10 rounded-xl text-center">
                             <div className="text-2xl font-bold text-white">{status.total_items.toLocaleString()}</div>
-                            <div className="text-xs text-white/50">전체 아이템</div>
+                            <div className="text-xs text-white/50">Total Items</div>
                         </div>
                         <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-center">
                             <div className="text-2xl font-bold text-amber-300">{status.pending_count.toLocaleString()}</div>
-                            <div className="text-xs text-amber-300/70">대기 중</div>
+                            <div className="text-xs text-amber-300/70">Pending</div>
                         </div>
                         <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center">
                             <div className="text-2xl font-bold text-emerald-300">{status.promoted_count.toLocaleString()}</div>
-                            <div className="text-xs text-emerald-300/70">승격됨</div>
+                            <div className="text-xs text-emerald-300/70">Promoted</div>
                         </div>
                         <div className="p-4 bg-violet-500/10 border border-violet-500/30 rounded-xl text-center">
                             <div className="text-2xl font-bold text-violet-300">{status.platforms.length}</div>
-                            <div className="text-xs text-violet-300/70">플랫폼</div>
+                            <div className="text-xs text-violet-300/70">Platforms</div>
                         </div>
                     </div>
                 )}
@@ -266,7 +270,7 @@ export default function CrawlerDashboard() {
                 <section>
                     <h2 className="text-sm font-bold text-white/80 mb-3 flex items-center gap-2">
                         <Activity className="w-4 h-4 text-cyan-400" />
-                        플랫폼별 상태
+                        Platform Status
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {PLATFORMS.map(platform => {
@@ -288,15 +292,15 @@ export default function CrawlerDashboard() {
                                     </div>
                                     <div className="space-y-1 text-xs mb-3">
                                         <div className="flex justify-between">
-                                            <span className="text-white/50">마지막 크롤</span>
+                                            <span className="text-white/50">Last Crawl</span>
                                             <span className="text-white/80">{formatTimeAgo(pStatus?.last_crawled || null)}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span className="text-white/50">24h 수집</span>
+                                            <span className="text-white/50">24h Collected</span>
                                             <span className="text-cyan-300">{pStatus?.last_24h_count || 0}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span className="text-white/50">전체</span>
+                                            <span className="text-white/50">Total</span>
                                             <span className="text-white/80">{pStatus?.items_count || 0}</span>
                                         </div>
                                     </div>
@@ -310,7 +314,7 @@ export default function CrawlerDashboard() {
                                         ) : (
                                             <Play className="w-3 h-3" />
                                         )}
-                                        크롤 실행
+                                        Run Crawl
                                     </button>
                                 </div>
                             );
@@ -360,24 +364,24 @@ export default function CrawlerDashboard() {
                 <section>
                     <h2 className="text-sm font-bold text-white/80 mb-3 flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-violet-400" />
-                        빠른 링크
+                        Quick Links
                     </h2>
                     <div className="grid grid-cols-2 gap-3">
                         <Link
                             href="/ops/outliers/manual"
-                            className="p-4 bg-gradient-to-br from-violet-500/10 to-pink-500/10 border border-violet-500/30 rounded-xl hover:brightness-110 transition-all"
+                            className="p-4 bg-black/40 border border-[#c1ff00]/20 hover:border-[#c1ff00]/50 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(193,255,0,0.1)] group"
                         >
                             <div className="text-lg mb-1">🔗</div>
-                            <div className="text-sm font-bold text-white">수동 URL 등록</div>
-                            <div className="text-xs text-white/50">TikTok/Shorts 직접 입력</div>
+                            <div className="text-sm font-bold text-white">Manual URL Input</div>
+                            <div className="text-xs text-white/50">Enter TikTok/Shorts directly</div>
                         </Link>
                         <Link
                             href="/ops/outliers"
                             className="p-4 bg-gradient-to-br from-cyan-500/10 to-emerald-500/10 border border-cyan-500/30 rounded-xl hover:brightness-110 transition-all"
                         >
                             <div className="text-lg mb-1">📋</div>
-                            <div className="text-sm font-bold text-white">아웃라이어 관리</div>
-                            <div className="text-xs text-white/50">승격/거부 결정</div>
+                            <div className="text-sm font-bold text-white">Outlier Management</div>
+                            <div className="text-xs text-white/50">Promote/Reject decisions</div>
                         </Link>
                     </div>
                 </section>
@@ -387,7 +391,7 @@ export default function CrawlerDashboard() {
                     <section>
                         <h2 className="text-sm font-bold text-white/80 mb-3 flex items-center gap-2">
                             <Clock className="w-4 h-4 text-emerald-400" />
-                            최근 완료된 작업
+                            Recent Completed Jobs
                         </h2>
                         <div className="space-y-2">
                             {Object.entries(runningJobs)
@@ -402,7 +406,7 @@ export default function CrawlerDashboard() {
                                             </span>
                                         </div>
                                         <div className="text-xs text-emerald-300">
-                                            {(job.results as Record<string, number>)?.inserted || 0} 신규
+                                            {(job.results as Record<string, number>)?.inserted || 0} new
                                         </div>
                                     </div>
                                 ))}

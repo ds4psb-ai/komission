@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 /**
  * Pattern Library Page (PEGL v1.0)
  * 
@@ -66,6 +68,7 @@ const MOCK_LIBRARY: PatternLibraryResponse = {
 };
 
 export default function PatternLibraryPage() {
+    const t = useTranslations('pages.knowledge.patterns');
     const [library, setLibrary] = useState<PatternLibraryResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
@@ -112,11 +115,10 @@ export default function PatternLibraryPage() {
                 <header>
                     <h1 className="text-3xl font-bold text-white flex items-center gap-3">
                         <BookOpen className="w-8 h-8 text-violet-400" />
-                        패턴 라이브러리
+                        {t('title')}
                     </h1>
-                    <p className="text-white/50 mt-2 max-w-2xl">
-                        NotebookLM Pattern Engine에서 추출한 고성과 패턴 컬렉션.
-                        각 패턴의 불변 규칙과 변주 전략을 참고하세요.
+                    <p className="text-white/50 mt-2 max-w-2xl whitespace-pre-line">
+                        {t('subtitle')}
                     </p>
                 </header>
 
@@ -128,7 +130,7 @@ export default function PatternLibraryPage() {
                             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap
                                 ${!selectedPlatform ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}
                         >
-                            전체
+                            {t('all')}
                         </button>
                         {platforms.map(platform => (
                             <button
@@ -147,9 +149,9 @@ export default function PatternLibraryPage() {
 
                 {/* Stats */}
                 <div className="flex gap-4 text-sm text-white/40">
-                    <span>{library?.total || 0}개 패턴</span>
+                    <span>{library?.total || 0}{t('stats.patterns')}</span>
                     <span>•</span>
-                    <span>{platforms.length}개 플랫폼</span>
+                    <span>{platforms.length}{t('stats.platforms')}</span>
                 </div>
 
                 {/* Grid */}
@@ -170,8 +172,8 @@ export default function PatternLibraryPage() {
                 {filteredPatterns.length === 0 && !loading && (
                     <div className="text-center py-12 text-white/40">
                         <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>아직 패턴이 없습니다.</p>
-                        <p className="text-sm mt-2">NotebookLM Data Tables를 가져와서 패턴을 생성하세요.</p>
+                        <p>{t('emptyState')}</p>
+                        <p className="text-sm mt-2">{t('emptyStateHint')}</p>
                     </div>
                 )}
             </div>
@@ -180,6 +182,7 @@ export default function PatternLibraryPage() {
 }
 
 function PatternCard({ pattern, index }: { pattern: PatternLibraryItem; index: number }) {
+    const t = useTranslations('pages.knowledge.patterns');
     const invariantCount = Object.keys(pattern.invariant_rules || {}).length;
     const mutationCount = Object.keys(pattern.mutation_strategy || {}).length;
 
@@ -191,7 +194,7 @@ function PatternCard({ pattern, index }: { pattern: PatternLibraryItem; index: n
             transition={{ delay: index * 0.05 }}
         >
             {/* Header */}
-            <div className="px-5 py-4 border-b border-white/5 bg-gradient-to-r from-violet-900/20 to-transparent">
+            <div className="px-5 py-4 border-b border-[#c1ff00]/20 bg-black/40 backdrop-blur-md">
                 <div className="flex items-start justify-between">
                     <div>
                         <h3 className="text-lg font-bold text-white group-hover:text-violet-300 transition-colors">
@@ -218,7 +221,7 @@ function PatternCard({ pattern, index }: { pattern: PatternLibraryItem; index: n
                 <div>
                     <div className="flex items-center gap-2 text-xs text-violet-400 font-bold mb-2">
                         <Lightbulb className="w-3.5 h-3.5" />
-                        불변 규칙 ({invariantCount})
+                        {t('invariantRules')} ({invariantCount})
                     </div>
                     <div className="space-y-1.5">
                         {Object.entries(pattern.invariant_rules || {}).slice(0, 3).map(([key, value]) => (
@@ -228,7 +231,7 @@ function PatternCard({ pattern, index }: { pattern: PatternLibraryItem; index: n
                             </div>
                         ))}
                         {invariantCount > 3 && (
-                            <div className="text-xs text-white/30">+{invariantCount - 3}개 더...</div>
+                            <div className="text-xs text-white/30">+{invariantCount - 3}{t('more')}</div>
                         )}
                     </div>
                 </div>
@@ -237,7 +240,7 @@ function PatternCard({ pattern, index }: { pattern: PatternLibraryItem; index: n
                 <div>
                     <div className="flex items-center gap-2 text-xs text-pink-400 font-bold mb-2">
                         <Repeat className="w-3.5 h-3.5" />
-                        변주 전략 ({mutationCount})
+                        {t('mutationStrategy')} ({mutationCount})
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                         {Object.entries(pattern.mutation_strategy || {}).slice(0, 4).map(([key, val]) => {
@@ -269,7 +272,7 @@ function PatternCard({ pattern, index }: { pattern: PatternLibraryItem; index: n
                     href={`/canvas?pattern=${pattern.pattern_id}`}
                     className="flex items-center gap-1 text-violet-400 hover:text-violet-300 transition-colors"
                 >
-                    캔버스에서 적용
+                    {t('applyInCanvas')}
                     <ArrowRight className="w-3 h-3" />
                 </Link>
             </div>

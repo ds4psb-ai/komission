@@ -46,6 +46,6 @@ mobile/
 
 ## 백엔드 연결
 
-WebSocket: `ws://HOST/api/v1/coaching/live/{session_id}`
+WebSocket: `ws://HOST/api/v1/ws/coaching/{session_id}`
 
 웹앱과 동일한 백엔드 API 사용

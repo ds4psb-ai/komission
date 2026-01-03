@@ -7,6 +7,7 @@
  * - STPFMeter: 점수 미터
  */
 'use client';
+import { useTranslations } from 'next-intl';
 
 import React, { useState } from 'react';
 import {
@@ -94,10 +95,10 @@ const SIGNAL_CONFIG = {
 };
 
 const GRADE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-    'S': { bg: 'bg-gradient-to-r from-purple-600 to-pink-500', text: 'text-white', border: 'border-purple-400' },
-    'A': { bg: 'bg-gradient-to-r from-emerald-600 to-teal-500', text: 'text-white', border: 'border-emerald-400' },
-    'B': { bg: 'bg-gradient-to-r from-yellow-500 to-amber-400', text: 'text-black', border: 'border-yellow-400' },
-    'C': { bg: 'bg-gradient-to-r from-gray-500 to-gray-400', text: 'text-white', border: 'border-gray-400' },
+    'S': { bg: 'bg-[#c1ff00]/20', text: 'text-[#c1ff00]', border: 'border-[#c1ff00]/50' },
+    'A': { bg: 'bg-purple-500/20', text: 'text-purple-300', border: 'border-purple-500/50' },
+    'B': { bg: 'bg-blue-500/20', text: 'text-blue-300', border: 'border-blue-500/50' },
+    'C': { bg: 'bg-zinc-500/20', text: 'text-zinc-400', border: 'border-zinc-500/50' },
 };
 
 const SIZE_CONFIG = {
@@ -234,12 +235,12 @@ export function STPFPanel({
         <div className="bg-gray-800/80 backdrop-blur rounded-xl border border-gray-700 overflow-hidden">
             {/* Header */}
             <div
-                className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-700/50 transition-colors"
+                className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
                 onClick={toggleExpand}
             >
                 <div className="flex items-center gap-3">
-                    <Sparkles className="w-5 h-5 text-purple-400" />
-                    <span className="font-bold text-white">STPF 분석</span>
+                    <Sparkles className="w-5 h-5 text-[#c1ff00]" />
+                    <span className="font-bold text-white uppercase tracking-wider">STPF ANALYSIS</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <STPFBadge score={score} signal={signal} grade={grade} size="sm" />

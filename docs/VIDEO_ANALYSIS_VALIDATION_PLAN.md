@@ -3,9 +3,9 @@
 목표는 "조용히 실패하는" 미세 오류를 조기에 발견하는 것이다. 파이프라인 계약, 리플레이 가능한 골든셋, 정적/동적 검증을 함께 운용한다.
 
 ## 1) 파이프라인 맵 (요약)
-- Ingest: OutlierItem 생성 (`/outliers/items`, `/outliers/items/manual`)
-- Promote: OutlierItem -> RemixNode 승격 (`/outliers/items/{id}/promote`)
-- Approve: VDG 분석 승인 (`/outliers/items/{id}/approve`)
+- Ingest: OutlierItem 생성 (`/api/v1/outliers/items`, `/api/v1/outliers/items/manual`)
+- Promote: OutlierItem -> RemixNode 승격 (`/api/v1/outliers/items/{item_id}/promote`)
+- Approve: VDG 분석 승인 (`/api/v1/outliers/items/{item_id}/approve`)
 - Comment Gate: 댓글 추출/수동 입력 게이트
 - VDG Analysis: Gemini 분석 + 품질 점수
 - Cluster/Library: PatternCluster + NotebookLibraryEntry 생성
@@ -27,6 +27,7 @@
 - 불변조건: 이미 PROMOTED면 재승격 금지
 
 ### Approve + Comment Gate
+- 권한: Curator/Admin
 - 승인 시: `analysis_status = approved`
 - 댓글 확보 후: `analysis_status = analyzing`
 - 댓글 실패 시:

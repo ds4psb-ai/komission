@@ -93,10 +93,13 @@
 
 | Action | Endpoint |
 |--------|----------|
-| 카드 조회 | `GET /outliers/items/{id}` |
-| 가이드 조회 | `GET /outliers/items/{id}/guide` |
-| 코칭 시작 | `POST /coaching/sessions` |
-| 피드백 제출 | `POST /coaching/sessions/{id}/feedback` |
+| 카드 조회 | `GET /api/v1/outliers/items/{item_id}` |
+| 가이드 조회 | `GET /api/v1/outliers/items/{item_id}` (shooting_guide 포함) |
+| 코칭 시작 | `POST /api/v1/coaching/sessions` |
+| 피드백 제출 | `POST /api/v1/coaching/sessions/{session_id}/feedback` |
+| 코칭 종료 | `POST /api/v1/coaching/sessions/{session_id}/end` 또는 `DELETE /api/v1/coaching/sessions/{session_id}` |
+
+코칭 시작 응답의 `websocket_url`로 WebSocket에 연결합니다.
 
 ---
 

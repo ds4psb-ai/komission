@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 from app.models import RemixNode, User, NodeLayer
-from app.schemas.analysis import GeminiAnalysisResult
+from app.schemas.vdg_v4 import VDGv4
 
 @pytest.mark.asyncio
 async def test_analyze_node_pipeline(client, db_session):
@@ -23,12 +23,9 @@ async def test_analyze_node_pipeline(client, db_session):
     await db_session.commit()
     
     # Mock Gemini & Claude
-    mock_gemini_res = GeminiAnalysisResult(
-        video_id="ai_test_node",
-        metadata={"title": "Test", "mood": "Fun", "artist": "A", "bpm": 100, "music_drop_timestamps": []},
-        visual_dna={"setting_description": "Gym", "camera_movement": "Static", "lighting": "Bright", "color_palette": []},
-        commerce_context={"primary_category": "Fitness", "keywords": [], "suitable_products": []},
-        meme_dna={"key_action": "Jump", "humor_point": "Fall", "catchphrase": None}
+    mock_gemini_res = VDGv4(
+        content_id="ai_test_node",
+        duration_sec=15.0
     )
     
     mock_claude_res = {
@@ -39,7 +36,7 @@ async def test_analyze_node_pipeline(client, db_session):
         "hashtags": ["#Jump"]
     }
 
-    with patch("app.services.gemini_pipeline.gemini_pipeline.analyze_video", new_callable=AsyncMock) as mock_gemini:
+    with patch("app.services.gemini_pipeline.gemini_pipeline.analyze_video_v4", new_callable=AsyncMock) as mock_gemini:
         with patch("app.services.claude_korean.claude_planner.generate_scenario", new_callable=AsyncMock) as mock_claude:
             mock_gemini.return_value = mock_gemini_res
             mock_claude.return_value = mock_claude_res
@@ -57,7 +54,7 @@ async def test_analyze_node_pipeline(client, db_session):
             assert response.status_code == 200
             data = response.json()
             assert data["status"] == "success"
-            assert data["gemini"]["meme_dna"]["key_action"] == "Jump"
+            assert data["gemini"]["content_id"] == "ai_test_node"
             assert data["claude"]["title_kr"] == "점프 챌린지"
             
             # Check DB persistence
@@ -65,3 +62,4 @@ async def test_analyze_node_pipeline(client, db_session):
             assert node.gemini_analysis is not None
             assert node.claude_brief is not None
             assert node.claude_brief["title_kr"] == "점프 챌린지"
+            assert node.gemini_analysis["content_id"] == "ai_test_node"

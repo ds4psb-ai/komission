@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useEffect, useState, useRef } from 'react';
 import { api, EvidenceGuide } from '@/lib/api';
 import { motion } from 'framer-motion';

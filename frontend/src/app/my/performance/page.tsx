@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 /**
  * 성과 입력 페이지
  * 
@@ -42,6 +44,7 @@ function PerformanceContent() {
     const searchParams = useSearchParams();
     const sessionId = searchParams.get("session_id");
     const patternId = searchParams.get("pattern_id");
+    const t = useTranslations('pages.my.performance');
 
     const [url, setUrl] = useState("");
     const [loading, setLoading] = useState(false);
@@ -59,13 +62,13 @@ function PerformanceContent() {
 
     const handleExtract = async () => {
         if (!url.trim()) {
-            setError("URL을 입력해주세요");
+            setError(t('errors.enterUrl'));
             return;
         }
 
         const platform = detectPlatform(url);
         if (!platform) {
-            setError("TikTok 또는 YouTube Shorts URL을 입력해주세요");
+            setError(t('errors.invalidUrl'));
             return;
         }
 
@@ -85,7 +88,7 @@ function PerformanceContent() {
             const data = await res.json();
 
             if (!data.success) {
-                throw new Error(data.error || "추출 실패");
+                throw new Error(data.error || t('errors.extractFailed'));
             }
 
             setPerformance(data.data);
@@ -101,8 +104,8 @@ function PerformanceContent() {
                 }
             }
         } catch (err) {
-            console.error("성과 추출 실패:", err);
-            setError(err instanceof Error ? err.message : "성과 추출에 실패했습니다");
+            console.error("Performance extraction failed:", err);
+            setError(err instanceof Error ? err.message : t('errors.extractError'));
         } finally {
             setLoading(false);
         }
@@ -139,16 +142,15 @@ function PerformanceContent() {
                     <button onClick={() => router.back()} className="p-2 -ml-2 hover:bg-white/10 rounded-lg">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h1 className="text-lg font-bold">📊 성과 확인하기</h1>
+                    <h1 className="text-lg font-bold">{t('title')}</h1>
                 </div>
             </div>
 
             <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
                 {/* 안내 */}
                 <div className="text-center py-4">
-                    <p className="text-white/60 text-sm">
-                        업로드한 영상의 URL을 입력하면<br />
-                        조회수와 성과를 자동으로 확인해요
+                    <p className="text-white/60 text-sm whitespace-pre-line">
+                        {t('subtitle')}
                     </p>
                 </div>
 
@@ -160,7 +162,7 @@ function PerformanceContent() {
                             type="url"
                             value={url}
                             onChange={(e) => setUrl(e.target.value)}
-                            placeholder="TikTok 또는 YouTube Shorts URL 붙여넣기"
+                            placeholder={t('inputPlaceholder')}
                             className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:border-violet-500/50 focus:outline-none"
                             onKeyDown={(e) => e.key === 'Enter' && handleExtract()}
                         />
@@ -169,17 +171,17 @@ function PerformanceContent() {
                     <button
                         onClick={handleExtract}
                         disabled={loading || !url.trim()}
-                        className="w-full py-4 bg-gradient-to-r from-violet-500 to-pink-500 text-white font-bold rounded-xl hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-[#c1ff00] hover:bg-white text-black font-black uppercase tracking-wider rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(193,255,0,0.3)] hover:shadow-[0_0_25px_rgba(255,255,255,0.5)]"
                     >
                         {loading ? (
                             <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                <span>성과 가져오는 중...</span>
+                                <span>{t('checking')}</span>
                             </>
                         ) : (
                             <>
                                 <Sparkles className="w-5 h-5" />
-                                <span>성과 확인하기</span>
+                                <span>{t('checkButton')}</span>
                             </>
                         )}
                     </button>
@@ -227,22 +229,22 @@ function PerformanceContent() {
                             <div className="p-4 bg-violet-500/10 rounded-xl border border-violet-500/20 text-center">
                                 <Eye className="w-5 h-5 mx-auto mb-2 text-violet-400" />
                                 <div className="text-2xl font-bold text-white">{formatCount(performance.view_count)}</div>
-                                <div className="text-xs text-white/50">조회수</div>
+                                <div className="text-xs text-white/50">{t('metrics.views')}</div>
                             </div>
                             <div className="p-4 bg-pink-500/10 rounded-xl border border-pink-500/20 text-center">
                                 <Heart className="w-5 h-5 mx-auto mb-2 text-pink-400" />
                                 <div className="text-2xl font-bold text-white">{formatCount(performance.like_count)}</div>
-                                <div className="text-xs text-white/50">좋아요</div>
+                                <div className="text-xs text-white/50">{t('metrics.likes')}</div>
                             </div>
                             <div className="p-4 bg-cyan-500/10 rounded-xl border border-cyan-500/20 text-center">
                                 <MessageCircle className="w-5 h-5 mx-auto mb-2 text-cyan-400" />
                                 <div className="text-2xl font-bold text-white">{formatCount(performance.comment_count)}</div>
-                                <div className="text-xs text-white/50">댓글</div>
+                                <div className="text-xs text-white/50">{t('metrics.comments')}</div>
                             </div>
                             <div className="p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-center">
                                 <Share2 className="w-5 h-5 mx-auto mb-2 text-emerald-400" />
                                 <div className="text-2xl font-bold text-white">{formatCount(performance.share_count)}</div>
-                                <div className="text-xs text-white/50">공유</div>
+                                <div className="text-xs text-white/50">{t('metrics.shares')}</div>
                             </div>
                         </div>
 
@@ -257,7 +259,7 @@ function PerformanceContent() {
                                     <div>
                                         <div className="text-lg font-bold">{comparison.message}</div>
                                         <div className="text-xs text-white/50">
-                                            패턴 평균 {formatCount(comparison.pattern_avg_views)} 대비
+                                            {t('comparison.patternAvg')} {formatCount(comparison.pattern_avg_views)} {t('comparison.vsPatternAvg')}
                                             {comparison.diff_percent > 0 ? ' +' : ' '}{comparison.diff_percent}%
                                         </div>
                                     </div>
@@ -266,7 +268,7 @@ function PerformanceContent() {
                                 {/* 비교 바 */}
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between text-xs">
-                                        <span className="text-white/50">패턴 평균</span>
+                                        <span className="text-white/50">{t('comparison.patternAvg')}</span>
                                         <span className="text-white/70">{formatCount(comparison.pattern_avg_views)}</span>
                                     </div>
                                     <div className="h-2 bg-white/10 rounded-full overflow-hidden">
@@ -276,7 +278,7 @@ function PerformanceContent() {
                                         />
                                     </div>
                                     <div className="flex items-center justify-between text-xs">
-                                        <span className="text-white/50">내 영상</span>
+                                        <span className="text-white/50">{t('comparison.myVideo')}</span>
                                         <span className={`font-bold ${getVerdictStyle(comparison.verdict).text}`}>
                                             {formatCount(comparison.user_views)}
                                         </span>
@@ -303,13 +305,13 @@ function PerformanceContent() {
                                 href="/my"
                                 className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-center text-sm font-medium"
                             >
-                                My 페이지
+                                {t('actions.myPage')}
                             </Link>
                             <Link
                                 href="/"
                                 className="flex-1 py-3 bg-violet-500 hover:bg-violet-400 rounded-xl text-center text-sm font-medium"
                             >
-                                새 영상 만들기
+                                {t('actions.newVideo')}
                             </Link>
                         </div>
                     </div>
@@ -319,9 +321,8 @@ function PerformanceContent() {
                 {!performance && !loading && (
                     <div className="text-center py-8 space-y-4">
                         <div className="text-4xl">📈</div>
-                        <div className="text-white/40 text-sm">
-                            영상 업로드 후 URL을 입력하면<br />
-                            성과를 자동으로 분석해드려요
+                        <div className="text-white/40 text-sm whitespace-pre-line">
+                            {t('emptyState')}
                         </div>
                     </div>
                 )}

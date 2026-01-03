@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 import React, { useCallback, useRef, useState, useEffect, Suspense } from 'react';
 import {
     ReactFlow,
@@ -185,7 +187,7 @@ function CanvasFlow() {
                     showToast(`템플릿 "${pipeline.title}" 로드 완료! 저장하면 복사본이 생성됩니다.`, 'success');
                 } catch (e) {
                     console.error(e);
-                    showToast('템플릿 로드 실패', 'error');
+                    showToast('Template load failed', 'error');
                 } finally {
                     if (isMountedRef.current) {
                         setIsLoading(false);
@@ -283,7 +285,7 @@ function CanvasFlow() {
                         await api.analyzeNode(remixNode.node_id);
                         showToast('✅ AI 분석 완료! 결과를 확인하세요.', 'success');
                     } catch (analysisError) {
-                        showToast('분석 완료 대기 중... Process 노드를 클릭하세요.', 'info');
+                        showToast('Waiting for analysis... Click Process node.', 'info');
                     }
 
                     // Clear URL from browser history to prevent re-trigger
@@ -373,7 +375,7 @@ function CanvasFlow() {
                 );
             }
         } catch (e) {
-            showToast(e instanceof Error ? e.message : '노드 생성 실패', 'error');
+            showToast(e instanceof Error ? e.message : 'Node creation failed', 'error');
             throw e;
         }
     }, [setNodes, showToast, isMountedRef]);
@@ -384,7 +386,7 @@ function CanvasFlow() {
             showToast(`${nodeId} 분석 완료`, 'success');
             return result;
         } catch (e) {
-            showToast(e instanceof Error ? e.message : '분석 실패', 'error');
+            showToast(e instanceof Error ? e.message : 'Analysis failed', 'error');
             throw e;
         }
     }, [showToast]);
@@ -395,13 +397,13 @@ function CanvasFlow() {
         if (!requireAuth(AUTH_ACTIONS.SAVE)) return;
 
         if (!nodes.length) {
-            showToast('캔버스가 비어있습니다!', 'error');
+            showToast('Canvas is empty!', 'error');
             return;
         }
 
-        let title = pipelineTitle || '제목 없는 파이프라인';
+        let title = pipelineTitle || 'Untitled Pipeline';
         if (!pipelineId) {
-            const input = window.prompt('파이프라인 이름을 입력하세요:', title);
+            const input = window.prompt('Enter pipeline name:', title);
             if (!input) return;
             title = input;
             setPipelineTitle(title);
@@ -410,7 +412,7 @@ function CanvasFlow() {
         // Only ask about public status on first save or if explicitly changing
         let publicStatus = isPublic;
         if (!pipelineId) {
-            publicStatus = window.confirm('이 파이프라인을 커뮤니티에 공개할까요?');
+            publicStatus = window.confirm('Make this pipeline public to the community?');
             setIsPublic(publicStatus);
         }
 
@@ -425,7 +427,7 @@ function CanvasFlow() {
                     graph_data: graphData,
                     is_public: publicStatus
                 });
-                showToast('파이프라인 업데이트 완료!', 'success');
+                showToast('Pipeline updated!', 'success');
             } else {
                 const newPipeline = await api.savePipeline({
                     title,
@@ -434,13 +436,13 @@ function CanvasFlow() {
                 });
                 if (!isMountedRef.current) return;
                 setPipelineId(newPipeline.id);
-                showToast('파이프라인 저장 완료!', 'success');
+                showToast('Pipeline saved!', 'success');
             }
             if (isMountedRef.current) {
                 setIsDirty(false);
             }
         } catch (e) {
-            showToast('파이프라인 저장 실패', 'error');
+            showToast('Pipeline save failed', 'error');
             console.error(e);
         } finally {
             if (isMountedRef.current) {
@@ -459,7 +461,7 @@ function CanvasFlow() {
             setSavedPipelines(list);
             setShowLoadModal(true);
         } catch (e) {
-            showToast('파이프라인 목록 로드 실패', 'error');
+            showToast('Pipeline list load failed', 'error');
         } finally {
             if (isMountedRef.current) {
                 setIsLoading(false);
@@ -469,7 +471,7 @@ function CanvasFlow() {
 
     const handleLoad = useCallback(async (id: string) => {
         // Confirm if canvas has unsaved changes
-        if (isDirty && !window.confirm('저장하지 않은 변경사항이 있습니다. 그래도 로드할까요?')) {
+        if (isDirty && !window.confirm('You have unsaved changes. Load anyway?')) {
             return;
         }
 
@@ -490,7 +492,7 @@ function CanvasFlow() {
             setIsDirty(false);
             showToast(`로드 완료: ${pipeline.title}`, 'success');
         } catch (e) {
-            showToast('파이프라인 로드 실패', 'error');
+            showToast('Pipeline load failed', 'error');
         } finally {
             if (isMountedRef.current) {
                 setIsLoading(false);
@@ -749,10 +751,10 @@ function CanvasFlow() {
                 return filtered;
             });
             setSelectedNodeId(null);
-            showToast('노드 삭제됨', 'info');
+            showToast('Node deleted', 'info');
         } catch (err) {
             console.error('Error in handleDeleteNode:', err);
-            showToast('노드 삭제 실패', 'error');
+            showToast('Node deletion failed', 'error');
         }
     }, [setNodes, setEdges, takeSnapshot, nodes, edges, showToast]);
 

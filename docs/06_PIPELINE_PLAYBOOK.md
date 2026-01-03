@@ -50,12 +50,12 @@
 ### 저장/전파
 1) `OutlierItem.best_comments`에 원본 저장  
 2) VDG `audience_reaction.best_comments`로 병합  
-3) `comment_samples.md`로 Pack에 포함
+3) Source Pack Sheet/CSV에 `analysis_audience.best_comments_json`으로 포함 (현 빌드에서 `comment_samples.md`는 생성되지 않음)
 
 ### HITL 가이드
 - S-tier 후보/핵심 클러스터는 댓글 5개 이상 **수동 확인**
-- 댓글은 `hook`, `payoff`, `product_curiosity`, `confusion`, `controversy`로 태깅
-- 태깅 결과는 **Evidence/Decision**에 근거로 활용
+- 댓글 태깅은 선택적 수동 작업 (현재 파이프라인에 저장/활용되지 않음)
+- 태깅 결과는 향후 Evidence/Decision 근거로 연결 예정
 
 ### 실패 처리
 - 차단/비활성 시 `comments_missing_reason` 기록 후 파이프라인은 계속 진행
@@ -63,10 +63,10 @@
 
 ## 2.2 Comment → VDG → Pack 보완 설계 (필수)
 1. **추출 우선순위 통일**: TikTok은 comment/list를 기본 경로로 고정  
-2. **정제/태깅 파이프라인 고정**: 언어 우선, 중복 제거, 신호 태그 부여  
+2. **정제 파이프라인 고정**: 언어 우선, 중복 제거 (태깅은 planned)  
 3. **VDG 병합 규칙 명시**: `audience_reaction.best_comments`에 주입  
 4. **메트릭 분리**: `comment_count`는 실제 수, 샘플 수는 별도 보관  
-5. **Pack 반영**: `comment_samples.md` 생성 후 NotebookLM 입력에 포함
+5. **Pack 반영**: Source Pack Sheet/CSV에 `best_comments_json` 포함 (별도 `comment_samples.md` 미생성)
 
 참고:
 - TikTok 베스트 댓글은 comment/list 캡처를 **기본 경로**로 사용하고, 실패 시 DOM → yt-dlp로 폴백.
@@ -125,7 +125,7 @@ python backend/scripts/run_provider_pipeline.py --config backend/provider_source
   - 결과는 **DB-wrapped** 후 사용
 - Opal: Decision 생성 **보조**
 - SoR는 DB, Sheet는 **운영 버스**
-- **필수 추적**: 모든 파이프라인에 `run_id`, `inputs_hash`, `idempotency_key` 필수
+- **권장 추적**: RunManager 적용 파이프라인에서 `run_id`, `inputs_hash`, `idempotency_key` 기록 (전 파이프라인 강제 아님)
 
 ---
 
@@ -141,17 +141,13 @@ python backend/scripts/run_provider_pipeline.py --config backend/provider_source
 
 | 파일 | 내용 |
 | --- | --- |
-| `cluster_summary.docx` | 패턴 정의, 핵심 시그니처 3개, temporal_phase |
-| `variants_table.xlsx` | Depth1/2 성공/실패, 메트릭 |
-| `evidence_digest.docx` | Evidence Snapshot, Failure modes |
-| `comment_samples.md` | 상위 댓글 10~30개 |
+| `NL_{platform}_{category}_{cluster_id}_{temporal_phase}_v1` | Google Sheet/CSV (columns: section/key/value/entry_idx; cluster/entry/analysis/evidence 포함) |
 
 ### 5.3 생성 커맨드
 ```bash
 python backend/scripts/build_notebook_source_pack.py \
   --cluster-id CLUSTER_ID \
-  --temporal-phase T1 \
-  --output-dir /path/to/packs
+  --temporal-phase T1
 ```
 
 ### 5.4 NotebookLM 결과 추출
@@ -183,12 +179,8 @@ python backend/scripts/ingest_notebook_library.py \
 | `listRecentlyViewed` | 누락/정합성 점검 |
 | `batchDelete` | 폐기 정책 적용 |
 
-### 6.2 연동 스크립트 (예정)
-```bash
-python backend/scripts/notebooklm_create.py --cluster-id CLUSTER_ID
-python backend/scripts/notebooklm_reconcile.py
-python backend/scripts/notebooklm_cleanup.py --older-than 90d
-```
+### 6.2 연동 스크립트 (예정, 미구현)
+- 예정 스크립트: `notebooklm_create.py`, `notebooklm_reconcile.py`, `notebooklm_cleanup.py` (현재 repo에 없음)
 
 > 상세 스펙은 `docs/NOTEBOOKLM_SPEC.md` 참고
 

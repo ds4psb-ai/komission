@@ -39,12 +39,12 @@
                  ↓
 ┌─────────────────────────────────────┐
 │  Director Pack Compiler             │
-│  └─ Contract-First (heuristic 폴백) │
+│  └─ Contract-First + heuristic 보강 │
 └────────────────┬────────────────────┘
                  ↓
 ┌─────────────────────────────────────┐
 │  Audio Coach (Gemini 2.5 Flash)     │
-│  ├─ WebSocket: /coaching/live       │
+│  ├─ WebSocket: /api/v1/ws/coaching/{session_id}  │
 │  ├─ frame_ack RTT 측정 (Phase 2)    │
 │  └─ H.264 스트리밍 지원             │
 └────────────────┬────────────────────┘
@@ -64,7 +64,7 @@
 | 원칙 | 설명 |
 |------|------|
 | **SSoT** | VDG = 진실의 단일원천, Pack = 실행계약 |
-| **Contract-First** | Heuristic은 폴백, Contract가 1순위 |
+| **Contract-First** | Contract 1순위 + heuristic 보강/폴백 |
 | **Metric Registry** | 메트릭 드리프트 방지 (domain.name.v1) |
 | **Deterministic IDs** | RL 조인키 안정성 (ap_id, evidence_id) |
 | **A→B Migration** | 데이터 축적 시 Signal → Invariant 자동 승격 |
@@ -116,7 +116,7 @@
 
 ### MCP Integration (2025-12-31)
 - ✅ `/backend/app/mcp/` 디렉토리 구조
-- ✅ `tools/`: smart_pattern_analysis, ai_batch_analysis 등
+- ✅ `tools/`: smart_pattern_analysis, ai_batch_analysis, stpf_* 등
 - ✅ `resources/`: 데이터 리소스
 - ✅ Claude Desktop 연동 지원
 
@@ -168,14 +168,17 @@ routers/                           # 33 files
 │   ├─ run_checkpoint_evaluation_loop()
 │   └─ generate_tts_fallback()     # H2: TTS 폴백
 ├── coaching.py                    # REST API (586 lines)
-│   ├─ POST /coaching/sessions
-│   ├─ GET /coaching/sessions/{id}
-│   ├─ POST /coaching/sessions/{id}/events/intervention
-│   ├─ POST /coaching/sessions/{id}/events/outcome
-│   └─ GET /coaching/sessions/{id}/summary
+│   ├─ POST /api/v1/coaching/sessions
+│   ├─ GET /api/v1/coaching/sessions (admin)
+│   ├─ GET /api/v1/coaching/sessions/{session_id}
+│   ├─ POST /api/v1/coaching/sessions/{session_id}/events/rule-evaluated
+│   ├─ POST /api/v1/coaching/sessions/{session_id}/events/intervention
+│   ├─ POST /api/v1/coaching/sessions/{session_id}/events/outcome
+│   ├─ GET /api/v1/coaching/sessions/{session_id}/events
+│   └─ GET /api/v1/coaching/sessions/{session_id}/summary
 ├── outliers.py                    # 아웃라이어 CRUD (106KB)
 ├── agent.py                       # Chat Agent
-├── auth.py                        # Firebase Auth
+├── auth.py                        # Google OAuth + JWT
 ├── for_you.py                     # For You 페이지
 ├── o2o.py                         # O2O 체험단
 ├── remix.py                       # Remix 노드
@@ -206,8 +209,8 @@ services/vdg_2pass/                # 16 files
 ├── director_compiler.py           # VDG → Pack 컴파일러
 
 mcp/                               # MCP 서버
-├── tools/                         # 6 analysis tools
-├── resources/                     # 5 data resources
+├── tools/                         # VDG + STPF tools
+├── resources/                     # komission + STPF resources
 ├── prompts/                       # 4 prompt templates
 └── server.py
 ```
@@ -273,28 +276,63 @@ components/outlier/                # 9 files
 
 ### Coaching WebSocket
 ```
-ws://localhost:8000/api/v1/coaching/live/{session_id}
+ws://localhost:8000/api/v1/ws/coaching/{session_id}
 
 Messages (Server → Client):
-- feedback: { message, audio_b64, rule_id, priority }
+- session_status: { status, session_id?, output_mode?, persona?, stats? }
+- feedback: { message, audio_b64?, rule_id?, priority? }
+- graphic_guide: { message, rule_id, priority, target_position, grid_type, arrow_direction }
+- text_coach: { message }
+- audio_feedback: { text, audio, persona, source }
+- audio_response: { audio_b64, format }
+- vdg_coaching_data: { shotlist_sequence, kick_timings, mise_en_scene_guides, keyframes }
+- adaptive_response: { accepted, message, alternative?, affected_rule_id?, reason? }
+- signal_promotion: { new_candidates, axis_metrics, candidates, failing_axes }
+- rule_update: { rule_id, status }
 - frame_ack: { frame_t, codec } ← Phase 2 NEW
 - pong: { client_t, timestamp }
+- error: { message }
 
 Messages (Client → Server):
-- video_frame: { frame_b64, t_sec, t_ms, codec, quality_hint }
 - control: { action: start|stop|pause }
+- video_frame: { frame_b64, t_sec, t_ms?, codec?, quality_hint? }
+- audio: { data: base64_pcm }
+- metric: { rule_id, value, t_sec }
+- timing: { t_sec }
+- user_feedback: { text }
 - ping: { t }
 ```
+
+`POST /api/v1/coaching/sessions` 응답의 `websocket_url`을 그대로 사용하며, 형식은 `/api/v1/ws/coaching/{session_id}`입니다.
+
+### Metrics WebSocket
+```
+ws://localhost:8000/ws/metrics/{user_id}
+```
+실시간 메트릭 스트림 (운영/디버깅용).
 
 ### REST API
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/coaching/sessions` | POST | Create session |
-| `/coaching/sessions/{id}/events/intervention` | POST | Log intervention |
-| `/coaching/sessions/{id}/events/outcome` | POST | Log outcome |
-| `/coaching/sessions/{id}/end` | POST | End session |
-| `/outliers/items/{id}` | GET | Card detail with VDG |
-| `/outliers/items/{id}/guide` | GET | Director Pack guide |
+| `/api/v1/coaching/sessions` | POST | Create session |
+| `/api/v1/coaching/sessions` | GET | List sessions (admin) |
+| `/api/v1/coaching/sessions/{session_id}` | GET | Get session status |
+| `/api/v1/coaching/sessions/{session_id}/feedback` | POST | Submit feedback |
+| `/api/v1/coaching/sessions/{session_id}/events/rule-evaluated` | POST | Log rule evaluation |
+| `/api/v1/coaching/sessions/{session_id}/events/intervention` | POST | Log intervention |
+| `/api/v1/coaching/sessions/{session_id}/events/outcome` | POST | Log outcome |
+| `/api/v1/coaching/sessions/{session_id}/events` | GET | List events |
+| `/api/v1/coaching/sessions/{session_id}/summary` | GET | Session summary |
+| `/api/v1/coaching/stats/all-sessions` | GET | Session stats (admin ops) |
+| `/api/v1/coaching/quality/report` | GET | Log quality report (admin ops) |
+| `/api/v1/coaching/quality/session/{session_id}` | GET | Session log quality (admin ops) |
+| `/api/v1/coaching/ws/health` | GET | Coaching WS health (admin ops) |
+| `/api/v1/coaching/ws/sessions` | GET | Active coaching WS sessions (admin ops) |
+| `/api/v1/coaching/sessions/{session_id}/end` | POST | End session (alias) |
+| `/api/v1/coaching/sessions/{session_id}` | DELETE | End session |
+| `/api/v1/outliers/items/{item_id}` | GET | Card detail with VDG + shooting_guide |
+
+Legacy alias: `/coaching/*` (non-versioned)도 노출되어 있으나, 문서/연동은 `/api/v1/coaching/*` 사용을 권장합니다.
 
 ---
 

@@ -37,6 +37,9 @@
 # Platform Updates - Daily at 9 AM KST (YouTube Blog RSS, etc.)
 0 0 * * * cd /path/to/komission/backend && source venv/bin/activate && python scripts/run_scheduled_crawl.py --type updates --limit 10
 
+# Evidence Loop - Daily at 10 AM KST (after updates)
+0 1 * * * cd /path/to/komission/backend && source venv/bin/activate && python scripts/run_real_evidence_loop.py
+
 # ============================================================
 # SHEET SYNC
 # ============================================================

@@ -1,7 +1,11 @@
 # Komission MCP Server - Claude Desktop 연동 가이드
 
-**Updated**: 2025-12-31 (v2)  
-**MCP Spec**: 2025-11-25 | **FastMCP**: 2.14+
+**Updated**: 2026-01-04 (v3)  
+**MCP Spec**: 2025-11-25 | **FastMCP**: 2.14+ | **AAIF**: 2025-12-09
+
+> [!NOTE]
+> 2025-12-09: MCP가 **Agentic AI Foundation (AAIF)**에 기증됨 (Linux Foundation 산하)
+> 공동 창립: Anthropic, OpenAI, Block | 지원: Google, Microsoft, AWS
 
 ---
 
@@ -65,6 +69,10 @@ Claude Desktop 완전히 종료 후 재시작
 | `komission://recurrence/{cluster_id}` | 재등장 lineage (배치 계산 결과) |
 | `komission://vdg/{outlier_id}` | VDG 분석 결과 (품질 스코어) |
 | `komission://director-pack/{outlier_id}` | Director Pack (VDG v4 기반, on-demand 생성) |
+| `stpf://patterns/{pattern_id}` | STPF v3.1 패턴 평가 (읽기 전용) |
+| `stpf://grades` | STPF 등급 기준표 (읽기 전용) |
+| `stpf://health` | STPF 시스템 상태 (읽기 전용) |
+| `stpf://variables` | STPF 변수 정의/범위 (읽기 전용) |
 
 ---
 
@@ -78,6 +86,13 @@ Claude Desktop 완전히 종료 후 재시작
 | `smart_pattern_analysis` | 패턴 데이터 제공 (Claude 분석용) | 자동 승인 |
 | `ai_batch_analysis` | 배치 데이터 제공 (Claude 비교용) | 자동 승인 |
 | `get_pattern_performance` | 성과 데이터 제공 | 자동 승인 |
+| `stpf_full_analyze` | STPF 16변수 정밀 분석 | 자동 승인 |
+| `stpf_quick_score` | STPF 5변수 빠른 점수 | 자동 승인 |
+| `stpf_compare_content` | STPF A/B 비교 | 자동 승인 |
+| `stpf_simulate_scenarios` | STPF ToT 시뮬레이션 | 자동 승인 |
+| `stpf_monte_carlo` | STPF 몬테카를로 | 자동 승인 |
+| `stpf_kelly_decision` | Kelly 의사결정 | 자동 승인 |
+| `stpf_get_anchor` | STPF 앵커 해석 | 자동 승인 |
 
 ### 4.1 search_patterns
 ```python
@@ -137,6 +152,9 @@ get_pattern_performance(
 )
 ```
 > 성과 지표 테이블을 반환합니다. Claude가 성과를 평가합니다.
+
+### 4.7 STPF v3.1 도구
+STPF 도구는 모두 구조화된 분석 결과를 반환합니다. 점수 해석은 `docs/STPF_V3_ROADMAP.md`를 참고하세요.
 
 ---
 
@@ -349,3 +367,60 @@ docker-compose -f docker-compose.mcp.yml up -d
 4. **비동기**: `async` 도구 선언 필수
 5. **모듈화**: 도메인별 마이크로 서버 분리
 6. **에러 처리**: JSON-RPC 2.0 에러 코드 사용
+
+---
+
+## 11. 2025-12 신규 스펙 (향후 적용)
+
+### 11.1 MCP Apps Extension (SEP-1865)
+
+2025-11 OpenAI + Anthropic + MCP-UI 협력으로 표준화된 UI 위젯:
+
+| 구성요소 | 패키지 |
+|----------|--------|
+| 서버 어댑터 | `@mcp-ui/server` |
+| ChatGPT 통합 | OpenAI Apps SDK |
+| Claude 통합 | 네이티브 MCP |
+
+**적용 예정:** 에이전트 채팅 Hub-Spokes UI 위젯
+
+### 11.2 Tasks Primitive (2025-11)
+
+Background Tasks 대신 공식 `Tasks` primitive로 비동기 장기 작업:
+
+```python
+# 현재: Background Tasks
+@mcp.tool(task=True)
+async def long_running_task(...): ...
+
+# 향후: Tasks Primitive (마이그레이션 고려)
+@mcp.task()
+async def long_running_task(...): ...
+```
+
+### 11.3 OAuth 2.1 CIMD
+
+Client ID Metadata Documents로 Dynamic Client Registration 대체:
+
+```json
+// .well-known/oauth-client-metadata.json
+{
+  "client_id": "komission-mcp-server",
+  "redirect_uris": ["https://api.komission.io/oauth/callback"],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "scope": "read write"
+}
+```
+
+**적용 시점:** 엔터프라이즈 배포 시
+
+---
+
+## 12. Reference
+
+- MCP 서버 코드: `backend/app/mcp/` (모듈화됨)
+- MCP 공식 스펙: https://modelcontextprotocol.io
+- AAIF: https://agenticaifoundation.org (Linux Foundation)
+- FastMCP 문서: https://gofastmcp.com
+- MCP-UI: https://mcpui.dev
+

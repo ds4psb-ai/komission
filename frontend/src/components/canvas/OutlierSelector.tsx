@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 

@@ -63,12 +63,13 @@
 
 ## 3) 우선 적용 계획 (Phased)
 ### Phase A: Discover + Outlier 강화 (✅ Implemented 2025-12-25)
-- [x] Niches/Trends/Recently Added 섹션 추가 → `/outliers` page
+- [x] Niches/Trends/Recently Added 섹션 추가 → `/` (홈, Unified Outlier Discovery)
 - [x] 플랫폼 토글 + Fresh Content 필터 → `CrawlerOutlierSelector`
 - [x] "Promote to Parent" CTA 고정 → `CrawlerOutlierCard` + `CrawlerOutlierNode`
 
 **구현 파일:**
-- `frontend/src/app/outliers/page.tsx`
+- `frontend/src/app/page.tsx` (홈 피드)
+- `frontend/src/app/outliers/page.tsx` (Ops 리다이렉트 스텁)
 - `frontend/src/components/CrawlerOutlierCard.tsx`
 - `frontend/src/components/canvas/CrawlerOutlierNode` (in CustomNodes.tsx)
 - `frontend/src/components/canvas/CrawlerOutlierSelector.tsx`

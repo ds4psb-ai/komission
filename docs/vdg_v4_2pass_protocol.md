@@ -336,7 +336,8 @@ class VDGv4(BaseModel):
 
 ```
 contract_candidates.dna_invariants_candidates[]
-    ↓
+    + heuristic_extract()
+    ↓ (rule_id 기준 dedupe, 우선순위 높은 규칙 유지)
 dna_invariants[] (rule_id, domain, priority, spec, coach_line_templates)
 
 contract_candidates.forbidden_mutations_candidates[]
@@ -346,6 +347,8 @@ forbidden_mutations[] (mutation_id, reason, severity)
 contract_candidates.weights_candidates
     ↓
 scoring.dna_weights
+
+> 참고: invariants 수가 부족할 경우 fallback 규칙이 추가된다.
 ```
 
 ---

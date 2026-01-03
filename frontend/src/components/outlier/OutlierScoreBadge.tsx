@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * OutlierScoreBadge - Virlo-style outlier score badge

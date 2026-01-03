@@ -29,29 +29,31 @@
 
 ### API 엔드포인트 테스트
 - [x] `POST /api/v1/agent/chat` - Chat Agent 응답 확인
-- [x] `GET /coaching/sessions` - 세션 목록
-- [x] `POST /coaching/sessions/{id}/events/intervention` - 개입 로깅
+- [x] `GET /api/v1/coaching/sessions` - 세션 목록 (Admin)
+- [x] `POST /api/v1/coaching/sessions/{session_id}/events/intervention` - 개입 로깅
+- [x] `scripts/smoke_coaching_ws.sh` - 코칭 WS 핸드셰이크 + recording 상태 확인
 
 ### 핵심 서비스
 - [x] Gemini API 호출 성공 확인
 - [x] CoachingRepository CRUD 동작 확인
 - [x] IntentClassifier 7가지 인텐트 분류 테스트
+- [x] `backend/venv/bin/pytest` - 백엔드 테스트 통과
 
 ---
 
 ## Phase 2: 웹 프론트엔드 검증 (P0 - 완료)
 
 ### 빌드
-- [x] 프로덕션 빌드 성공 (`npm run build`)
+- [x] 프로덕션 빌드 성공 (`bun run build`)
 - [x] 빌드 에러 0개
 
 ### 페이지 접근
 - [x] `/` - 메인 페이지 로딩
 - [x] `/login` - 로그인 페이지
-- [x] `/outliers` - Outlier 관리자
+- [x] `/ops/outliers` - Outlier 관리자 (Ops)
 
 ### 기능 테스트
-- [x] Firebase 로그인 성공
+- [x] Google OAuth 로그인 성공 (JWT 발급)
 - [x] 코칭 세션 시작/중단
 - [x] 음성 코칭 ON/OFF 토글
 
@@ -165,7 +167,7 @@ uvicorn app.main:app --reload --port 8000
 
 ### 웹 프론트엔드
 ```bash
-cd frontend && npm run dev
+cd frontend && bun run dev
 ```
 
 ---

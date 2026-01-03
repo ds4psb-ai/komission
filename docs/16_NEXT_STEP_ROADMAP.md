@@ -46,7 +46,7 @@
 ```
 outliers.py → extract_best_comments()
          ↓
-✅ 댓글 있음 → gemini_pipeline.analyze_video()
+✅ 댓글 있음 → gemini_pipeline.analyze_video_v4()
          ↓
 ⚠️ S/A 티어 + 댓글 실패 → 202 + comments_pending_review
          ↓
@@ -54,8 +54,8 @@ outliers.py → extract_best_comments()
 ```
 
 **수동 검토 API:**
-- `GET /outliers/items/pending-comments` - 검토 대기 목록
-- `PATCH /outliers/items/{id}/comments` - 수동 댓글 입력 후 VDG 재시도
+- `GET /api/v1/outliers/items/pending-comments` - 검토 대기 목록 (Curator/Admin)
+- `PATCH /api/v1/outliers/items/{item_id}/comments` - 수동 댓글 입력 후 VDG 재시도 (Curator/Admin)
 
 ---
 
@@ -143,6 +143,10 @@ Content Filter Test: 12/12 PASSED
 | `komission://recurrence/{cluster_id}` | 재등장 lineage (배치 처리 결과) |
 | `komission://vdg/{outlier_id}` | VDG 분석 결과 |
 | `komission://director-pack/{outlier_id}` | Director Pack (VDG v4 기반, on-demand 생성) |
+| `stpf://patterns/{pattern_id}` | STPF v3.1 패턴 평가 (읽기 전용) |
+| `stpf://grades` | STPF 등급 기준표 (읽기 전용) |
+| `stpf://health` | STPF 시스템 상태 (읽기 전용) |
+| `stpf://variables` | STPF 변수 정의/범위 (읽기 전용) |
 
 > ⚠️ `recurrence`는 배치 파이프라인에서 사전 계산된 결과를 노출. 실시간 매칭 아님.
 
@@ -153,6 +157,16 @@ Content Filter Test: 12/12 PASSED
 | `search_patterns` | L1/L2 패턴 검색 | 자동 | 읽기 전용 |
 | `generate_source_pack` | NotebookLM 팩 생성 | 명시적 | 데이터 생성 |
 | `reanalyze_vdg` | VDG 재분석 | 명시적 | 비용 발생 |
+| `smart_pattern_analysis` | 패턴 데이터 제공 (Claude 분석용) | 자동 | 읽기 전용 |
+| `ai_batch_analysis` | 배치 비교 데이터 제공 | 자동 | 읽기 전용 |
+| `get_pattern_performance` | 성과 테이블 제공 | 자동 | 읽기 전용 |
+| `stpf_full_analyze` | STPF 16변수 정밀 분석 | 자동 | 읽기 전용 |
+| `stpf_quick_score` | STPF 5변수 빠른 점수 | 자동 | 읽기 전용 |
+| `stpf_compare_content` | STPF A/B 비교 | 자동 | 읽기 전용 |
+| `stpf_simulate_scenarios` | STPF ToT 시뮬레이션 | 자동 | 읽기 전용 |
+| `stpf_monte_carlo` | STPF 몬테카를로 | 자동 | 읽기 전용 |
+| `stpf_kelly_decision` | Kelly 의사결정 | 자동 | 읽기 전용 |
+| `stpf_get_anchor` | STPF 앵커 해석 | 자동 | 읽기 전용 |
 
 > ⚠️ `detect_recurrence`는 배치 파이프라인 전용. 사용자 Tool 아님 → Resource로 결과만 노출.
 > ✅ `search_patterns`/`generate_source_pack`는 `output_format="json"` 지원.
@@ -173,6 +187,8 @@ Content Filter Test: 12/12 PASSED
 | 권한 | 도구별 동의 | RBAC (role 기반) |
 | 입력 검증 | 기본 | Pydantic strict validation |
 | Transport | stdio | Streamable HTTP (원격 시) |
+
+> 규모 확장/멀티테넌시가 필요해지면 Auth0 FGA/Permit 등 외부 권한 엔진 도입을 고려.
 
 ---
 

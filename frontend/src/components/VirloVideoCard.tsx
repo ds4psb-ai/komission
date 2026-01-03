@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 /**
  * VirloVideoCard.tsx
@@ -87,7 +88,9 @@ const PLATFORM_CONFIG = {
         label: 'TikTok',
         icon: '🎵',
         color: 'from-pink-500 to-cyan-500',
-        embedUrl: (id: string) => `https://www.tiktok.com/embed/v2/${id}`,
+        embedUrl: (id: string) => (
+            `https://www.tiktok.com/player/v1/${id}?autoplay=1&loop=1&mute=1&controls=1&progress_bar=1&play_button=1&volume_control=1&fullscreen_button=1`
+        ),
     },
     instagram: {
         label: 'Reels',
@@ -137,8 +140,8 @@ function extractVideoId(url: string, platform: string): string | null {
 // Sub-components
 // ==================
 
-/** Analysis Overlay - shows hook, patterns, engagement peak */
 function AnalysisOverlay({ analysis, visible }: { analysis?: VideoAnalysis; visible: boolean }) {
+    const t = useTranslations('virloVideoCard');
     if (!analysis || !visible) return null;
 
     return (
@@ -161,7 +164,7 @@ function AnalysisOverlay({ analysis, visible }: { analysis?: VideoAnalysis; visi
                         )}
                         {typeof analysis.hook_duration_sec === 'number' && (
                             <span className="text-[10px] text-white/50">
-                                <Clock className="w-3 h-3 inline" /> {analysis.hook_duration_sec}s
+                                <Clock className="w-3 h-3 inline" /> {t('hookDuration', { sec: analysis.hook_duration_sec })}
                             </span>
                         )}
                     </div>
@@ -185,14 +188,14 @@ function AnalysisOverlay({ analysis, visible }: { analysis?: VideoAnalysis; visi
             {typeof analysis.engagement_peak_sec === 'number' && (
                 <div className="flex items-center gap-2 text-[10px] text-emerald-400">
                     <Sparkles className="w-3 h-3" />
-                    Peak engagement at {analysis.engagement_peak_sec}s
+                    {t('peakEngagement', { sec: analysis.engagement_peak_sec })}
                 </div>
             )}
 
             {/* Best Comment */}
             {analysis.best_comment && (
                 <div className="mt-2 p-2 bg-white/5 rounded-lg border border-white/10">
-                    <div className="text-[10px] text-white/40 mb-1">💬 Top Comment</div>
+                    <div className="text-[10px] text-white/40 mb-1">💬 {t('topComment')}</div>
                     <div className="text-xs text-white/80 line-clamp-2">"{analysis.best_comment}"</div>
                 </div>
             )}
@@ -210,6 +213,7 @@ function EmbedModal({
 }) {
     const videoId = extractVideoId(video.video_url, video.platform);
     const platformConfig = PLATFORM_CONFIG[video.platform];
+    const t = useTranslations('virloVideoCard');
 
     return (
         <div
@@ -235,13 +239,13 @@ function EmbedModal({
                             src={platformConfig.embedUrl(videoId)}
                             className="absolute inset-0 w-full h-full"
                             allowFullScreen
-                            allow="autoplay; encrypted-media"
+                            allow="autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; microphone; camera"
                         />
                     ) : (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
                             <div className="text-4xl">{platformConfig.icon}</div>
                             <div className="text-sm text-white/60 text-center px-4">
-                                임베드를 사용할 수 없습니다
+                                {t('embedNotAvailable')}
                             </div>
                             <a
                                 href={video.video_url}
@@ -250,7 +254,7 @@ function EmbedModal({
                                 className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white flex items-center gap-2"
                             >
                                 <ExternalLink className="w-4 h-4" />
-                                {platformConfig.label}에서 보기
+                                {t('viewOn', { platform: platformConfig.label })}
                             </a>
                         </div>
                     )}
@@ -283,6 +287,7 @@ export function VirloVideoCard({
 }: VirloVideoCardProps) {
     const [showEmbed, setShowEmbed] = useState(false);
     const [showAnalysisOverlay, setShowAnalysisOverlay] = useState(false);
+    const t = useTranslations('virloVideoCard');
 
     const tierConfig = video.outlier_tier ? TIER_CONFIG[video.outlier_tier] : null;
     const platformConfig = PLATFORM_CONFIG[video.platform];
@@ -404,7 +409,7 @@ export function VirloVideoCard({
                         {/* Hook Duration Badge */}
                         {typeof video.analysis?.hook_duration_sec === 'number' && (
                             <div className="px-2 py-1 rounded-full bg-cyan-500/20 backdrop-blur-sm text-[10px] text-cyan-300 font-mono">
-                                🎯 {video.analysis.hook_duration_sec}s hook
+                                🎯 {t('hookDuration', { sec: video.analysis.hook_duration_sec })}
                             </div>
                         )}
                     </div>
@@ -488,7 +493,7 @@ export function VirloVideoCard({
                                     `}
                                 >
                                     <Zap className="w-3 h-3 inline mr-1" />
-                                    Promote
+                                    {t('promote')}
                                 </button>
                             )}
                         </div>

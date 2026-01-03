@@ -54,7 +54,56 @@ _CATEGORICAL_FEATURES = ("top_viral_kick_mechanism", "category")
 # Feature Extraction
 # =====================================
 
+def extract_metadata_features(
+    outlier_item: "OutlierItem",
+    reject_reason: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    OutlierItem 메타데이터에서 큐레이션 피처 추출
+    VDG 분석 없이도 폐기 경향성 학습 가능
+    
+    Args:
+        outlier_item: 아웃라이어 아이템
+        reject_reason: 폐기 이유 (선택)
+    
+    Returns:
+        추출된 피처 dict
+    """
+    features: Dict[str, Any] = {
+        "platform": outlier_item.platform or "unknown",
+        "category": outlier_item.category or "unknown",
+        "outlier_score": float(outlier_item.outlier_score or 0),
+        "outlier_tier": outlier_item.outlier_tier,
+        "view_count": outlier_item.view_count or 0,
+        "like_count": outlier_item.like_count or 0,
+        "share_count": outlier_item.share_count or 0,
+        "title_length": len(outlier_item.title or ""),
+        "has_thumbnail": bool(outlier_item.thumbnail_url),
+        "has_video_url": bool(outlier_item.video_url),
+    }
+    
+    # 제목에서 특징 추출
+    title = (outlier_item.title or "").lower()
+    features["has_emoji"] = any(ord(c) > 0x1F300 for c in title)
+    features["has_hashtag"] = "#" in title
+    features["hashtag_count"] = title.count("#")
+    
+    # 폐기 이유 (있을 경우)
+    if reject_reason:
+        features["reject_reason"] = reject_reason
+    
+    # engagement rate 계산
+    if outlier_item.view_count and outlier_item.view_count > 0:
+        engagement = (outlier_item.like_count or 0) + (outlier_item.share_count or 0)
+        features["engagement_rate"] = round(engagement / outlier_item.view_count * 100, 4)
+    else:
+        features["engagement_rate"] = 0.0
+    
+    return features
+
+
 def extract_features_from_vdg(vdg_analysis: Dict[str, Any]) -> Dict[str, Any]:
+
     """
     VDG 분석 결과에서 큐레이션 피처 추출
     
@@ -146,6 +195,7 @@ async def record_curation_decision(
     curator_notes: Optional[str] = None,
     matched_rule_id: Optional[UUID] = None,
     rule_followed: Optional[bool] = None,
+    extracted_features: Optional[Dict[str, Any]] = None,  # 메타데이터 피처 직접 전달
 ) -> CurationDecision:
     """
     큐레이션 결정 기록
@@ -160,13 +210,13 @@ async def record_curation_decision(
         curator_notes: 큐레이터 메모
         matched_rule_id: 매칭된 규칙 ID
         rule_followed: 규칙 추천을 따랐는지
+        extracted_features: 직접 전달된 피처 (VDG 없이 메타데이터만 있을 때)
     
     Returns:
         생성된 CurationDecision
     """
-    # 피처 추출
-    extracted_features = None
-    if vdg_analysis:
+    # 피처 추출: 직접 전달 > VDG 추출 > None
+    if extracted_features is None and vdg_analysis:
         extracted_features = extract_features_from_vdg(vdg_analysis)
     
     decision = CurationDecision(
@@ -181,6 +231,7 @@ async def record_curation_decision(
         matched_rule_id=matched_rule_id,
         rule_followed=rule_followed,
     )
+
     
     db.add(decision)
     await db.flush()

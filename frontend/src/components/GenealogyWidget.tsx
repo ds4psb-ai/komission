@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import React, { useEffect, useState, useRef } from 'react';
 import { api, GenealogyResponse } from '@/lib/api';
 
@@ -8,6 +9,7 @@ interface GenealogyWidgetProps {
 }
 
 export function GenealogyWidget({ nodeId, layer = 'fork', depth = 3 }: GenealogyWidgetProps) {
+    const t = useTranslations('components.genealogy');
     const [data, setData] = useState<GenealogyResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const isMountedRef = useRef(true);
@@ -38,15 +40,15 @@ export function GenealogyWidget({ nodeId, layer = 'fork', depth = 3 }: Genealogy
         };
     }, []);
 
-    if (loading) return <div className="text-white/50 text-sm animate-pulse">Loading genealogy...</div>;
+    if (loading) return <div className="text-white/50 text-sm animate-pulse">{t('loading')}</div>;
     if (!data || data.edges.length === 0) return null;
 
     return (
         <div className="glass-panel p-6 rounded-2xl mb-6">
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest">바이럴 계보 (Genealogy)</h3>
+                <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest">{t('title')}</h3>
                 <span className="text-xs bg-violet-500/20 text-violet-300 px-3 py-1 rounded-full border border-violet-500/30">
-                    세대 깊이: {data.total_nodes}
+                    {t('depth')}: {data.total_nodes}
                 </span>
             </div>
 
@@ -62,7 +64,7 @@ export function GenealogyWidget({ nodeId, layer = 'fork', depth = 3 }: Genealogy
                                 {edge.parent.substring(0, 4)}...
                             </div>
                             <div>
-                                <div className="text-xs text-white/40 mb-1">부모 노드</div>
+                                <div className="text-xs text-white/40 mb-1">{t('parentNode')}</div>
                                 <div className="text-sm font-medium text-slate-300">{edge.parent}</div>
                             </div>
                         </div>
@@ -70,7 +72,7 @@ export function GenealogyWidget({ nodeId, layer = 'fork', depth = 3 }: Genealogy
                         {/* Connection Label */}
                         <div className="absolute -left-[14px] top-14 h-8 border-l border-violet-500/50"></div>
                         <div className="absolute left-6 -bottom-6 text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                            성과: {edge.delta} 🚀
+                            {t('performance')}: {edge.delta} 🚀
                         </div>
                     </div>
                 ))}
@@ -85,12 +87,12 @@ export function GenealogyWidget({ nodeId, layer = 'fork', depth = 3 }: Genealogy
                         </div>
 
                         <div className="relative z-10">
-                            <div className="text-xs text-violet-400 font-bold mb-1 uppercase">현재 노드 ({nodeId.substring(0, 8)})</div>
+                            <div className="text-xs text-violet-400 font-bold mb-1 uppercase">{t('currentNode')} ({nodeId.substring(0, 8)})</div>
                             <div className="text-lg font-bold text-white">
-                                {layer === 'master' ? '마스터 오리진' : '진화된 변이'}
+                                {layer === 'master' ? t('masterOrigin') : t('evolvedMutation')}
                             </div>
                             <div className="text-xs text-white/50 mt-2">
-                                이 노드는 현재 {layer === 'master' ? '유기적' : '가속화된'} 성장을 추적중입니다.
+                                {t('trackingMessage', { type: layer === 'master' ? t('organic') : t('accelerated') })}
                             </div>
                         </div>
                     </div>

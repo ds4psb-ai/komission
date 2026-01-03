@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 /**
  * Session Result Page - 추천 결과 + Evidence
  * 
@@ -25,25 +27,6 @@ const MOCK_COMMENTS: BestComment[] = [
     { text: '끝까지 보니까 이해됨', likes: 987, lang: 'ko', tag: 'payoff' },
 ];
 
-const CATEGORY_LABELS: Record<string, string> = {
-    beauty: '뷰티',
-    food: '푸드',
-    fashion: '패션',
-    tech: '테크',
-    lifestyle: '라이프',
-    entertainment: '엔터',
-    meme: '밈',
-    trending: '트렌딩',
-};
-
-const PLATFORM_LABELS: Record<string, string> = {
-    tiktok: '틱톡',
-    youtube: '유튜브 쇼츠',
-    instagram: '인스타 릴스',
-};
-
-const formatCategoryLabel = (value: string) => CATEGORY_LABELS[value] || value;
-const formatPlatformLabel = (value: string) => PLATFORM_LABELS[value] || value;
 
 function SessionResultContent() {
     const router = useRouter();
@@ -51,10 +34,16 @@ function SessionResultContent() {
     const { state, setSelectedPattern, markEvidenceViewed, markFeedbackSubmitted, markShootStarted } = useSession();
     const { requestConsent, isPending } = useConsent();
 
+    // i18n
+    const t = useTranslations('pages.session.result');
+    const tCategories = useTranslations('categories');
+    const tPlatforms = useTranslations('platforms');
+
     const [isEvidenceExpanded, setIsEvidenceExpanded] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const isMountedRef = useRef(true);
+
 
     // Pattern ID from URL
     const patternId = searchParams.get('pattern');
@@ -82,7 +71,7 @@ function SessionResultContent() {
                 }
                 try {
                     const res = await fetch(`/api/v1/for-you/${patternId}`);
-                    if (!res.ok) throw new Error('패턴을 찾을 수 없습니다');
+                    if (!res.ok) throw new Error(t('patternNotFound'));
 
                     const data = await res.json();
                     if (!isMountedRef.current) return;
@@ -91,11 +80,11 @@ function SessionResultContent() {
                     const mappedPattern = {
                         pattern_id: data.id,
                         cluster_id: data.cluster_id || data.category,
-                        pattern_summary: data.title || `${formatPlatformLabel(data.platform)} ${formatCategoryLabel(data.category)} 패턴`,
+                        pattern_summary: data.title || `${tPlatforms(data.platform)} ${tCategories(data.category)} Pattern`,
                         signature: {
-                            hook: data.tier === 'S' ? '강한 훅' : '일반 훅',
-                            timing: data.evidence.growth_rate || '정보 없음',
-                            audio: data.platform === 'tiktok' ? '틱톡 트렌딩 사운드' : '플랫폼 기본 사운드',
+                            hook: data.tier === 'S' ? 'Strong Hook' : 'Normal Hook',
+                            timing: data.evidence.growth_rate || 'N/A',
+                            audio: data.platform === 'tiktok' ? 'TikTok Trending Sound' : 'Platform Sound',
                         },
                         fit_score: (data.outlier_score ?? 0) / 1000,
                         evidence_strength: data.evidence.best_comments.length,
@@ -114,7 +103,7 @@ function SessionResultContent() {
                 } catch (err) {
                     console.error('Failed to load pattern:', err);
                     if (!isMountedRef.current) return;
-                    setFetchError('패턴을 불러올 수 없습니다.');
+                    setFetchError(t('loadPatternFailed'));
                 } finally {
                     if (isMountedRef.current) {
                         setIsLoading(false);
@@ -153,9 +142,9 @@ function SessionResultContent() {
         try {
             const consented = await requestConsent('generate_source_pack', {
                 details: [
-                    '선택한 Outlier 데이터 포함',
-                    'NotebookLM 포맷으로 변환',
-                    `대상: ${patternId.slice(0, 8)}...`
+                    'Include selected Outlier data',
+                    'Convert to NotebookLM format',
+                    `Target: ${patternId.slice(0, 8)}...`
                 ]
             });
 
@@ -163,7 +152,7 @@ function SessionResultContent() {
 
             // 오프라인 체크
             if (!navigator.onLine) {
-                alert('인터넷 연결을 확인해주세요.');
+                alert(t('checkInternet'));
                 return;
             }
 
@@ -198,22 +187,22 @@ function SessionResultContent() {
             }
 
             // 모든 시도 실패
-            let userMessage = '소스팩 생성에 실패했습니다.';
+            let userMessage = t('generateSourcePack') + ' failed';
             if (lastError?.includes('network') || lastError?.includes('fetch')) {
-                userMessage = 'MCP 서버에 연결할 수 없습니다.\n서버가 실행 중인지 확인해주세요.';
+                userMessage = t('mcpServerError');
             } else if (lastError?.includes('timeout')) {
-                userMessage = '서버 응답 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
+                userMessage = t('serverTimeout');
             } else if (lastError) {
-                userMessage = `생성 실패: ${lastError}`;
+                userMessage = `Failed: ${lastError}`;
             }
             alert(userMessage);
         } catch (err) {
             console.error('소스팩 생성 실패:', err);
 
-            let message = '생성 중 오류가 발생했습니다.';
+            let message = t('generateSourcePack') + ' error';
             if (err instanceof Error) {
                 if (err.message.includes('network') || err.message.includes('Failed to fetch')) {
-                    message = 'MCP 서버에 연결할 수 없습니다.';
+                    message = t('mcpServerError');
                 }
             }
             alert(message);
@@ -264,7 +253,7 @@ function SessionResultContent() {
                     </button>
                     <div className="flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-violet-400" />
-                        <h1 className="text-lg font-bold">추천 패턴</h1>
+                        <h1 className="text-lg font-bold">{t('title')}</h1>
                     </div>
                 </div>
             </header>
@@ -275,10 +264,10 @@ function SessionResultContent() {
                     <div className="flex items-center gap-2 text-xs text-white/40 animate-fadeIn">
                         <span className="px-2 py-1 rounded-full bg-white/5">
                             {state.input_context.platform === 'tiktok' ? '🎵' : state.input_context.platform === 'youtube' ? '▶️' : '📷'}
-                            {' '}{formatPlatformLabel(state.input_context.platform)}
+                            {' '}{tPlatforms(state.input_context.platform)}
                         </span>
                         <span className="px-2 py-1 rounded-full bg-white/5">
-                            {formatCategoryLabel(state.input_context.category)}
+                            {tCategories(state.input_context.category)}
                         </span>
                     </div>
                 )}
@@ -340,19 +329,19 @@ function SessionResultContent() {
                                             {isGenerating ? (
                                                 <>
                                                     <Loader2 className="w-4 h-4 animate-spin" />
-                                                    <span className="text-sm font-medium">생성 중...</span>
+                                                    <span className="text-sm font-medium">{t('generating')}</span>
                                                 </>
                                             ) : (
                                                 <>
                                                     <FileText className="w-4 h-4" />
                                                     <span className="text-sm font-medium">
-                                                        NotebookLM 소스팩 생성
+                                                        {t('generateSourcePack')}
                                                     </span>
                                                 </>
                                             )}
                                         </button>
                                         <p className="text-[10px] text-center text-white/30 mt-2">
-                                            심층 분석을 위해 소스 데이터를 NotebookLM으로 전송합니다.
+                                            {t('sourcePackDesc')}
                                         </p>
                                     </>
                                 ) : (
@@ -361,7 +350,7 @@ function SessionResultContent() {
                                         <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                                             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                                             <span className="text-sm text-emerald-300">
-                                                소스팩 생성 완료! ({packResult.outlier_count}개 소스)
+                                                {t('sourcePackComplete')} ({packResult.outlier_count} sources)
                                             </span>
                                         </div>
 
@@ -372,11 +361,11 @@ function SessionResultContent() {
                                         >
                                             <Download className="w-4 h-4" />
                                             <span className="text-sm font-medium">
-                                                JSON 다운로드
+                                                {t('downloadJson')}
                                             </span>
                                         </button>
                                         <p className="text-[10px] text-center text-white/30">
-                                            NotebookLM에서 &ldquo;소스 추가&rdquo; → &ldquo;파일 업로드&rdquo;로 사용하세요.
+                                            {t('notebookLmTip')}
                                         </p>
 
                                         {/* 다시 생성 */}
@@ -384,7 +373,7 @@ function SessionResultContent() {
                                             onClick={() => setPackResult(null)}
                                             className="w-full text-xs text-white/40 hover:text-white/60 transition-colors"
                                         >
-                                            다시 생성하기
+                                            {t('regenerate')}
                                         </button>
                                     </div>
                                 )}

@@ -1,5 +1,6 @@
 // frontend/src/components/remix/VariableSlotEditor.tsx
 "use client";
+import { useTranslations } from 'next-intl';
 
 import { useSessionStore } from "@/stores/useSessionStore";
 import type { VariableSlot } from "@/lib/types/session";

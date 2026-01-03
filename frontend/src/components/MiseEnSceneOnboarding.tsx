@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 /**
  * MiseEnSceneOnboarding - 촬영 전 준비 체크리스트

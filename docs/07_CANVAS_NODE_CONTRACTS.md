@@ -6,32 +6,38 @@
 ---
 
 ## 1) 노드 타입
-- **Outlier Node**: 원본 링크/기초 메타 (RemixNode 기반)
-- **CrawlerOutlier Node**: 3-플랫폼 크롤러 수집 아웃라이어 (신규, `CrawlerOutlierItem` 기반)
-- **Parent Node**: 승격된 RemixNode (MASTER)
-- **Notebook Library Node**: 분석 스키마/클러스터 + NotebookLM 요약(DB 래핑)
-- **Pattern Answer Node (For You)**: L1/L2 검색 결과 + Evidence(댓글/재등장) 표시
+**Implemented**
+- **Source Node (Outlier/Remix)**: 원본 링크/기초 메타 (RemixNode 기반)
+- **CrawlerOutlier Node**: 3-플랫폼 크롤러 수집 아웃라이어 (`CrawlerOutlierItem` 기반)
+- **Process Node**: 분석/파이프라인 실행 상태
+- **Output Node**: 결과 요약 카드
+- **Notebook Node**: Notebook Library 요약 (현재는 정적 표시)
 - **Evidence Node**: Evidence Sheet 요약
 - **Decision Node**: Decision Sheet 요약
-- **Template Seed Node (Opal)**: 템플릿 시드/초안 (선택)
 - **Capsule Node**: 내부 체인 실행(숨김)
+- **Template Seed Node (Opal)**: 템플릿 시드/초안 (선택)
+- **Guide Node**: 실행 브리프 렌더링
+
+**Representation**
+- **Parent Node (MASTER)**: 별도 타입이 아니라 Source Node의 `isLocked`/badge로 표현
+
+**Planned (not in current build)**
+- **Pattern Answer Node (For You)**: L1/L2 검색 결과 + Evidence 표시
 - **O2O Node**: 캠페인 타입/게이팅 규칙
 
 ---
 
 ## 2) Capsule Node 계약
-**Input**
-- parent_id
-- evidence_snapshot (요약 JSON)
-- insights_summary (Notebook Library 요약/클러스터, DB 래핑)
-- library_entry_id (Notebook Library 참조)
-- constraints (budget/time/brand)
-- persona_context (optional, implicit signals 기반)
+**UI Contract (CapsuleDefinition)**
+- id/title/summary/provider
+- inputs: string[] (표시용)
+- outputs: string[] (표시용)
+- params: key/label/type/options/value
+- persona_context (optional)
 
-**Output**
-- decision_json (GO/STOP/PIVOT + next_experiment)
-- decision_sheet_row_id
-- audit_log_id
+**Execution Output**
+- GuideNode payload: hook/shotlist/audio/scene/timing/do_not
+- 현재는 로컬 시뮬레이션 (backend 연결 예정)
 
 ### Capsule Output (Short-form 실행 브리프)
 레거시처럼 긴 텍스트 가이드가 아니라, **실행 가능한 숏폼 브리프**만 노출합니다.
@@ -52,23 +58,13 @@
 
 ---
 
-## 2.1) Pattern Answer Node 계약 (For You, Read-only)
-**Input**
-- query_context (platform/category/persona/intent/temporal_phase)
-
-**Output**
-- pattern_id / cluster_id
-- fit_score / evidence_strength
-- best_comments (최대 5개)
-- recurrence (confirmed만)
-- risk_tags (confusion/controversy)
-
-> 이 노드는 **실행 체인에 연결되지 않으며**, Answer-First (For You) UI에서만 표시한다.
+## 2.1) Pattern Answer Node (Planned)
+Pattern Answer Node는 현재 빌드에 포함되어 있지 않으며, 향후 For You UI 전용 노드로 추가 예정.
 
 ---
 
 ## 3) Evidence/Decision 노드 UI 규칙
-- Evidence: 상위 5개 패턴 + 리스크 2개 + best_comments(5) + recurrence 배지
+- Evidence: 상위 5개 패턴 + 리스크 2개 (best_comments/recurrence 배지는 현재 미표시)
 - Decision: 결론 1줄 + 근거 3개 + 다음 실험 1개
 - 길고 무거운 설명은 접힘 처리
 

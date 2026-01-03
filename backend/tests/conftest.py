@@ -1,9 +1,14 @@
-
 import pytest
 import asyncio
+import sys
+from pathlib import Path
 from typing import AsyncGenerator
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from app.main import app
 from app.database import Base, get_db
@@ -17,7 +22,9 @@ def event_loop():
     """Create event loop for session scope to avoid event loop cleanup issues."""
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
+    asyncio.set_event_loop(None)
     loop.close()
 
 # Async Database URL
@@ -63,6 +70,4 @@ async def client(db_session) -> AsyncGenerator[AsyncClient, None]:
         yield ac
     
     app.dependency_overrides.clear()
-
-
 

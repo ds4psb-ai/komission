@@ -13,6 +13,8 @@ interface MCPState<T> {
     error: string | null;
 }
 
+import { useTranslations } from 'next-intl';
+
 const useIsMountedRef = () => {
     const isMountedRef = useRef(true);
 
@@ -31,6 +33,7 @@ const useIsMountedRef = () => {
  */
 export function useAIAnalysis() {
     const isMountedRef = useIsMountedRef();
+    const t = useTranslations('hooks.mcp');
     const [state, setState] = useState<MCPState<AIAnalysisResult>>({
         data: null,
         loading: false,
@@ -50,14 +53,14 @@ export function useAIAnalysis() {
             if (result.success && result.data) {
                 setState({ data: result.data, loading: false, error: null });
             } else {
-                setState({ data: null, loading: false, error: result.error || 'Analysis failed' });
+                setState({ data: null, loading: false, error: result.error || t('analysisFailed') });
             }
         } catch (err) {
             if (!isMountedRef.current) return;
             setState({
                 data: null,
                 loading: false,
-                error: err instanceof Error ? err.message : 'Unknown error',
+                error: err instanceof Error ? err.message : t('unknownError'),
             });
         }
     }, [isMountedRef]);
@@ -81,6 +84,7 @@ export function useAIAnalysis() {
  */
 export function useBatchAnalysis() {
     const isMountedRef = useIsMountedRef();
+    const t = useTranslations('hooks.mcp');
     const [state, setState] = useState<MCPState<BatchAnalysisResult>>({
         data: null,
         loading: false,
@@ -92,12 +96,12 @@ export function useBatchAnalysis() {
         focus: 'trends' | 'comparison' | 'strategy' = 'trends'
     ) => {
         if (outlierIds.length < 2) {
-            setState({ data: null, loading: false, error: '최소 2개 이상의 아웃라이어가 필요합니다.' });
+            setState({ data: null, loading: false, error: t('minOutliers') });
             return;
         }
 
         if (outlierIds.length > 10) {
-            setState({ data: null, loading: false, error: '최대 10개까지만 분석 가능합니다.' });
+            setState({ data: null, loading: false, error: t('maxOutliers') });
             return;
         }
 
@@ -140,6 +144,7 @@ export function useBatchAnalysis() {
  */
 export function usePatternSearch() {
     const isMountedRef = useIsMountedRef();
+    const t = useTranslations('hooks.mcp');
     const [state, setState] = useState<MCPState<SearchResponse>>({
         data: null,
         loading: false,
@@ -197,6 +202,7 @@ export function usePatternSearch() {
  */
 export function useMCPResource() {
     const isMountedRef = useIsMountedRef();
+    const t = useTranslations('hooks.mcp');
     const [state, setState] = useState<MCPState<string>>({
         data: null,
         loading: false,
