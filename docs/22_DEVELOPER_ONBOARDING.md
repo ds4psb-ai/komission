@@ -50,7 +50,7 @@
 │   ├── app/
 │   │   ├── main.py
 │   │   ├── routers/            # 33 files
-│   │   │   ├── coaching_ws.py  # ⭐ 실시간 코칭 WebSocket (1124 lines)
+│   │   │   ├── coaching_ws.py  # ⭐ 실시간 코칭 WebSocket (1613 lines)
 │   │   │   ├── coaching.py     # 세션 REST API (586 lines)
 │   │   │   ├── outliers.py     # 아웃라이어 (106KB)
 │   │   │   ├── agent.py        # Chat Agent

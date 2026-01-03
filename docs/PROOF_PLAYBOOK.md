@@ -25,32 +25,46 @@
 
 ### 모바일 앱 (`/mobile`) ⭐ NEW
 
-```typescript
-// useSessionPersistence.ts
-const { createSession, logIntervention, logOutcome, endSession } = useSessionPersistence();
+`useSessionPersistence`는 아래 REST 이벤트 스키마에 맞춰 래핑합니다.
 
+```text
 // 세션 생성
-await createSession({
-  mode: 'homage',
-  patternId: 'hook_start_within_2s_v1',
-  packId: 'pack_xxx',
-});
+POST /api/v1/coaching/sessions
+{
+  "video_id": "node_xxx",
+  "pack_id": "pack_xxx",
+  "language": "ko",
+  "voice_style": "friendly"
+}
 
-// 개입 로깅
-await logIntervention({
-  ruleId: 'hook_2s',
-  tSec: 1.5,
-  message: '지금 바로 치고 들어가요',
-  priority: 'high',
-});
+// 규칙 평가
+POST /api/v1/coaching/sessions/{session_id}/events/rule-evaluated
+{
+  "rule_id": "hook_start_within_2s_v1",
+  "ap_id": "ap_hook_start_within_2s_v1_1.5",
+  "checkpoint_id": "cp_2s",
+  "result": "passed",
+  "t_video": 1.5,
+  "intervention_triggered": false
+}
 
-// 결과 로깅
-await logOutcome({
-  interventionId: 'int_xxx',
-  ruleId: 'hook_2s',
-  tSec: 3.0,
-  result: 'complied',
-});
+// 개입 로그
+POST /api/v1/coaching/sessions/{session_id}/events/intervention
+{
+  "intervention_id": "iv_1704200000000",
+  "rule_id": "hook_start_within_2s_v1",
+  "checkpoint_id": "cp_2s",
+  "t_video": 1.5,
+  "command_text": "지금 바로 치고 들어가요"
+}
+
+// 결과 로그
+POST /api/v1/coaching/sessions/{session_id}/events/outcome
+{
+  "intervention_id": "iv_1704200000000",
+  "compliance_detected": true,
+  "user_response": "complied"
+}
 ```
 
 ### 웹앱 (`/frontend`)
@@ -80,21 +94,32 @@ class CoachingSession(Base):
 
 class CoachingIntervention(Base):
     __tablename__ = "coaching_interventions"
-    t_sec: float
+    intervention_id: str
+    session_id: str
+    pack_id: str
     rule_id: str
     ap_id: str                # ActionPoint
+    checkpoint_id: str
     evidence_id: str          # 프레임/오디오 증거
-    coach_line_id: str        # 코칭 문장 ID
-    message: str              # 실제 코칭 메시지
+    delivered_at: str
+    t_video: float
+    command_text: str         # 실제 코칭 메시지
+    assignment: str           # coached | control
+    holdout_group: bool       # 5% 홀드아웃
 
 class CoachingOutcome(Base):
     __tablename__ = "coaching_outcomes"
-    t_sec: float
-    rule_id: str
     intervention_id: str      # 어떤 개입에 대한 결과인지
-    result: ComplianceResult  # complied | violated | unknown
-    evidence_type: str        # frame | audio | text
+    user_response: str        # complied | ignored | questioned | retake
+    compliance_detected: bool
     compliance_unknown_reason: str  # occluded/out_of_frame/no_audio/ambiguous
+    metric_id: str
+    metric_before: float
+    metric_after: float
+    upload_outcome_proxy: str
+    reported_views: int
+    reported_likes: int
+    reported_saves: int
 ```
 
 ---
@@ -203,7 +228,7 @@ miseEnSceneHint?: string
 |------|------|------|
 | 세션 로그 테이블 | ✅ 완료 | `coaching_sessions`, `interventions`, `outcomes` |
 | 3패턴 룰셋 구현 | ✅ 완료 | DirectorPack 연동 |
-| 모바일 앱 연동 | ✅ 완료 | `useSessionPersistence.ts` |
+| 모바일 앱 연동 | ⚠️ 스키마 정합성 업데이트 필요 | `useSessionPersistence.ts` |
 | 웹앱 연동 | ✅ 완료 | `CoachingSession.tsx` |
 | Canary 10% 실험 | 🟡 대기 | 베타 테스트 후 |
 | Lift 측정 파이프라인 | 🟡 대기 | 데이터 축적 필요 |

@@ -307,6 +307,7 @@ def convert_unified_to_vdg_v4(
             "pass1_model": unified_result.llm_provenance.model_id,
             "pass2_version": unified_result.cv_provenance.version if cv else None,
             "viral_kicks": viral_kicks,
+            "comment_evidence_top5": best_comments,  # CRITICAL: quality_gate + vdg_db_saver expect this
             "causal_reasoning": {
                 "why_viral_one_liner": llm.causal_reasoning.why_viral_one_liner,
                 "causal_chain": llm.causal_reasoning.causal_chain,

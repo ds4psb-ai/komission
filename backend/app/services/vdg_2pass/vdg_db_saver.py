@@ -84,10 +84,29 @@ class VDGDatabaseSaver:
             except ValueError:
                 pass
         
-        # 3. VDG 데이터 추출
+        # 3. VDG 데이터 추출 (여러 경로에서 fallback)
         provenance = vdg_data.get('provenance', {})
+        
+        # viral_kicks: provenance에 없으면 직접 필드 체크
         viral_kicks = provenance.get('viral_kicks', [])
+        if not viral_kicks:
+            viral_kicks = vdg_data.get('viral_kicks', [])
+        
+        # comment_evidence: provenance에 없으면 직접 필드 체크
         comment_evidence_top5 = provenance.get('comment_evidence_top5', [])
+        if not comment_evidence_top5:
+            comment_evidence_top5 = vdg_data.get('comment_evidence_top5', [])
+        
+        # 빈 데이터 early return (에러 아님, 정상 케이스)
+        if not viral_kicks:
+            logger.warning(f"No viral_kicks found in VDG data for node {node_id}")
+            return {
+                "kicks_saved": 0,
+                "keyframes_saved": 0, 
+                "comments_saved": 0,
+                "proof_ready": False,
+                "warning": "no_viral_kicks_in_vdg_data"
+            }
         
         # 4. Quality Gate 체크 (이미 되어있으면 재사용)
         meta = vdg_data.get('meta', {})
@@ -211,8 +230,8 @@ class VDGDatabaseSaver:
                 outlier_item_id=outlier_uuid,
                 kick_index=kick_index,
                 title=title[:200],
-                mechanism=mechanism[:240],
-                creator_instruction=creator_instruction[:300] if creator_instruction else None,
+                mechanism=mechanism[:500],  # DB 컬럼 500자에 맞춤
+                creator_instruction=creator_instruction[:500] if creator_instruction else None,  # DB 컬럼 500자에 맞춤
                 start_ms=start_ms,
                 end_ms=end_ms,
                 peak_ms=peak_ms,

@@ -1,26 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { api, OutlierItem } from '@/lib/api';
 import { HubCard, HubCardData, SpokeOptionData, HubSpokesTransition } from '@/components/hub';
 import { AgentAccordion, KomiAvatar } from '@/components/agent';
-import { ArrowLeft, Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
+import { LanguageGateBadge } from '@/components/outlier';
+import { ArrowLeft, Sparkles, RefreshCw, AlertCircle, Globe, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 
-/**
- * For You 페이지 - 추천 바이럴 레퍼런스
- */
+type LanguageFilter = 'all' | 'ko' | 'en';
+
+// Extended mock type with language
+interface MockOutlier extends OutlierItem {
+    lang?: string;
+    hasTranslation?: boolean;
+}
+
 export default function ForYouPage() {
-    const [outliers, setOutliers] = useState<OutlierItem[]>([]);
+    const [outliers, setOutliers] = useState<MockOutlier[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [selectedOutlier, setSelectedOutlier] = useState<OutlierItem | null>(null);
+    const [selectedOutlier, setSelectedOutlier] = useState<MockOutlier | null>(null);
     const [showTransition, setShowTransition] = useState(false);
     const [agentOpen, setAgentOpen] = useState(false);
+    const [languageFilter, setLanguageFilter] = useState<LanguageFilter>('all');
+    const [chatInput, setChatInput] = useState('');
+    const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'agent', text: string }>>([]);
 
-    // Mock 데이터
-    const MOCK_OUTLIERS: OutlierItem[] = [
+    // Mock 데이터 with language fields
+    const MOCK_OUTLIERS: MockOutlier[] = [
         {
             id: 'mock-1',
             external_id: 'abc123',
@@ -42,6 +51,7 @@ export default function ForYouPage() {
             analysis_status: 'completed',
             promoted_to_node_id: null,
             best_comments_count: 15,
+            lang: 'ko',
             vdg_analysis: {
                 title: '3일만에 100만뷰 달성',
                 hook_genome: { pattern: 'Curiosity Gap', strength: 0.95 },
@@ -53,7 +63,7 @@ export default function ForYouPage() {
             video_url: 'https://youtube.com/shorts/xyz',
             platform: 'youtube',
             category: 'food',
-            title: '편의점 꿀조합 레시피 (진짜 맛있음)',
+            title: 'Convenience Store Combo Recipe (So Good!)',
             thumbnail_url: 'https://picsum.photos/seed/hub2/400/700',
             view_count: 890000,
             like_count: 32000,
@@ -68,6 +78,8 @@ export default function ForYouPage() {
             analysis_status: 'completed',
             promoted_to_node_id: null,
             best_comments_count: 12,
+            lang: 'en',
+            hasTranslation: true,
             vdg_analysis: {
                 title: '편의점 꿀조합',
                 hook_genome: { pattern: 'How-To Reveal', strength: 0.88 },
@@ -94,6 +106,7 @@ export default function ForYouPage() {
             analysis_status: 'completed',
             promoted_to_node_id: null,
             best_comments_count: 22,
+            lang: 'ko',
             vdg_analysis: {
                 title: '완판 립 리뷰',
                 hook_genome: { pattern: 'FOMO Urgency', strength: 0.91 },
@@ -102,10 +115,10 @@ export default function ForYouPage() {
         {
             id: 'mock-4',
             external_id: 'jkl012',
-            video_url: 'https://instagram.com/reels/abc',
-            platform: 'instagram',
+            video_url: 'https://tiktok.com/@fitness/video/012',
+            platform: 'tiktok',
             category: 'fitness',
-            title: '2주만에 복근 만드는 운동 (진짜임)',
+            title: 'Get Abs in 2 Weeks (For Real)',
             thumbnail_url: 'https://picsum.photos/seed/hub4/400/700',
             view_count: 650000,
             like_count: 28000,
@@ -120,11 +133,21 @@ export default function ForYouPage() {
             analysis_status: 'completed',
             promoted_to_node_id: null,
             best_comments_count: 8,
+            lang: 'en',
+            hasTranslation: false,
             vdg_analysis: {
                 title: '2주 복근 챌린지',
                 hook_genome: { pattern: 'Transformation Promise', strength: 0.85 },
             },
         },
+    ];
+
+    // Komi Mock Responses
+    const KOMI_RESPONSES = [
+        "이 패턴은 \"Curiosity Gap\"으로 분석됩니다. 첫 2초 안에 시청자의 궁금증을 유발하는 것이 핵심이에요.",
+        "추천 변주 방식은 '훅 변주'입니다. 오리지널의 성과를 그대로 가져가면서 차별화할 수 있어요.",
+        "해당 콘텐츠는 영어이지만 번역이 제공됩니다. 한국 시장에 적용하려면 문화적 맥락 조정이 필요해요.",
+        "이 패턴의 평균 조회수는 85만으로, 상위 5% 성과입니다. 재현 가능성이 높아요.",
     ];
 
     useEffect(() => {
@@ -148,7 +171,18 @@ export default function ForYouPage() {
         }
     };
 
-    const toHubCardData = (outlier: OutlierItem): HubCardData => ({
+    // Filter outliers by language
+    const filteredOutliers = useMemo(() => {
+        if (languageFilter === 'all') return outliers;
+        return outliers.filter(o => {
+            const lang = (o as MockOutlier).lang || 'ko';
+            if (languageFilter === 'ko') return lang === 'ko';
+            if (languageFilter === 'en') return lang === 'en';
+            return true;
+        });
+    }, [outliers, languageFilter]);
+
+    const toHubCardData = (outlier: MockOutlier): HubCardData => ({
         id: outlier.id,
         videoId: outlier.external_id,
         thumbnailUrl: outlier.thumbnail_url || '/placeholder-thumb.jpg',
@@ -158,7 +192,7 @@ export default function ForYouPage() {
         score: Math.round(outlier.outlier_score * 100),
     });
 
-    const generateSpokeOptions = (outlier: OutlierItem): SpokeOptionData[] => {
+    const generateSpokeOptions = (outlier: MockOutlier): SpokeOptionData[] => {
         const hookPattern = outlier.vdg_analysis?.hook_genome?.pattern || 'hook';
         return [
             { id: 'spoke-hook', type: 'hook', label: '훅 변주', description: `"${hookPattern}" 패턴을 내 스타일로 재해석`, confidence: 85 },
@@ -168,7 +202,7 @@ export default function ForYouPage() {
         ];
     };
 
-    const handleCardClick = (outlier: OutlierItem) => {
+    const handleCardClick = (outlier: MockOutlier) => {
         setSelectedOutlier(outlier);
         setShowTransition(true);
     };
@@ -182,6 +216,20 @@ export default function ForYouPage() {
     const handleTransitionCancel = () => {
         setShowTransition(false);
         setSelectedOutlier(null);
+    };
+
+    const handleChatSubmit = () => {
+        if (!chatInput.trim()) return;
+
+        // Add user message
+        setChatMessages(prev => [...prev, { role: 'user', text: chatInput }]);
+        setChatInput('');
+
+        // Simulate agent response
+        setTimeout(() => {
+            const randomResponse = KOMI_RESPONSES[Math.floor(Math.random() * KOMI_RESPONSES.length)];
+            setChatMessages(prev => [...prev, { role: 'agent', text: randomResponse }]);
+        }, 800);
     };
 
     return (
@@ -200,11 +248,27 @@ export default function ForYouPage() {
                 </div>
             </header>
 
-            {/* Banner */}
+            {/* Banner + Language Filter */}
             <div className="px-4 py-3 bg-[#c1ff00]/10 border-b border-[#c1ff00]/20">
-                <div className="max-w-lg mx-auto flex items-center gap-3">
-                    <Sparkles className="w-5 h-5 text-[#c1ff00] flex-shrink-0" />
-                    <p className="text-sm text-white/80">당신을 위한 바이럴 레퍼런스를 추천해드려요</p>
+                <div className="max-w-lg mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Sparkles className="w-5 h-5 text-[#c1ff00] flex-shrink-0" />
+                        <p className="text-sm text-white/80">당신을 위한 바이럴 레퍼런스</p>
+                    </div>
+
+                    {/* Language Filter Dropdown */}
+                    <div className="relative">
+                        <select
+                            value={languageFilter}
+                            onChange={(e) => setLanguageFilter(e.target.value as LanguageFilter)}
+                            className="appearance-none bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 pr-8 text-xs text-white/80 cursor-pointer hover:bg-white/10 transition-colors"
+                        >
+                            <option value="all">🌐 전체</option>
+                            <option value="ko">🇰🇷 한국어</option>
+                            <option value="en">🇺🇸 영어</option>
+                        </select>
+                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
+                    </div>
                 </div>
             </div>
 
@@ -229,27 +293,43 @@ export default function ForYouPage() {
 
                 {!loading && !error && (
                     <div className="grid grid-cols-2 gap-3">
-                        {outliers.map((outlier, index) => (
+                        {filteredOutliers.map((outlier, index) => (
                             <motion.div
                                 key={outlier.id}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.08, duration: 0.2 }}
+                                className="relative"
                             >
                                 <HubCard
                                     data={toHubCardData(outlier)}
                                     layoutId={`hub-card-${outlier.id}`}
                                     onClick={() => handleCardClick(outlier)}
                                 />
+                                {/* Language Badge */}
+                                {(outlier as MockOutlier).lang && (outlier as MockOutlier).lang !== 'ko' && (
+                                    <div className="absolute top-2 left-2">
+                                        <LanguageGateBadge
+                                            lang={(outlier as MockOutlier).lang!}
+                                            hasTranslation={(outlier as MockOutlier).hasTranslation}
+                                        />
+                                    </div>
+                                )}
                             </motion.div>
                         ))}
                     </div>
                 )}
 
-                {!loading && !error && outliers.length === 0 && (
+                {!loading && !error && filteredOutliers.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-20">
-                        <AlertCircle className="w-12 h-12 text-white/20 mb-4" />
-                        <p className="text-white/50 text-sm mb-2">추천할 콘텐츠가 없습니다</p>
+                        <Globe className="w-12 h-12 text-white/20 mb-4" />
+                        <p className="text-white/50 text-sm mb-2">해당 언어의 콘텐츠가 없습니다</p>
+                        <button
+                            onClick={() => setLanguageFilter('all')}
+                            className="text-[#c1ff00] text-xs underline"
+                        >
+                            전체 보기
+                        </button>
                     </div>
                 )}
             </main>
@@ -265,33 +345,45 @@ export default function ForYouPage() {
                 />
             )}
 
-            {/* Komi Agent */}
-            <AgentAccordion isOpen={agentOpen} onToggle={setAgentOpen} agentName="Komi" unreadCount={agentOpen ? 0 : 1}>
+            {/* Komi Agent with Chat */}
+            <AgentAccordion
+                isOpen={agentOpen}
+                onToggle={setAgentOpen}
+                agentName="Komi"
+                unreadCount={agentOpen ? 0 : 1}
+                chatInput={chatInput}
+                onChatInputChange={setChatInput}
+                onChatSubmit={handleChatSubmit}
+            >
                 <div className="flex flex-col gap-4">
+                    {/* Initial System Message */}
                     <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 mt-1"><KomiAvatar size="sm" isSpeaking /></div>
                         <div className="bg-[#c1ff00]/10 border border-[#c1ff00]/20 rounded-2xl rounded-tl-none p-3 max-w-[85%]">
-                            <p className="text-sm text-[#c1ff00] font-medium mb-1">Hub-Spokes 추천 완료</p>
+                            <p className="text-sm text-[#c1ff00] font-medium mb-1">바이럴 분석 준비 완료</p>
                             <p className="text-sm text-white/90 leading-relaxed">
-                                현재 선택하신 아웃라이어는 <span className="text-[#c1ff00]">"Curiosity Gap"</span> 패턴이 강력합니다.
-                                훅 변주를 적용하시면 조회수 성과를 그대로 가져가면서 차별화할 수 있어요.
+                                카드를 선택하면 패턴 분석과 변주 추천을 해드릴게요. 궁금한 점이 있으시면 물어보세요!
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-end justify-end gap-2">
-                        <div className="bg-white/10 rounded-2xl rounded-tr-none p-3 max-w-[80%]">
-                            <p className="text-sm text-white/90">오디오 변주는 어때?</p>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-1"><KomiAvatar size="sm" /></div>
-                        <div className="bg-white/5 border border-white/10 rounded-2xl rounded-tl-none p-3 max-w-[85%]">
-                            <p className="text-sm text-white/80 leading-relaxed">
-                                오디오 변주는 리스크가 조금 있습니다(72%).
-                                원본의 나레이션 톤이 성과에 큰 영향을 미치고 있어서, 완전히 다른 오디오를 쓰면 이탈률이 15% 증가할 것으로 예측됩니다.
-                            </p>
-                        </div>
-                    </div>
+
+                    {/* Dynamic Chat Messages */}
+                    {chatMessages.map((msg, idx) => (
+                        msg.role === 'user' ? (
+                            <div key={idx} className="flex items-end justify-end gap-2">
+                                <div className="bg-white/10 rounded-2xl rounded-tr-none p-3 max-w-[80%]">
+                                    <p className="text-sm text-white/90">{msg.text}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div key={idx} className="flex items-start gap-3">
+                                <div className="flex-shrink-0 mt-1"><KomiAvatar size="sm" /></div>
+                                <div className="bg-white/5 border border-white/10 rounded-2xl rounded-tl-none p-3 max-w-[85%]">
+                                    <p className="text-sm text-white/80 leading-relaxed">{msg.text}</p>
+                                </div>
+                            </div>
+                        )
+                    ))}
                 </div>
             </AgentAccordion>
         </div>

@@ -365,8 +365,8 @@ class UnifiedPassLLMOutput(BaseModel):
 
     # Evidence Anchors (P0 신규)
     comment_evidence_top5: List[CommentEvidenceLLM] = Field(
-        ..., min_length=5, max_length=5,
-        description="반드시 5개의 댓글 증거 (ranked comments에서 선택)"
+        ..., min_length=1, max_length=10,
+        description="1~10개 댓글 증거 (숏폼은 댓글이 적을 수 있음)"
     )
     viral_kicks: List[ViralKickLLM] = Field(
         ..., min_length=3, max_length=6,

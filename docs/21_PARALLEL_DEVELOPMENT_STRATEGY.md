@@ -47,7 +47,7 @@
 | **적응형 비트레이트** | ✅ | `src/services/videoStreamService.ts` |
 | **음성 코칭 토글** | ✅ | `src/components/CoachingOverlay.tsx` |
 | **텍스트 코칭 토글** | ✅ | `src/components/CoachingOverlay.tsx` |
-| **DB 세션 저장** | ✅ | `src/hooks/useSessionPersistence.ts` |
+| **DB 세션 저장** | ⚠️ 스키마 정합성 업데이트 필요 | `src/hooks/useSessionPersistence.ts` |
 
 ### 📁 실제 폴더 구조
 
@@ -147,14 +147,14 @@ interface CoachingOverlayProps {
 
 ### DB/RL 통합
 
-```typescript
-// useSessionPersistence.ts
-const { createSession, logIntervention, endSession } = useSessionPersistence();
+`useSessionPersistence`는 아래 이벤트 스키마를 그대로 래핑합니다.
 
-// 세션 생성 → 개입 로깅 → 결과 저장 → RL 피드백 루프
-await createSession({ mode: 'homage', patternId: 'xxx' });
-await logIntervention({ ruleId: 'hook_2s', tSec: 1.5, message: '...' });
-await endSession({ durationSec: 60, complianceRate: 0.85 });
+```text
+POST /api/v1/coaching/sessions
+POST /api/v1/coaching/sessions/{session_id}/events/rule-evaluated
+POST /api/v1/coaching/sessions/{session_id}/events/intervention
+POST /api/v1/coaching/sessions/{session_id}/events/outcome
+POST /api/v1/coaching/sessions/{session_id}/end
 ```
 
 ---

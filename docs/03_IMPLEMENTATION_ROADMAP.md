@@ -51,7 +51,7 @@
 | 적응형 화질 | ✅ | `useDeviceStatus.ts` |
 | H.264 스트리밍 | ✅ | `videoStreamService.ts` |
 | 음성/텍스트 토글 | ✅ | `CoachingOverlay.tsx` |
-| DB 세션 저장 | ✅ | `useSessionPersistence.ts` |
+| DB 세션 저장 | ⚠️ 스키마 정합성 업데이트 필요 | `useSessionPersistence.ts` |
 
 ### ✅ MCP 통합
 - `/backend/app/mcp/` 폴더 구조

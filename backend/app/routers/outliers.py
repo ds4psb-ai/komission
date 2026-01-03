@@ -123,11 +123,39 @@ def trigger_auto_analysis(node_id: str, video_url: str, outlier_item_id: str = N
                             video_path=None,  # Already deleted after pipeline
                             outlier_item_id=outlier_item_id,
                         )
+                        
+                        # 저장 결과에 따라 OutlierItem 상태 업데이트
+                        if outlier_item_id:
+                            from app.models import OutlierItem
+                            outlier_stmt = select(OutlierItem).where(OutlierItem.id == UUID(outlier_item_id))
+                            outlier_result = await db.execute(outlier_stmt)
+                            outlier_item = outlier_result.scalar_one_or_none()
+                            if outlier_item:
+                                if save_result.get('warning'):
+                                    outlier_item.analysis_status = f"vdg_warning:{save_result['warning']}"
+                                elif save_result['kicks_saved'] == 0:
+                                    outlier_item.analysis_status = "vdg_no_kicks"
+                                else:
+                                    outlier_item.analysis_status = f"vdg_complete:{save_result['kicks_saved']}kicks"
+                                await db.commit()
+                        
                         print(f"💾 VDG DB saved: {save_result['kicks_saved']} kicks, "
                               f"{save_result['keyframes_saved']} keyframes")
                         print(f"🏁 Full VDG analysis complete for {node_id}")
                     except Exception as e:
                         print(f"⚠️ VDG DB save failed (analysis still saved): {e}")
+                        # 실패 상태 기록
+                        if outlier_item_id:
+                            try:
+                                from app.models import OutlierItem
+                                outlier_stmt = select(OutlierItem).where(OutlierItem.id == UUID(outlier_item_id))
+                                outlier_result = await db.execute(outlier_stmt)
+                                outlier_item = outlier_result.scalar_one_or_none()
+                                if outlier_item:
+                                    outlier_item.analysis_status = f"vdg_db_error:{str(e)[:50]}"
+                                    await db.commit()
+                            except:
+                                pass
                         print(f"🏁 VDG analysis complete for {node_id} (DB save failed)")
                 else:
                     print(f"⚠️ Node {node_id} not found for analysis save")

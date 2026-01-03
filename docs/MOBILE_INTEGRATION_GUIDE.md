@@ -371,59 +371,40 @@ func getPersonaRate(_ persona: String) -> Float {
 
 ### 코칭 로그 전송 (세션 중)
 
-**중요**: 앱은 코칭 개입마다 로그를 세션에 기록해야 합니다.
+**중요**: 앱은 아래 이벤트를 REST로 전송해야 합니다. (필수)
 
-```swift
-// 코칭 개입 시 로그 기록
-struct CoachingLogEntry: Codable {
-    let rule_id: String
-    let domain: String
-    let priority: String
-    let message: String
-    let t_sec: Double
-    let metric_id: String?
-    let metric_before: Double?
-    let metric_after: Double?
-    let compliance: Bool
-    let user_response: String  // "complied", "ignored", "questioned"
-    let is_negative: Bool
-    let negative_reason: String?
+```text
+// 규칙 평가 (항상 전송)
+POST /api/v1/coaching/sessions/{session_id}/events/rule-evaluated
+{
+  "rule_id": "hook_start_within_2s_v1",
+  "ap_id": "ap_hook_start_within_2s_v1_3.2",
+  "checkpoint_id": "cp_2s",
+  "result": "passed",
+  "t_video": 3.2,
+  "intervention_triggered": false
 }
 
-// 세션에 로그 추가
-class CoachingSession {
-    var coachingLog: [CoachingLogEntry] = []
-    
-    func logIntervention(
-        ruleId: String,
-        domain: String,
-        priority: String,
-        message: String,
-        currentTime: Double
-    ) {
-        let entry = CoachingLogEntry(
-            rule_id: ruleId,
-            domain: domain,
-            priority: priority,
-            message: message,
-            t_sec: currentTime,
-            metric_id: nil,
-            metric_before: nil,
-            metric_after: nil,
-            compliance: false,  // 나중에 업데이트
-            user_response: "unknown",
-            is_negative: false,
-            negative_reason: nil
-        )
-        coachingLog.append(entry)
-    }
-    
-    func updateCompliance(index: Int, complied: Bool, response: String) {
-        coachingLog[index].compliance = complied
-        coachingLog[index].user_response = response
-    }
+// 개입 로그 (코칭을 실제로 보냈을 때)
+POST /api/v1/coaching/sessions/{session_id}/events/intervention
+{
+  "intervention_id": "iv_1704200000000",
+  "rule_id": "hook_start_within_2s_v1",
+  "checkpoint_id": "cp_2s",
+  "t_video": 3.2,
+  "command_text": "지금 바로 치고 들어가요"
+}
+
+// 결과 로그 (준수 여부/사용자 반응)
+POST /api/v1/coaching/sessions/{session_id}/events/outcome
+{
+  "intervention_id": "iv_1704200000000",
+  "compliance_detected": true,
+  "user_response": "complied"
 }
 ```
+
+옵션 필드는 `metric_id`, `metric_value`, `evidence_id`, `metric_before/after` 등을 필요 시 추가합니다.
 
 ### 세션 종료 메시지
 
@@ -449,7 +430,7 @@ class CoachingSession {
 
 | 타입 | Phase | 설명 |
 |------|-------|------|
-| `session_status` | - | 세션 상태 변경 |
+| `session_status` | - | 세션 상태 변경 (connected/recording/paused/ended/timeout) |
 | `feedback` | 1 | 기본 코칭 피드백 |
 | `graphic_guide` | 1 | 그래픽 오버레이 가이드 |
 | `text_coach` | 1 | 텍스트 코칭 메시지 |
@@ -501,7 +482,7 @@ class CoachingSession {
 - [ ] 페르소나별 폴백 TTS 속도 조절
 
 ### Phase 5+: 자동학습
-- [ ] 코칭 로그 기록 (CoachingLogEntry)
+- [ ] 코칭 이벤트 로깅 (`/events/rule-evaluated`, `/events/intervention`, `/events/outcome`)
 - [ ] `signal_promotion` 메시지 처리
 - [ ] 세션 종료 시 통계 표시
 
@@ -516,7 +497,8 @@ A: 서버 TTS 실패. 앱에서 시스템 TTS(AVSpeechSynthesizer, TextToSpeech)
 A: DNAInvariant(바이럴 핵심 규칙) 위반. `alternative` 필드의 대안을 사용자에게 제시.
 
 ### Q: coaching_log는 언제 서버로 전송?
-A: 세션 종료 시 자동으로 서버에서 수집 (세션 객체에 저장됨).
+A: 자동 수집되지 않습니다. 앱에서 `POST /api/v1/coaching/sessions/{session_id}/events/*`로 전송합니다.
+네트워크가 불안정하면 로컬에 버퍼링 후 세션 종료 시 배치 전송을 권장합니다.
 
 ### Q: 페르소나 기본값은?
 A: `chill_guide` (릴렉스 가이드 🧘)

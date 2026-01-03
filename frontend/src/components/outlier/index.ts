@@ -14,3 +14,6 @@ export { OutlierDetailModal } from './OutlierDetailModal';
 // Shared card components (to ensure consistency across different card UIs)
 export { OutlierCardFooter, formatRelativeTime } from './OutlierCardFooter';
 export { ViewCountBadge, formatViewCount } from './ViewCountBadge';
+
+// Language Gate
+export { LanguageGateBadge } from './LanguageGateBadge';

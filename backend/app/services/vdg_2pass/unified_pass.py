@@ -278,17 +278,17 @@ class UnifiedPass:
                     if 'why_it_matters' not in ce:
                         ce['why_it_matters'] = 'Relevant to video content'
             
-            # Preprocess: comment_evidence_top5 defaults (requires 5)
-            if 'comment_evidence_top5' not in raw_json or len(raw_json.get('comment_evidence_top5', [])) < 5:
+            # Preprocess: comment_evidence_top5 defaults (requires min 1, max 10)
+            if 'comment_evidence_top5' not in raw_json or len(raw_json.get('comment_evidence_top5', [])) < 1:
                 existing = raw_json.get('comment_evidence_top5', [])
-                while len(existing) < 5:
+                if len(existing) < 1:
                     existing.append({
-                        'comment_rank': len(existing) + 1,
-                        'quote': f'Comment {len(existing) + 1}',
+                        'comment_rank': 1,
+                        'quote': 'No comments available',
                         'signal_type': 'other',
-                        'why_it_matters': 'Placeholder'
+                        'why_it_matters': 'No audience comments found'
                     })
-                raw_json['comment_evidence_top5'] = existing[:5]
+                raw_json['comment_evidence_top5'] = existing[:10]
             
             # Preprocess: fix existing viral_kicks fields
             if 'viral_kicks' in raw_json:

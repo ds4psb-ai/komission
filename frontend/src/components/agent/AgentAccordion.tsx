@@ -2,7 +2,7 @@
 
 import { useState, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, ChevronDown, Send } from 'lucide-react';
+import { ChevronUp, Send } from 'lucide-react';
 import { KomiAvatar } from './KomiAvatar';
 
 interface AgentAccordionProps {
@@ -11,6 +11,10 @@ interface AgentAccordionProps {
     onToggle?: (isOpen: boolean) => void;
     unreadCount?: number;
     agentName?: string;
+    // Chat input props
+    chatInput?: string;
+    onChatInputChange?: (value: string) => void;
+    onChatSubmit?: () => void;
 }
 
 /**
@@ -25,14 +29,40 @@ export function AgentAccordion({
     onToggle,
     unreadCount = 0,
     agentName = 'Komi',
+    chatInput = '',
+    onChatInputChange,
+    onChatSubmit,
 }: AgentAccordionProps) {
     const [internalIsOpen, setInternalIsOpen] = useState(false);
+    const [internalInput, setInternalInput] = useState('');
     const isOpen = controlledIsOpen ?? internalIsOpen;
+    const inputValue = onChatInputChange ? chatInput : internalInput;
 
     const handleToggle = () => {
         const newState = !isOpen;
         setInternalIsOpen(newState);
         onToggle?.(newState);
+    };
+
+    const handleInputChange = (value: string) => {
+        if (onChatInputChange) {
+            onChatInputChange(value);
+        } else {
+            setInternalInput(value);
+        }
+    };
+
+    const handleSubmit = () => {
+        if (onChatSubmit) {
+            onChatSubmit();
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit();
+        }
     };
 
     return (
@@ -132,15 +162,22 @@ export function AgentAccordion({
                                 {children}
                             </div>
 
-                            {/* Input Area (Mock) */}
+                            {/* Input Area */}
                             <div className="p-3 bg-white/5 border-t border-white/5">
                                 <div className="flex items-center gap-2 bg-[#0a0a0c] rounded-2xl px-4 py-3 border border-white/10 focus-within:border-[#c1ff00]/50 transition-colors">
                                     <input
                                         type="text"
+                                        value={inputValue}
+                                        onChange={(e) => handleInputChange(e.target.value)}
+                                        onKeyDown={handleKeyDown}
                                         placeholder="코미에게 물어보세요..."
                                         className="flex-1 bg-transparent text-sm text-white placeholder-white/30 outline-none"
                                     />
-                                    <button className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#c1ff00] text-black hover:bg-[#c1ff00]/90 transition-colors">
+                                    <button
+                                        onClick={handleSubmit}
+                                        disabled={!inputValue.trim()}
+                                        className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#c1ff00] text-black hover:bg-[#c1ff00]/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
                                         <Send className="w-4 h-4" />
                                     </button>
                                 </div>
@@ -154,3 +191,4 @@ export function AgentAccordion({
 }
 
 export default AgentAccordion;
+

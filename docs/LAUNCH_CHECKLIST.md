@@ -88,7 +88,7 @@
 ### DB 연동
 - [x] useSessionPersistence 훅
 - [x] 세션 생성 API 연동
-- [x] 개입/결과 로깅
+- [ ] 개입/결과 로깅 스키마 정합성 업데이트 필요
 
 ### 앱스토어 준비
 - [ ] npm install 완료

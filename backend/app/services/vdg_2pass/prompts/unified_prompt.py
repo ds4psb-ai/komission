@@ -98,11 +98,12 @@ TOP COMMENTS (ranked, use comment_rank to reference):
 
 === CRITICAL EVIDENCE REQUIREMENTS (MUST) ===
 
-1) COMMENT EVIDENCE TOP 5:
-   - You MUST select EXACTLY 5 items for `comment_evidence_top5`.
+1) COMMENT EVIDENCE (1~10 items):
+   - Output 1~10 items for `comment_evidence_top5` (list can be smaller if fewer comments available).
    - Each item MUST reference a `comment_rank` from the provided Top Comments list (1-20).
    - For each comment, explain `signal_type` and `why_it_matters`.
    - If you can localize the comment to a video moment, set `anchor_ms`.
+   - If no comments are available, output at least 1 placeholder with signal_type="other".
 
 2) VIRAL KICKS (3-5 segments):
    - You MUST output 3~5 `viral_kicks`.

@@ -1927,8 +1927,8 @@ class ViralKick(Base):
     # 킥 정보
     kick_index: Mapped[int] = mapped_column(Integer, default=1)
     title: Mapped[str] = mapped_column(String(200))
-    mechanism: Mapped[str] = mapped_column(String(240), index=True)  # 태그 검색용
-    creator_instruction: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    mechanism: Mapped[str] = mapped_column(String(500), index=True)  # 태그 검색용 (스키마 500자 매칭)
+    creator_instruction: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # 스키마 500자 매칭
     
     # 시간 정보
     start_ms: Mapped[int] = mapped_column(Integer)

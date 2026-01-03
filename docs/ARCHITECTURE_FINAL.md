@@ -161,13 +161,13 @@
 
 ```
 routers/                           # 33 files
-├── coaching_ws.py                 # ⭐ 실시간 코칭 WebSocket (1124 lines)
+├── coaching_ws.py                 # ⭐ 실시간 코칭 WebSocket (1613 lines)
 │   ├─ coaching_websocket()        # 메인 WS 엔드포인트
 │   ├─ load_director_pack_from_video()
 │   ├─ try_reconnect_gemini()      # H4: Gemini 재연결
 │   ├─ run_checkpoint_evaluation_loop()
 │   └─ generate_tts_fallback()     # H2: TTS 폴백
-├── coaching.py                    # REST API (586 lines)
+├── coaching.py                    # REST API (774 lines)
 │   ├─ POST /api/v1/coaching/sessions
 │   ├─ GET /api/v1/coaching/sessions (admin)
 │   ├─ GET /api/v1/coaching/sessions/{session_id}
@@ -279,11 +279,11 @@ components/outlier/                # 9 files
 ws://localhost:8000/api/v1/ws/coaching/{session_id}
 
 Messages (Server → Client):
-- session_status: { status, session_id?, output_mode?, persona?, stats? }
+- session_status: { status: connected|recording|paused|ended|timeout, session_id?, output_mode?, persona?, stats? }
 - feedback: { message, audio_b64?, rule_id?, priority? }
-- graphic_guide: { message, rule_id, priority, target_position, grid_type, arrow_direction }
-- text_coach: { message }
-- audio_feedback: { text, audio, persona, source }
+- graphic_guide: { guide_type, rule_id?, priority?, target_position?, grid_type?, arrow_direction?, action_icon?, message?, message_duration_ms? }
+- text_coach: { message, priority?, persona?, duration_ms? }
+- audio_feedback: { text, audio?, persona?, source? }
 - audio_response: { audio_b64, format }
 - vdg_coaching_data: { shotlist_sequence, kick_timings, mise_en_scene_guides, keyframes }
 - adaptive_response: { accepted, message, alternative?, affected_rule_id?, reason? }
