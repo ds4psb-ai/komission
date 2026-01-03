@@ -101,6 +101,19 @@ export interface VdgCoachingData {
         priority: 'high' | 'medium';
         evidence?: string;
     }>;
+    // P2: Ghost Overlay용 확장 키프레임
+    keyframes?: Array<{
+        t_ms: number;
+        role: 'START' | 'PEAK' | 'END';
+        kick_type: 'punch' | 'end';
+        kick_index: number;
+        kick_mechanism: string;
+        image_url: string;
+        what_to_see: string;
+        invariant_elements: ('hook' | 'pacing' | 'composition' | 'payoff' | 'audio')[];
+        coaching_tip?: string;
+        confidence: number;
+    }>;
     timestamp: string;
 }
 

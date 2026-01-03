@@ -257,7 +257,105 @@ class DirectorCompiler:
         logger.info(f"🎨 Mise-en-Scene Guides: {len(guides)} elements")
         return guides
 
+    @classmethod
+    def _extract_ghost_keyframes(cls, vdg: VDGv4, content_id: str) -> List[Dict[str, Any]]:
+        """
+        Phase 2: viral_kicks에서 Ghost Overlay용 확장 keyframes 추출
+        
+        불변 요소 복제를 돕는 핵심 데이터:
+        - 각 킥의 START/PEAK/END 키프레임
+        - 불변 요소 분류 (hook/pacing/composition/payoff/audio)
+        - 코칭 팁 (creator_instruction)
+        
+        Returns:
+            [{
+                "t_ms": 2300,
+                "role": "PEAK",
+                "kick_type": "punch",
+                "kick_mechanism": "hook_punch_reaction",
+                "image_url": "/api/frames/{content_id}/{t_ms}.jpg",
+                "what_to_see": "표정 반전 순간",
+                "invariant_elements": ["hook", "pacing"],
+                "coaching_tip": "이 순간 표정 변화를 정확히 맞추세요"
+            }, ...]
+        """
+        if not vdg.semantic or not vdg.semantic.viral_kicks:
+            logger.warning("🔴 No viral_kicks found for Ghost Overlay")
+            return []
+        
+        keyframes: List[Dict[str, Any]] = []
+        hook = vdg.semantic.hook_genome if vdg.semantic else None
+        hook_end_ms = int((hook.end_sec if hook else 3.0) * 1000)
+        
+        for kick in vdg.semantic.viral_kicks:
+            # 불변 요소 분류
+            invariant_elements = cls._classify_invariant_elements(kick, hook_end_ms)
+            
+            # 킥 타입 결정 (훅 구간 내 = punch, 이후 = mid/end)
+            kick_start_ms = kick.window.start_ms if kick.window else 0
+            is_hook_region = kick_start_ms <= hook_end_ms
+            kick_type = "punch" if is_hook_region else "end"
+            
+            # 키프레임 추출
+            for kf in kick.keyframes:
+                keyframes.append({
+                    "t_ms": kf.t_ms,
+                    "role": kf.role.value if hasattr(kf.role, 'value') else str(kf.role),
+                    "kick_type": kick_type,
+                    "kick_index": kick.kick_index,
+                    "kick_mechanism": kick.mechanism[:100] if kick.mechanism else "unknown",
+                    "image_url": f"/api/frames/{content_id}/{kf.t_ms}.jpg",
+                    "what_to_see": kf.what_to_see[:200] if kf.what_to_see else kick.title,
+                    "invariant_elements": invariant_elements,
+                    "coaching_tip": kick.creator_instruction[:150] if kick.creator_instruction else None,
+                    "confidence": kick.confidence,
+                })
+        
+        # 시간순 정렬
+        keyframes.sort(key=lambda x: x["t_ms"])
+        
+        logger.info(f"👻 Ghost Keyframes: {len(keyframes)} frames from {len(vdg.semantic.viral_kicks)} kicks")
+        return keyframes
 
+    @classmethod
+    def _classify_invariant_elements(cls, kick, hook_end_ms: int) -> List[str]:
+        """
+        킥의 불변 요소 분류 (hook/pacing/composition/payoff/audio)
+        
+        Temporal Variation Theory 기반:
+        - 불변 요소 = 절대 변경 불가
+        - 가변 요소 = 창의성 추가 가능 영역
+        """
+        elements: List[str] = []
+        
+        kick_start_ms = kick.window.start_ms if kick.window else 0
+        mechanism_lower = (kick.mechanism or "").lower()
+        
+        # 1. 훅 구간 내 = hook 불변
+        if kick_start_ms <= hook_end_ms:
+            elements.append("hook")
+        
+        # 2. 페이싱 관련 키워드
+        if any(kw in mechanism_lower for kw in ["timing", "pace", "rhythm", "beat", "편집", "컷"]):
+            elements.append("pacing")
+        
+        # 3. 구도 관련 키워드
+        if any(kw in mechanism_lower for kw in ["composition", "framing", "angle", "구도", "앵글", "중앙"]):
+            elements.append("composition")
+        
+        # 4. 페이오프/감정 관련
+        if any(kw in mechanism_lower for kw in ["payoff", "emotion", "reaction", "reveal", "반전", "감정"]):
+            elements.append("payoff")
+        
+        # 5. 오디오 관련
+        if any(kw in mechanism_lower for kw in ["audio", "sound", "music", "bgm", "효과음", "비트"]):
+            elements.append("audio")
+        
+        # 기본값: 최소 1개
+        if not elements:
+            elements.append("hook" if kick_start_ms <= hook_end_ms else "payoff")
+        
+        return elements
 
     @classmethod
     def compile(
@@ -345,6 +443,8 @@ class DirectorCompiler:
             shotlist_sequence = cls._get_shotlist_sequence(vdg)
             kick_timings = cls._get_kick_timings(vdg)
             mise_en_scene_guides = cls._get_mise_en_scene_guides(vdg)
+            # Phase 2.5: Ghost Overlay용 확장 keyframes
+            ghost_keyframes = cls._extract_ghost_keyframes(vdg, vdg.content_id)
             
             # 7. Build Pack
             pack = DirectorPack(
@@ -386,6 +486,7 @@ class DirectorCompiler:
                         "shotlist_sequence": shotlist_sequence,
                         "kick_timings": kick_timings,
                         "mise_en_scene_guides": mise_en_scene_guides,
+                        "ghost_keyframes": ghost_keyframes,  # Phase 2.5: Ghost Overlay
                     }
                 }
             )

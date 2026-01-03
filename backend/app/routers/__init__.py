@@ -64,4 +64,6 @@ api_router.include_router(distill_router, tags=["Distill"])  # P3 DistillRun Aut
 api_router.include_router(curation_router, tags=["Curation"])  # Curation Learning (Admin)
 api_router.include_router(mcp_audit_router, tags=["MCP"])  # MCP Audit Logging
 api_router.include_router(performance_router, prefix="/performance", tags=["Performance"])  # Performance Tracking
+from app.routers.frames import router as frames_router  # Ghost Overlay 프레임 서빙
+api_router.include_router(frames_router, tags=["Frames"])  # Ghost Overlay 프레임 서빙
 

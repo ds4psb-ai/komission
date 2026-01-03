@@ -25,8 +25,12 @@ import {
     Play, Square, RotateCcw, Sparkles, FlaskConical
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useCoachingWebSocket, CoachingFeedback as WSFeedback, RuleUpdate, SessionStatus } from '@/hooks/useCoachingWebSocket';
+import { useCoachingWebSocket, CoachingFeedback as WSFeedback, RuleUpdate, SessionStatus, VdgCoachingData } from '@/hooks/useCoachingWebSocket';
 import { useAudioCapture } from '@/hooks/useAudioCapture';
+import { ShotlistTimeline } from './ShotlistTimeline';
+import { MiseEnSceneOnboarding } from './MiseEnSceneOnboarding';
+import { GhostOverlay } from './GhostOverlay';
+import { TemporalPhaseGuide } from './TemporalPhaseGuide';
 
 // ==================
 // Types
@@ -89,6 +93,12 @@ export function CoachingSession({
     const [currentInterventionId, setCurrentInterventionId] = useState<string | null>(null);
     const [currentCheckpoint, setCurrentCheckpoint] = useState<string>('hook_punch');
 
+    // P2.5: VDG Coaching Data (shotlist, kicks, mise_en_scene)
+    const [vdgData, setVdgData] = useState<VdgCoachingData | null>(null);
+    const [totalDuration, setTotalDuration] = useState<number>(60);  // Default 60s, updated from vdgData
+    const [showOnboarding, setShowOnboarding] = useState<boolean>(false);  // P1: 미장센 온보딩
+    const [showGhostOverlay, setShowGhostOverlay] = useState<boolean>(true);  // P2: 고스트 오버레이 (오마쥬 모드)
+
     // Real-time WebSocket Hook
     const {
         status: wsStatus,
@@ -134,6 +144,20 @@ export function CoachingSession({
             }
         },
         onError: (err) => console.error('Coaching WebSocket error:', err),
+        // P2.5: VDG Coaching Data
+        onVdgData: (data) => {
+            console.log('📋 VDG coaching data received:', data.shotlist_sequence?.length, 'shots');
+            setVdgData(data);
+            // Calculate total duration from shotlist
+            if (data.shotlist_sequence?.length > 0) {
+                const lastShot = data.shotlist_sequence[data.shotlist_sequence.length - 1];
+                setTotalDuration(lastShot.t_window[1]);
+            }
+            // P1: 미장센 가이드가 있으면 온보딩 표시 (녹화 시작 전)
+            if (data.mise_en_scene_guides?.length > 0 && !isRecording) {
+                setShowOnboarding(true);
+            }
+        },
     });
 
     // Audio Capture Hook - streams microphone PCM to WebSocket
@@ -677,178 +701,253 @@ export function CoachingSession({
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col">
-            {/* Header */}
-            <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/80 to-transparent">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 text-xs font-bold rounded border ${modeLabels[mode].color}`}>
-                            {modeLabels[mode].label}
-                        </span>
-                        {/* P1: Control Group Badge */}
-                        {assignment === 'control' && (
-                            <span className="px-2 py-1 text-xs font-bold rounded border bg-amber-500/20 text-amber-300 border-amber-500/50 flex items-center gap-1">
-                                <FlaskConical className="w-3 h-3" />
-                                실험군
-                            </span>
-                        )}
-                        {isRecording && (
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                                <span className="text-white font-mono text-sm">
-                                    {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                                </span>
+        <>
+            {/* P1: 미장센 온보딩 (촬영 시작 전) */}
+            {showOnboarding && vdgData?.mise_en_scene_guides && (
+                <MiseEnSceneOnboarding
+                    guides={vdgData.mise_en_scene_guides}
+                    onReady={() => {
+                        setShowOnboarding(false);
+                        // 온보딩 완료 후 자동으로 녹화 시작
+                        if (!isRecording) {
+                            startRecording();
+                        }
+                    }}
+                    onSkip={() => setShowOnboarding(false)}
+                />
+            )}
 
-                                {/* H5: Audio Level Meter */}
-                                {isAudioCapturing && (
-                                    <div className="flex items-center gap-1">
-                                        {[0.2, 0.4, 0.6, 0.8, 1.0].map((threshold, i) => (
-                                            <div
-                                                key={i}
-                                                className={`w-1 rounded-full transition-all ${audioLevel >= threshold
-                                                    ? isSpeaking ? 'bg-emerald-400' : 'bg-cyan-400'
-                                                    : 'bg-white/20'
-                                                    }`}
-                                                style={{ height: `${6 + i * 3}px` }}
-                                            />
+            <div className="fixed inset-0 z-50 bg-black flex flex-col">
+                {/* Header */}
+                <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/80 to-transparent">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 text-xs font-bold rounded border ${modeLabels[mode].color}`}>
+                                {modeLabels[mode].label}
+                            </span>
+                            {/* P1: Control Group Badge */}
+                            {assignment === 'control' && (
+                                <span className="px-2 py-1 text-xs font-bold rounded border bg-amber-500/20 text-amber-300 border-amber-500/50 flex items-center gap-1">
+                                    <FlaskConical className="w-3 h-3" />
+                                    실험군
+                                </span>
+                            )}
+                            {isRecording && (
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                    <span className="text-white font-mono text-sm">
+                                        {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                                    </span>
+
+                                    {/* H5: Audio Level Meter */}
+                                    {isAudioCapturing && (
+                                        <div className="flex items-center gap-1">
+                                            {[0.2, 0.4, 0.6, 0.8, 1.0].map((threshold, i) => (
+                                                <div
+                                                    key={i}
+                                                    className={`w-1 rounded-full transition-all ${audioLevel >= threshold
+                                                        ? isSpeaking ? 'bg-emerald-400' : 'bg-cyan-400'
+                                                        : 'bg-white/20'
+                                                        }`}
+                                                    style={{ height: `${6 + i * 3}px` }}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* H6: Gemini Connection Status */}
+                                    {useRealCoaching && (
+                                        <span className={`ml-2 px-2 py-0.5 text-[10px] font-bold rounded ${geminiConnected
+                                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                            }`}>
+                                            {geminiConnected ? 'AI 연결' : '로컬'}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <button onClick={onClose} className="p-2 bg-white/10 rounded-full">
+                            <X className="w-5 h-5 text-white" />
+                        </button>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-500"
+                            style={{ width: `${progress}%` }}
+                        />
+                    </div>
+                </div>
+
+                {/* Main Content Area: Desktop = 3-column, Mobile = fullscreen */}
+                <div className={`flex-1 relative ${!isMobile ? 'flex items-center justify-center gap-4 px-4' : ''}`}>
+
+                    {/* LEFT SIDE PANEL - Desktop Only: Coaching Feedback */}
+                    {!isMobile && (
+                        <div className="w-64 h-full max-h-[70vh] flex flex-col gap-4">
+                            {/* Current Coaching Command */}
+                            <div className="flex-1 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-y-auto">
+                                <div className="text-xs text-cyan-400 mb-3 flex items-center gap-1">
+                                    <Volume2 className="w-3 h-3" />
+                                    현재 코칭
+                                </div>
+                                {currentFeedback && assignment !== 'control' ? (
+                                    <div className={`p-3 rounded-xl ${currentFeedback.type === 'praise' ? 'bg-emerald-500/20 border border-emerald-500/30' :
+                                        currentFeedback.type === 'warning' ? 'bg-red-500/20 border border-red-500/30' :
+                                            'bg-white/10 border border-white/20'
+                                        }`}>
+                                        <p className="text-sm text-white">{currentFeedback.message}</p>
+                                    </div>
+                                ) : (
+                                    <p className="text-white/40 text-sm">대기 중...</p>
+                                )}
+                            </div>
+
+                            {/* Feedback History */}
+                            <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 max-h-48 overflow-y-auto">
+                                <div className="text-xs text-white/60 mb-2">피드백 히스토리</div>
+                                {feedbackHistory.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {feedbackHistory.slice(-5).map((fb, i) => (
+                                            <div key={i} className="text-xs text-white/50 p-2 bg-white/5 rounded-lg">
+                                                {fb.message}
+                                            </div>
                                         ))}
                                     </div>
+                                ) : (
+                                    <p className="text-white/30 text-xs">아직 피드백이 없습니다</p>
                                 )}
+                            </div>
+                        </div>
+                    )}
 
-                                {/* H6: Gemini Connection Status */}
-                                {useRealCoaching && (
-                                    <span className={`ml-2 px-2 py-0.5 text-[10px] font-bold rounded ${geminiConnected
-                                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                                        }`}>
-                                        {geminiConnected ? 'AI 연결' : '로컬'}
-                                    </span>
-                                )}
+                    {/* CENTER: Camera Preview (9:16 on desktop, fullscreen on mobile) */}
+                    <div className={`relative ${!isMobile
+                        ? 'aspect-[9/16] h-full max-h-[70vh] rounded-2xl overflow-hidden border border-white/20'
+                        : 'absolute inset-0'
+                        }`}>
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="absolute inset-0 w-full h-full object-cover"
+                            style={{ transform: 'scaleX(-1)' }}
+                        />
+
+                        {/* P2.5: VDG Shotlist Timeline */}
+                        {isRecording && vdgData && (
+                            <ShotlistTimeline
+                                vdgData={vdgData}
+                                currentTime={recordingTime}
+                                totalDuration={totalDuration}
+                                visible={assignment !== 'control'}
+                            />
+                        )}
+
+                        {/* P2: Ghost Overlay (오마쥬 모드에서만) */}
+                        {isRecording && mode === 'homage' && vdgData?.keyframes && vdgData.keyframes.length > 0 && (
+                            <GhostOverlay
+                                keyframes={vdgData.keyframes}
+                                currentTimeMs={recordingTime * 1000}
+                                visible={showGhostOverlay && assignment !== 'control'}
+                                onVisibilityChange={setShowGhostOverlay}
+                            />
+                        )}
+
+                        {/* P2: Temporal Phase Guide (오마쥬 모드, 녹화 시작 전) */}
+                        {!isRecording && mode === 'homage' && assignment !== 'control' && (
+                            <div className="absolute top-16 left-4 right-4 z-30">
+                                <TemporalPhaseGuide patternAge={7} />
+                            </div>
+                        )}
+
+                        {/* Audio Feedback Display - DESKTOP ONLY (mobile = TTS only) */}
+                        {currentFeedback && assignment !== 'control' && !isMobile && (
+                            <div className="absolute top-24 left-4 right-4">
+                                <div className={`p-4 rounded-xl backdrop-blur-lg ${currentFeedback.type === 'praise'
+                                    ? 'bg-emerald-500/30 border border-emerald-500/50'
+                                    : currentFeedback.type === 'warning'
+                                        ? 'bg-red-500/30 border border-red-500/50'
+                                        : 'bg-white/20 border border-white/30'
+                                    }`}>
+                                    <div className="flex items-center gap-2">
+                                        <Volume2 className="w-4 h-4 text-white animate-pulse" />
+                                        <p className="text-white text-sm font-medium">{currentFeedback.message}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Control Group: Silent evaluation notice */}
+                        {assignment === 'control' && isRecording && (
+                            <div className="absolute top-24 left-4 right-4">
+                                <div className="p-4 rounded-xl backdrop-blur-lg bg-amber-500/20 border border-amber-500/30">
+                                    <div className="flex items-center gap-2">
+                                        <FlaskConical className="w-5 h-5 text-amber-300" />
+                                        <p className="text-amber-200 font-medium text-sm">
+                                            🔬 인과 추론용 대조군 촬영 중
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Rule Checklist - Mobile ONLY (bottom overlay) */}
+                        {isMobile && (
+                            <div className="absolute bottom-32 left-4 right-4">
+                                <div className="p-3 bg-black/60 backdrop-blur-lg rounded-xl border border-white/10">
+                                    <div className="text-xs text-white/60 mb-2 flex items-center gap-1">
+                                        <Sparkles className="w-3 h-3" />
+                                        체크리스트
+                                    </div>
+                                    <div className="space-y-2">
+                                        {rules.slice(0, 4).map((rule) => (
+                                            <div key={rule.rule_id} className="flex items-center gap-2">
+                                                {rule.status === 'passed' ? (
+                                                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                                ) : rule.status === 'failed' ? (
+                                                    <AlertCircle className="w-4 h-4 text-red-400" />
+                                                ) : (
+                                                    <Circle className="w-4 h-4 text-white/40" />
+                                                )}
+                                                <span className={`text-xs ${rule.status === 'passed' ? 'text-emerald-300' :
+                                                    rule.status === 'failed' ? 'text-red-300' :
+                                                        'text-white/70'
+                                                    }`}>
+                                                    {rule.description}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
-                    <button onClick={onClose} className="p-2 bg-white/10 rounded-full">
-                        <X className="w-5 h-5 text-white" />
-                    </button>
-                </div>
 
-                {/* Progress bar */}
-                <div className="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
-                    <div
-                        className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-500"
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
-            </div>
-
-            {/* Main Content Area: Desktop = 3-column, Mobile = fullscreen */}
-            <div className={`flex-1 relative ${!isMobile ? 'flex items-center justify-center gap-4 px-4' : ''}`}>
-
-                {/* LEFT SIDE PANEL - Desktop Only: Coaching Feedback */}
-                {!isMobile && (
-                    <div className="w-64 h-full max-h-[70vh] flex flex-col gap-4">
-                        {/* Current Coaching Command */}
-                        <div className="flex-1 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-y-auto">
-                            <div className="text-xs text-cyan-400 mb-3 flex items-center gap-1">
-                                <Volume2 className="w-3 h-3" />
-                                현재 코칭
-                            </div>
-                            {currentFeedback && assignment !== 'control' ? (
-                                <div className={`p-3 rounded-xl ${currentFeedback.type === 'praise' ? 'bg-emerald-500/20 border border-emerald-500/30' :
-                                    currentFeedback.type === 'warning' ? 'bg-red-500/20 border border-red-500/30' :
-                                        'bg-white/10 border border-white/20'
-                                    }`}>
-                                    <p className="text-sm text-white">{currentFeedback.message}</p>
-                                </div>
-                            ) : (
-                                <p className="text-white/40 text-sm">대기 중...</p>
-                            )}
-                        </div>
-
-                        {/* Feedback History */}
-                        <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 max-h-48 overflow-y-auto">
-                            <div className="text-xs text-white/60 mb-2">피드백 히스토리</div>
-                            {feedbackHistory.length > 0 ? (
-                                <div className="space-y-2">
-                                    {feedbackHistory.slice(-5).map((fb, i) => (
-                                        <div key={i} className="text-xs text-white/50 p-2 bg-white/5 rounded-lg">
-                                            {fb.message}
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-white/30 text-xs">아직 피드백이 없습니다</p>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* CENTER: Camera Preview (9:16 on desktop, fullscreen on mobile) */}
-                <div className={`relative ${!isMobile
-                    ? 'aspect-[9/16] h-full max-h-[70vh] rounded-2xl overflow-hidden border border-white/20'
-                    : 'absolute inset-0'
-                    }`}>
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="absolute inset-0 w-full h-full object-cover"
-                        style={{ transform: 'scaleX(-1)' }}
-                    />
-
-                    {/* Audio Feedback Display - DESKTOP ONLY (mobile = TTS only) */}
-                    {currentFeedback && assignment !== 'control' && !isMobile && (
-                        <div className="absolute top-24 left-4 right-4">
-                            <div className={`p-4 rounded-xl backdrop-blur-lg ${currentFeedback.type === 'praise'
-                                ? 'bg-emerald-500/30 border border-emerald-500/50'
-                                : currentFeedback.type === 'warning'
-                                    ? 'bg-red-500/30 border border-red-500/50'
-                                    : 'bg-white/20 border border-white/30'
-                                }`}>
-                                <div className="flex items-center gap-2">
-                                    <Volume2 className="w-4 h-4 text-white animate-pulse" />
-                                    <p className="text-white text-sm font-medium">{currentFeedback.message}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Control Group: Silent evaluation notice */}
-                    {assignment === 'control' && isRecording && (
-                        <div className="absolute top-24 left-4 right-4">
-                            <div className="p-4 rounded-xl backdrop-blur-lg bg-amber-500/20 border border-amber-500/30">
-                                <div className="flex items-center gap-2">
-                                    <FlaskConical className="w-5 h-5 text-amber-300" />
-                                    <p className="text-amber-200 font-medium text-sm">
-                                        🔬 인과 추론용 대조군 촬영 중
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Rule Checklist - Mobile ONLY (bottom overlay) */}
-                    {isMobile && (
-                        <div className="absolute bottom-32 left-4 right-4">
-                            <div className="p-3 bg-black/60 backdrop-blur-lg rounded-xl border border-white/10">
-                                <div className="text-xs text-white/60 mb-2 flex items-center gap-1">
+                    {/* RIGHT SIDE PANEL - Desktop Only: Rules Checklist */}
+                    {!isMobile && (
+                        <div className="w-64 h-full max-h-[70vh] flex flex-col gap-4">
+                            {/* Rules Checklist */}
+                            <div className="flex-1 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-y-auto">
+                                <div className="text-xs text-white/60 mb-3 flex items-center gap-1">
                                     <Sparkles className="w-3 h-3" />
-                                    체크리스트
+                                    코칭 체크리스트
                                 </div>
-                                <div className="space-y-2">
-                                    {rules.slice(0, 4).map((rule) => (
-                                        <div key={rule.rule_id} className="flex items-center gap-2">
+                                <div className="space-y-3">
+                                    {rules.map((rule) => (
+                                        <div key={rule.rule_id} className="flex items-start gap-2">
                                             {rule.status === 'passed' ? (
-                                                <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                                <CheckCircle className="w-4 h-4 text-emerald-400 mt-0.5" />
                                             ) : rule.status === 'failed' ? (
-                                                <AlertCircle className="w-4 h-4 text-red-400" />
+                                                <AlertCircle className="w-4 h-4 text-red-400 mt-0.5" />
                                             ) : (
-                                                <Circle className="w-4 h-4 text-white/40" />
+                                                <Circle className="w-4 h-4 text-white/40 mt-0.5" />
                                             )}
                                             <span className={`text-xs ${rule.status === 'passed' ? 'text-emerald-300' :
-                                                rule.status === 'failed' ? 'text-red-300' :
-                                                    'text-white/70'
+                                                rule.status === 'failed' ? 'text-red-300' : 'text-white/70'
                                                 }`}>
                                                 {rule.description}
                                             </span>
@@ -856,125 +955,94 @@ export function CoachingSession({
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Session Stats */}
+                            <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
+                                <div className="text-xs text-white/60 mb-2">세션 통계</div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div className="p-2 bg-white/5 rounded-lg">
+                                        <div className="text-white/40">녹화시간</div>
+                                        <div className="text-white font-mono">
+                                            {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                                        </div>
+                                    </div>
+                                    <div className="p-2 bg-white/5 rounded-lg">
+                                        <div className="text-white/40">진행률</div>
+                                        <div className="text-cyan-400 font-mono">{progress}%</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {/* RIGHT SIDE PANEL - Desktop Only: Rules Checklist */}
-                {!isMobile && (
-                    <div className="w-64 h-full max-h-[70vh] flex flex-col gap-4">
-                        {/* Rules Checklist */}
-                        <div className="flex-1 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-y-auto">
-                            <div className="text-xs text-white/60 mb-3 flex items-center gap-1">
-                                <Sparkles className="w-3 h-3" />
-                                코칭 체크리스트
-                            </div>
-                            <div className="space-y-3">
-                                {rules.map((rule) => (
-                                    <div key={rule.rule_id} className="flex items-start gap-2">
-                                        {rule.status === 'passed' ? (
-                                            <CheckCircle className="w-4 h-4 text-emerald-400 mt-0.5" />
-                                        ) : rule.status === 'failed' ? (
-                                            <AlertCircle className="w-4 h-4 text-red-400 mt-0.5" />
-                                        ) : (
-                                            <Circle className="w-4 h-4 text-white/40 mt-0.5" />
-                                        )}
-                                        <span className={`text-xs ${rule.status === 'passed' ? 'text-emerald-300' :
-                                            rule.status === 'failed' ? 'text-red-300' : 'text-white/70'
-                                            }`}>
-                                            {rule.description}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                {/* Bottom Controls */}
+                <div className="p-6 bg-gradient-to-t from-black via-black/80 to-transparent">
+                    <div className="flex items-center justify-center gap-6">
+                        {/* Mute */}
+                        <button
+                            onClick={() => setIsMuted(!isMuted)}
+                            className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center"
+                        >
+                            {isMuted ? <MicOff className="w-5 h-5 text-white/60" /> : <Mic className="w-5 h-5 text-white" />}
+                        </button>
 
-                        {/* Session Stats */}
-                        <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-                            <div className="text-xs text-white/60 mb-2">세션 통계</div>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="p-2 bg-white/5 rounded-lg">
-                                    <div className="text-white/40">녹화시간</div>
-                                    <div className="text-white font-mono">
-                                        {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                                    </div>
-                                </div>
-                                <div className="p-2 bg-white/5 rounded-lg">
-                                    <div className="text-white/40">진행률</div>
-                                    <div className="text-cyan-400 font-mono">{progress}%</div>
-                                </div>
-                            </div>
-                        </div>
+                        {/* Record */}
+                        <button
+                            onClick={isRecording ? stopRecording : startRecording}
+                            disabled={!isSessionReady && !isRecording}
+                            className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${isRecording
+                                ? 'bg-red-500 hover:bg-red-400'
+                                : isSessionReady
+                                    ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 hover:brightness-110'
+                                    : 'bg-gray-500 cursor-wait opacity-50'
+                                }`}
+                        >
+                            {!isSessionReady && !isRecording ? (
+                                <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : isRecording ? (
+                                <Square className="w-8 h-8 text-white" />
+                            ) : (
+                                <Play className="w-8 h-8 text-white ml-1" />
+                            )}
+                        </button>
+
+                        {/* P2: Voice Toggle */}
+                        <button
+                            onClick={() => setVoiceEnabled(!voiceEnabled)}
+                            className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all ${voiceEnabled
+                                ? 'bg-white/10 border-white/20'
+                                : 'bg-amber-500/20 border-amber-500/40'
+                                }`}
+                            title={voiceEnabled ? '음성 코칭 끄기' : '음성 코칭 켜기'}
+                        >
+                            {voiceEnabled
+                                ? <Volume2 className="w-5 h-5 text-white" />
+                                : <VolumeX className="w-5 h-5 text-amber-400" />}
+                        </button>
+
+                        {/* Reset */}
+                        <button
+                            onClick={() => {
+                                setProgress(0);
+                                setRules(getDemoRules(mode));
+                                setFeedbackHistory([]);
+                                setCurrentFeedback(null);
+                            }}
+                            className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center"
+                        >
+                            <RotateCcw className="w-5 h-5 text-white/60" />
+                        </button>
                     </div>
-                )}
-            </div>
 
-            {/* Bottom Controls */}
-            <div className="p-6 bg-gradient-to-t from-black via-black/80 to-transparent">
-                <div className="flex items-center justify-center gap-6">
-                    {/* Mute */}
-                    <button
-                        onClick={() => setIsMuted(!isMuted)}
-                        className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center"
-                    >
-                        {isMuted ? <MicOff className="w-5 h-5 text-white/60" /> : <Mic className="w-5 h-5 text-white" />}
-                    </button>
-
-                    {/* Record */}
-                    <button
-                        onClick={isRecording ? stopRecording : startRecording}
-                        disabled={!isSessionReady && !isRecording}
-                        className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${isRecording
-                            ? 'bg-red-500 hover:bg-red-400'
-                            : isSessionReady
-                                ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 hover:brightness-110'
-                                : 'bg-gray-500 cursor-wait opacity-50'
-                            }`}
-                    >
-                        {!isSessionReady && !isRecording ? (
-                            <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : isRecording ? (
-                            <Square className="w-8 h-8 text-white" />
-                        ) : (
-                            <Play className="w-8 h-8 text-white ml-1" />
-                        )}
-                    </button>
-
-                    {/* P2: Voice Toggle */}
-                    <button
-                        onClick={() => setVoiceEnabled(!voiceEnabled)}
-                        className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all ${voiceEnabled
-                            ? 'bg-white/10 border-white/20'
-                            : 'bg-amber-500/20 border-amber-500/40'
-                            }`}
-                        title={voiceEnabled ? '음성 코칭 끄기' : '음성 코칭 켜기'}
-                    >
-                        {voiceEnabled
-                            ? <Volume2 className="w-5 h-5 text-white" />
-                            : <VolumeX className="w-5 h-5 text-amber-400" />}
-                    </button>
-
-                    {/* Reset */}
-                    <button
-                        onClick={() => {
-                            setProgress(0);
-                            setRules(getDemoRules(mode));
-                            setFeedbackHistory([]);
-                            setCurrentFeedback(null);
-                        }}
-                        className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center"
-                    >
-                        <RotateCcw className="w-5 h-5 text-white/60" />
-                    </button>
+                    {!isRecording && (
+                        <p className="text-center text-white/40 text-xs mt-3">
+                            🎙️ AI 코치가 실시간으로 촬영을 도와드립니다
+                        </p>
+                    )}
                 </div>
-
-                {!isRecording && (
-                    <p className="text-center text-white/40 text-xs mt-3">
-                        🎙️ AI 코치가 실시간으로 촬영을 도와드립니다
-                    </p>
-                )}
             </div>
-        </div>
+        </>
     );
 }
 

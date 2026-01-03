@@ -1285,9 +1285,11 @@ async def handle_control(session_id: str, session: dict, message: dict):
                     "shotlist_sequence": phase2_data.get("shotlist_sequence", []),
                     "kick_timings": phase2_data.get("kick_timings", []),
                     "mise_en_scene_guides": phase2_data.get("mise_en_scene_guides", []),
+                    "keyframes": phase2_data.get("ghost_keyframes", []),  # Phase 2.5: Ghost Overlay
                     "timestamp": utcnow().isoformat(),
                 })
-                logger.info(f"📋 Phase 2 VDG data sent: shots={len(phase2_data.get('shotlist_sequence', []))}, kicks={len(phase2_data.get('kick_timings', []))}")
+                ghost_count = len(phase2_data.get('ghost_keyframes', []))
+                logger.info(f"📋 Phase 2 VDG data sent: shots={len(phase2_data.get('shotlist_sequence', []))}, kicks={len(phase2_data.get('kick_timings', []))}, ghost_keyframes={ghost_count}")
         
         logger.info(f"Recording started: {session_id}, gemini={gemini_connected}, checkpoints=active")
     
